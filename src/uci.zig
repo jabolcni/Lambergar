@@ -20,6 +20,10 @@ pub const start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -
 fn u32_from_str(str: []const u8) u32 {
     var x: u32 = 0;
 
+    if (str[0] == '-') {
+        return x;
+    }
+
     for (str) |c| {
         std.debug.assert('0' <= c);
         std.debug.assert(c <= '9');
@@ -31,6 +35,10 @@ fn u32_from_str(str: []const u8) u32 {
 
 fn u64_from_str(str: []const u8) u64 {
     var x: u64 = 0;
+
+    if (str[0] == '-') {
+        return x;
+    }
 
     for (str) |c| {
         std.debug.assert('0' <= c);

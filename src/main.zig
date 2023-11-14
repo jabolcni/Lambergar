@@ -52,7 +52,7 @@ pub fn main() !void {
             GuiCommand.uci => {
                 try send_command(EngineCommand{ .id = .{ .key = "name", .value = "Lambergar" } }, allocator);
                 try send_command(EngineCommand{ .id = .{ .key = "author", .value = "janezp" } }, allocator);
-                try send_command(EngineCommand{ .option = .{ .name = "Hash", .option_type = "spin", .default = "4096" } }, allocator);
+                try send_command(EngineCommand{ .option = .{ .name = "Hash", .option_type = "spin", .default = "128", .min = "1", .max = "4096" } }, allocator);
                 try send_command(EngineCommand.uciok, allocator);
             },
             GuiCommand.isready => send_command(EngineCommand.readyok, allocator),

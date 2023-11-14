@@ -39,17 +39,6 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayL
     }
 }
 
-// pub inline fn get_next_best(move_list: *std.ArrayList(Move), score_list: *std.ArrayList(i32), i: usize) Move {
-//     var mv_size = move_list.items.len;
-//     for ((i + 1)..mv_size) |j| {
-//         if (score_list.items[j] > score_list.items[i]) {
-//             std.mem.swap(Move, &move_list.items[i], &move_list.items[j]);
-//             std.mem.swap(i32, &score_list.items[i], &score_list.items[j]);
-//         }
-//     }
-//     return move_list.items[i];
-// }
-
 pub inline fn get_next_best(move_list: *std.ArrayList(Move), score_list: *std.ArrayList(i32), i: usize) Move {
     var best_j = i;
     var max_score = score_list.items[i];

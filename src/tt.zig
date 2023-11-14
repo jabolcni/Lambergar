@@ -75,9 +75,9 @@ pub const TranspositionTable = struct {
 
         var size: u64 = 1 << NB_BITS;
         const MB: u64 = 1 << 20;
-        var nb_bits: u5 = 17;
+        var nb_bits: u5 = 16;
         if (size_mb > 0) {
-            while (((@as(u64, 1) << nb_bits) * @sizeOf(scoreEntry) <= size_mb * MB / 2) and (nb_bits < 28)) : (nb_bits += 1) {}
+            while (((@as(u64, 1) << nb_bits) * @sizeOf(scoreEntry) <= size_mb * MB / 2) and (nb_bits < 29)) : (nb_bits += 1) {}
             size = @as(u64, 1) << nb_bits;
         }
 

@@ -193,7 +193,6 @@ pub const Search = struct {
         if (self.stop) return true;
 
         if (self.manager.termination == Termination.NODES and self.nodes >= self.manager.max_nodes.?) {
-            //std.debug.print("search nodes: {}, limit: {}\n", .{ search.nodes, self.max_nodes.? });
             return true;
         }
 
@@ -219,7 +218,6 @@ pub const Search = struct {
         mainloop: while (depth <= self.max_depth) {
             self.ply = 0;
             self.nodes = 0;
-            //self.follow_pv = true;
 
             const start = Instant.now() catch unreachable;
 
@@ -491,9 +489,6 @@ pub const Search = struct {
 
         if (pos.is_draw()) return 1 - (@as(i32, @intCast(self.nodes & 2)));
 
-        var in_check = pos.in_check(color);
-        _ = in_check;
-
         var entry = tt.TT.fetch(pos.hash);
         var tt_hit: bool = if (entry != null) true else false;
 
@@ -505,7 +500,7 @@ pub const Search = struct {
         if (tt_hit) {
             tt_move = entry.?.move;
             tt_bound = entry.?.bound;
-            tt_score = tt.TT.adjust_hash_score(entry.?.score, self.ply); //entry.?.score;
+            tt_score = tt.TT.adjust_hash_score(entry.?.score, self.ply);
             tt_depth = entry.?.depth;
 
             if ((tt_bound == tt.Bound.BOUND_LOWER and tt_score >= beta) or
@@ -557,7 +552,7 @@ pub const Search = struct {
                 best_score = score;
                 if (score > alpha) {
                     best_move = move;
-                    //self.update_pv(move);
+                    self.update_pv(move);
                     alpha = score;
                     //hash_bound = tt.Bound.BOUND_EXACT;
 
