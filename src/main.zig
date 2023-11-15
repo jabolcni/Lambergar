@@ -50,8 +50,8 @@ pub fn main() !void {
         const command = try uci.next_command(allocator);
         try switch (command) {
             GuiCommand.uci => {
-                try send_command(EngineCommand{ .id = .{ .key = "name", .value = "Lambergar" } }, allocator);
-                try send_command(EngineCommand{ .id = .{ .key = "author", .value = "janezp" } }, allocator);
+                try send_command(EngineCommand{ .id = .{ .key = "name", .value = "Lambergar v0.3" } }, allocator);
+                try send_command(EngineCommand{ .id = .{ .key = "author", .value = "Janez Podobnik" } }, allocator);
                 try send_command(EngineCommand{ .option = .{ .name = "Hash", .option_type = "spin", .default = "128", .min = "1", .max = "4096" } }, allocator);
                 try send_command(EngineCommand.uciok, allocator);
             },
