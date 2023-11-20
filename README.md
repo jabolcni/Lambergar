@@ -15,7 +15,7 @@
 Lambergar is a chess engine developed in the Zig programming language. The project stemmed from a series of specific objectives:
 
 - *Chess Engine Creation*: the desire to construct a chess engine from the ground up.
-- *Development from publicly availible resources*: while I aimed to build it independently, I also sought to leverage existing resources and learn from the codebase of other engines.
+- *Resourceful Development*: while I aimed to build it independently, I also sought to leverage existing resources and learn from the codebase of other engines.
 - *Learning Zig*: I saw this as an opportunity not only to build a chess engine but also to learn a new programming language, which will also be usefull for my job as an engineer.
 
 
@@ -42,17 +42,20 @@ This code aims to provide insights into Lambergar's architecture, algorithms, an
 - Mop-up evaluation for end-game from Greko engine
 - PVS search
 - Quiescence search
+- Aspiration window
 - Zobrist hashing
 - Move ordering
   - Hashed move
-  - MVV-LVA
+  - MVV-LVA+SEE
   - Killer moves
   - Very basic history heuristics
 - Iterative deepening
 - Collecting PV line
 - Null move pruning
-- Basic time controls
 - Very basic pruning (just to test a concept for future implementation)
+  - Reverse futility pruning
+  - Razoring
+- Basic time controls
 - Very basic reduction and extensions (just to test a concept for future implementation)
   - Reduction for quiet moves when score is improving
   - Check extension
@@ -60,7 +63,6 @@ This code aims to provide insights into Lambergar's architecture, algorithms, an
 ## Planed features
   - [ ] LMR
   - [ ] LMP
-  - [ ] Aspiration windows
   - [ ] Better time controls
   - [ ] Major refractoring of code and performance optimization
   - [ ] Better history heuristics: history moves, counter moves, follow moves
@@ -100,4 +102,4 @@ Engine was not yet proposed for testing on the CCRL (Computer Chess Rating Lists
 
 ## License
 
-Lambergar is licensed under the MIT License. Check out LICENSE for the full text. Feel free to use this program, but please credit this repository in your project if you use it.
+Lambergar is licensed under the MIT License. Check out LICENSE.txt for the full text. Feel free to use this program, but please credit this repository in your project if you use it.

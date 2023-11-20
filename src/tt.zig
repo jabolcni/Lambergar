@@ -120,10 +120,10 @@ pub const TranspositionTable = struct {
         var count: u16 = 0;
         for (0..1000) |idx| {
             // For modern win arhitectures
-            var raw = @atomicLoad(u128, &self.ttArray.items[(idx * 1000) & self.mask], .Acquire);
-            var entry = @as(*scoreEntry, @ptrCast(&raw)).*;
+            //var raw = @atomicLoad(u128, &self.ttArray.items[(idx * 1000) & self.mask], .Acquire);
+            //var entry = @as(*scoreEntry, @ptrCast(&raw)).*;
             // For Linux binaries
-            // var entry = @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray.items[(idx * 1000) & self.mask]))).*;
+            var entry = @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray.items[(idx * 1000) & self.mask]))).*;
 
             if (entry.bound != Bound.BOUND_NONE and entry.age == self.age) {
                 count += 1;
@@ -134,11 +134,11 @@ pub const TranspositionTable = struct {
 
     inline fn set(self: *TranspositionTable, entry: scoreEntry) void {
         // For modern win arhitectures
-        _ = @atomicRmw(u128, &self.ttArray.items[self.index(entry.hash_key)], .Xchg, @as(*const u128, @ptrCast(&entry)).*, .AcqRel);
+        //_ = @atomicRmw(u128, &self.ttArray.items[self.index(entry.hash_key)], .Xchg, @as(*const u128, @ptrCast(&entry)).*, .AcqRel);
         // For Linux binaries
-        // var p = &self.ttArray.items[self.index(entry.hash_key)];
-        // _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p))), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry))).*, .Acquire);
-        // _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p) + 8)), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry) + 8)).*, .Acquire);
+        var p = &self.ttArray.items[self.index(entry.hash_key)];
+        _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p))), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry))).*, .Acquire);
+        _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p) + 8)), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry) + 8)).*, .Acquire);
     }
 
     pub inline fn store(self: *TranspositionTable, entry: scoreEntry) void {
@@ -166,10 +166,10 @@ pub const TranspositionTable = struct {
 
     inline fn get(self: *TranspositionTable, hash: u64) scoreEntry {
         // For modern win arhitectures
-        var raw = @atomicLoad(u128, &self.ttArray.items[self.index(hash)], .Acquire);
-        return @as(*scoreEntry, @ptrCast(&raw)).*;
+        //var raw = @atomicLoad(u128, &self.ttArray.items[self.index(hash)], .Acquire);
+        //return @as(*scoreEntry, @ptrCast(&raw)).*;
         // For Linux binaries
-        // return @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray.items[self.index(hash)]))).*;
+        return @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray.items[self.index(hash)]))).*;
     }
 
     pub inline fn fetch(self: *TranspositionTable, hash: u64) ?scoreEntry {

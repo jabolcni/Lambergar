@@ -44,12 +44,14 @@ pub const Termination = enum(u2) { INFINITE, DEPTH, NODES, TIME };
 pub const SearchManager = struct {
     termination: Termination = Termination.INFINITE,
     max_ms: u64 = 1000,
+    early_ms: u64 = 1000,
     max_nodes: ?u32 = null,
 
     pub fn new() SearchManager {
         return SearchManager{
             .termination = Termination.INFINITE,
             .max_ms = 1000,
+            .early_ms = 1000,
             .max_nodes = null,
         };
     }
@@ -59,25 +61,32 @@ pub const SearchManager = struct {
 
         if (self.termination == Termination.INFINITE or self.termination == Termination.DEPTH or self.termination == Termination.NODES) {
             self.max_ms = 1 << 63;
+            self.early_ms = self.max_ms;
         } else if (self.termination == Termination.TIME) {
             if (movetime != null) {
                 self.max_ms = movetime.? - overhead;
+                self.early_ms = self.max_ms;
                 return;
             } else if (rem_time != null) {
                 var inc: u32 = if (time_inc != null) time_inc.? else 0;
                 if (rem_time.? <= overhead) {
                     self.max_ms = @max(10, overhead - 10);
+                    self.early_ms = self.max_ms;
                     return;
                 }
                 if (movestogo == null) {
                     self.max_ms = inc + (rem_time.? - overhead) / 30;
+                    self.early_ms = 3 * self.max_ms / 4;
                 } else {
                     self.max_ms = inc + ((2 * (rem_time.? - overhead)) / (2 * movestogo.? + 1));
+                    self.early_ms = self.max_ms;
                 }
                 self.max_ms = @min(self.max_ms, rem_time.? - overhead);
+                self.early_ms = @min(self.early_ms, rem_time.? - overhead);
                 return;
             } else {
                 self.max_ms = 1 << 63;
+                self.early_ms = self.max_ms;
                 return;
             }
         } else {
@@ -184,6 +193,7 @@ pub const Search = struct {
 
         self.best_move = Move.empty();
         self.stop_on_time = false;
+        self.stop = false;
 
         self.nodes = 0;
         self.ply = 0;
@@ -193,10 +203,23 @@ pub const Search = struct {
         if (self.stop) return true;
 
         if (self.manager.termination == Termination.NODES and self.nodes >= self.manager.max_nodes.?) {
+            self.stop = true;
             return true;
         }
 
-        if (self.nodes & 1024 == 0 and ((self.timer.read() / std.time.ns_per_ms) >= self.manager.max_ms)) return true;
+        if (self.nodes & 1024 == 0 and ((self.timer.read() / std.time.ns_per_ms) >= self.manager.max_ms)) {
+            self.stop = true;
+            self.stop_on_time = true;
+            return true;
+        }
+
+        return false;
+    }
+
+    pub inline fn check_early_stop_conditions(self: *Search) bool {
+        if (self.stop) return true;
+
+        if ((self.timer.read() / std.time.ns_per_ms) >= self.manager.early_ms) return true;
 
         return false;
     }
@@ -210,20 +233,47 @@ pub const Search = struct {
         var alpha: i32 = -MAX_SCORE;
         var beta: i32 = MAX_SCORE;
         var score: i32 = 0;
+        var delta: i32 = 12;
 
-        var depth: i8 = 1;
+        var it_depth: i8 = 1;
+        var depth = it_depth;
 
         self.timer = std.time.Timer.start() catch unreachable;
 
-        mainloop: while (depth <= self.max_depth) {
+        mainloop: while (it_depth <= self.max_depth) {
             self.ply = 0;
             self.nodes = 0;
+            depth = it_depth;
+
+            if (depth >= 4) {
+                alpha = @max(-MAX_SCORE, score - delta);
+                beta = @min(score + delta, MAX_SCORE);
+            }
 
             const start = Instant.now() catch unreachable;
 
-            score = self.pvs(depth, alpha, beta, pos, color);
+            aspirationloop: while (delta <= MAX_SCORE) {
+                score = self.pvs(depth, alpha, beta, pos, color);
 
-            if (self.stop_on_time or self.check_stop_conditions()) {
+                if (self.stop) {
+                    break :mainloop;
+                }
+
+                if (score <= alpha) {
+                    beta = @divTrunc(alpha + beta, 2);
+                    alpha = @max(-MAX_SCORE, score - delta);
+                    depth = it_depth;
+                } else if (score >= beta) {
+                    beta = @min(score + delta, MAX_SCORE);
+                    depth = @max(depth - 1, it_depth - 5);
+                } else {
+                    break :aspirationloop;
+                }
+
+                delta += 2 + @divTrunc(delta, 2);
+            }
+
+            if (self.stop) {
                 break :mainloop;
             }
 
@@ -253,7 +303,12 @@ pub const Search = struct {
             }
             _ = std.fmt.format(stdout, "\n", .{}) catch unreachable;
 
-            depth += 1;
+            if (self.stop or self.check_early_stop_conditions()) {
+                self.stop = true;
+                break :mainloop;
+            }
+
+            it_depth += 1;
         }
     }
 

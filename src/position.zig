@@ -206,6 +206,10 @@ pub const PieceType = enum(u3) {
     pub inline fn toU3(self: PieceType) u3 {
         return @intFromEnum(self);
     }
+
+    pub inline fn make(pt: u3) PieceType {
+        return @as(PieceType, @enumFromInt(pt));
+    }
 };
 
 pub const PIECE_STR = "PNBRQK~>pnbrqk.";
@@ -364,7 +368,8 @@ pub const Move = packed struct {
     }
 
     pub inline fn is_promotion(self: Move) bool {
-        return ( (self.flags.toU4() >= MoveFlags.PR_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PR_QUEEN.toU4()) or (self.flags.toU4() >= MoveFlags.PC_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PC_QUEEN.toU4()) );
+        //return ( (self.flags.toU4() >= MoveFlags.PR_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PR_QUEEN.toU4()) or (self.flags.toU4() >= MoveFlags.PC_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PC_QUEEN.toU4()) );
+        return (self.flags.promote_type() != PieceType.NoType);
     }
 
     pub inline fn is_tactical(self: Move) bool {
@@ -679,7 +684,11 @@ pub const Position = struct {
         (attacks.piece_attacks(s, occ, PieceType.Knight) & self.piece_bb[Piece.BLACK_KNIGHT.toU4()]) | 
         (attacks.piece_attacks(s, occ, PieceType.Bishop) & (self.piece_bb[Piece.BLACK_BISHOP.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()])) | 
         (attacks.piece_attacks(s, occ, PieceType.Rook) & (self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()]));        
-    }    
+    } 
+
+    pub inline fn all_attackers(self: *Position, s: u6, occ: u64) u64 {
+        return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
+    }
 
     pub inline fn in_check(self: *Position, comptime C: Color) bool {
         comptime var oC = if (C == Color.White) Color.Black else Color.White;

@@ -8,6 +8,7 @@ const tt = @import("tt.zig");
 const evaluation = @import("evaluation.zig");
 const search = @import("search.zig");
 const uci = @import("uci.zig");
+const ms = @import("movescorer.zig");
 
 const Instant = std.time.Instant;
 
@@ -87,12 +88,10 @@ pub fn main() !void {
 
                 if (command.go.infinite) {
                     thinker.manager.termination = search.Termination.INFINITE;
-                }
-                if (command.go.depth != null) {
+                } else if (command.go.depth != null) {
                     thinker.max_depth = command.go.depth.?;
                     thinker.manager.termination = search.Termination.DEPTH;
-                }
-                if (command.go.nodes != null) {
+                } else if (command.go.nodes != null) {
                     thinker.manager.max_nodes = command.go.nodes;
                     thinker.manager.termination = search.Termination.NODES;
                 }
@@ -115,13 +114,16 @@ pub fn main() !void {
                 if (command.go.btime != null) {
                     thinker.manager.termination = search.Termination.TIME;
                     if (pos.side_to_play == Color.Black) {
-                        rem_time = command.go.wtime;
+                        rem_time = command.go.btime;
                     } else {
-                        rem_enemy_time = command.go.wtime;
+                        rem_enemy_time = command.go.btime;
                     }
                 }
-                if ((command.go.winc != null and pos.side_to_play == Color.White) or (command.go.binc != null and pos.side_to_play == Color.Black)) {
+                if (command.go.winc != null and pos.side_to_play == Color.White) {
                     time_inc = command.go.winc;
+                }
+                if (command.go.binc != null and pos.side_to_play == Color.Black) {
+                    time_inc = command.go.binc;
                 }
 
                 thinker.manager.set_time_limits(movestogo, movetime, rem_time, time_inc);
@@ -158,6 +160,30 @@ pub fn main() !void {
             GuiCommand.perft => |depth| {
                 const report = perft.perft_test(&pos, @as(u4, @intCast(depth)));
                 try send_command(EngineCommand{ .report_perft = report }, allocator);
+            },
+            GuiCommand.see => {
+                var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
+                defer list.deinit();
+
+                if (pos.side_to_play == Color.White) {
+                    pos.generate_captures(Color.White, &list);
+                } else {
+                    pos.generate_captures(Color.Black, &list);
+                }
+
+                std.debug.print("SEE thresholds\n", .{});
+
+                for (list.items, 1..) |move, i| {
+                    for (0..2400) |j| {
+                        var thr = @as(i32, 1200) - @as(i32, @intCast(j));
+                        if (ms.see(&pos, move, thr)) {
+                            std.debug.print("{}. ", .{i});
+                            move.print();
+                            std.debug.print(" SEE result: {}\n", .{thr});
+                            break;
+                        }
+                    }
+                }
             },
             GuiCommand.quit => {
                 break :mainloop;

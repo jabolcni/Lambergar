@@ -96,6 +96,7 @@ pub const GuiCommandTag = enum(u8) {
     board,
     moves,
     perft,
+    see,
 };
 
 pub const EngineCommandTag = enum(u8) {
@@ -134,6 +135,7 @@ pub const GuiCommand = union(GuiCommandTag) {
     board,
     moves,
     perft: u32,
+    see,
 };
 
 pub const EngineCommand = union(EngineCommandTag) {
@@ -358,6 +360,8 @@ pub fn next_command(allocator: Allocator) !GuiCommand {
         } else if (std.mem.eql(u8, command, "perft")) {
             const depth = u32_from_str(words.next() orelse "1");
             return GuiCommand{ .perft = depth };
+        } else if (std.mem.eql(u8, command, "see")) {
+            return GuiCommand.see;
         }
 
         // ignore unknown commands
