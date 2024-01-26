@@ -59,7 +59,7 @@ Compile with command `zig build`. You can run python script `build_versions.py` 
 - Basic time controls
 - Typical pruning algorithms, reductions and extensions 
 
-## Tuining
+## Tuning
 
 This version comes with option to tune evaluation parameters (material values and PSQT values).
 
