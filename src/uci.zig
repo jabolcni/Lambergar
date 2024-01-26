@@ -4,6 +4,7 @@ const perft = @import("perft.zig");
 const position = @import("position.zig");
 const evaluation = @import("evaluation.zig");
 const tt = @import("tt.zig");
+const search = @import("search.zig");
 
 const Position = position.Position;
 const Color = position.Color;
@@ -30,6 +31,30 @@ fn u32_from_str(str: []const u8) u32 {
         x *= 10;
         x += c - '0';
     }
+    return x;
+}
+
+fn i32_from_str(str: []const u8) i32 {
+    var x: i32 = 0;
+    var is_negative = false;
+    var start_index: usize = 0;
+
+    if (str[0] == '-') {
+        is_negative = true;
+        start_index = 1;
+    }
+
+    for (str[start_index..]) |c| {
+        std.debug.assert('0' <= c);
+        std.debug.assert(c <= '9');
+        x *= 10;
+        x += c - '0';
+    }
+
+    if (is_negative) {
+        x = -x;
+    }
+
     return x;
 }
 
@@ -217,7 +242,9 @@ pub fn next_command(allocator: Allocator) !GuiCommand {
     const stdin = std.io.getStdIn().reader();
 
     read_command: while (true) {
-        const input = (try stdin.readUntilDelimiter(&buffer, '\n'));
+        const input_full = (try stdin.readUntilDelimiter(&buffer, '\n'));
+        if (input_full.len == 0) continue;
+        const input = std.mem.trimRight(u8, input_full, "\r");
         if (input.len == 0) continue;
 
         var words = std.mem.split(u8, input, " ");

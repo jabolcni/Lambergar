@@ -9,6 +9,7 @@ const evaluation = @import("evaluation.zig");
 const search = @import("search.zig");
 const uci = @import("uci.zig");
 const ms = @import("movescorer.zig");
+const tuner = @import("tuner.zig");
 
 const Instant = std.time.Instant;
 
@@ -34,6 +35,7 @@ pub fn init_all() void {
     attacks.initialise_all_databases();
     zobrist.initialise_zobrist_keys();
     evaluation.init_eval();
+    search.init_lmr();
 }
 
 pub fn main() !void {
@@ -47,20 +49,25 @@ pub fn main() !void {
     try pos.set(start_position);
     var thinker = Search.new();
 
+    //    var tuner_instance = tuner.Tuner.new();  // TUNER ON
+    //    tuner_instance.init();  // TUNER ON
+    //    try tuner_instance.convertDataset();  // TUNER ON
+
     mainloop: while (true) {
         const command = try uci.next_command(allocator);
         try switch (command) {
             GuiCommand.uci => {
-                try send_command(EngineCommand{ .id = .{ .key = "name", .value = "Lambergar v0.3" } }, allocator);
+                try send_command(EngineCommand{ .id = .{ .key = "name", .value = "Lambergar v0.4.0" } }, allocator);
                 try send_command(EngineCommand{ .id = .{ .key = "author", .value = "Janez Podobnik" } }, allocator);
                 try send_command(EngineCommand{ .option = .{ .name = "Hash", .option_type = "spin", .default = "128", .min = "1", .max = "4096" } }, allocator);
+                //try send_command(EngineCommand{ .option = .{ .name = "Threads", .option_type = "spin", .default = "1", .min = "1", .max = "1" } }, allocator);
                 try send_command(EngineCommand.uciok, allocator);
             },
             GuiCommand.isready => send_command(EngineCommand.readyok, allocator),
             GuiCommand.debug => {},
             GuiCommand.newgame => {
                 thinker = Search.new();
-                //tt.TT.clear();
+                tt.TT.clear();
                 try pos.set(start_position);
             },
             GuiCommand.position => {
@@ -97,7 +104,7 @@ pub fn main() !void {
                 }
                 if (command.go.movetime != null) {
                     movetime = command.go.movetime;
-                    thinker.manager.termination = search.Termination.TIME;
+                    thinker.manager.termination = search.Termination.MOVETIME;
                 }
                 if (command.go.movestogo != null) {
                     movestogo = command.go.movestogo;
@@ -166,9 +173,9 @@ pub fn main() !void {
                 defer list.deinit();
 
                 if (pos.side_to_play == Color.White) {
-                    pos.generate_captures(Color.White, &list);
+                    pos.generate_legals(Color.White, &list);
                 } else {
-                    pos.generate_captures(Color.Black, &list);
+                    pos.generate_legals(Color.Black, &list);
                 }
 
                 std.debug.print("SEE thresholds\n", .{});

@@ -1,0 +1,7 @@
+const material_mg = [6]i32{};
+const mg_pawn_table = [64]i32{};
+const mg_knight_table = [64]i32{};
+const mg_bishop_table = [64]i32{};
+const mg_rook_table = [64]i32{};
+const mg_queen_table = [64]i32{};
+const mg_king_table = [64]i32{};

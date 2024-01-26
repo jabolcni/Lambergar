@@ -372,6 +372,14 @@ pub const Move = packed struct {
         return (self.flags.promote_type() != PieceType.NoType);
     }
 
+    pub inline fn is_promotion_with_capture(self: Move) bool {
+        return ( self.flags.toU4() >= MoveFlags.PC_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PC_QUEEN.toU4() );
+    }    
+
+    pub inline fn is_promotion_no_capture(self: Move) bool {
+        return ( self.flags.toU4() >= MoveFlags.PR_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PR_QUEEN.toU4() );
+    } 
+
     pub inline fn is_tactical(self: Move) bool {
         return (self.is_capture() or self.is_promotion());
     }
@@ -671,7 +679,15 @@ pub const Position = struct {
     pub inline fn all_pieces(self: *Position, comptime C: Color) u64 {
         return if (C == Color.White) self.piece_bb[Piece.WHITE_PAWN.toU4()] | self.piece_bb[Piece.WHITE_KNIGHT.toU4()] | self.piece_bb[Piece.WHITE_BISHOP.toU4()] | self.piece_bb[Piece.WHITE_ROOK.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()] | self.piece_bb[Piece.WHITE_KING.toU4()] else
         self.piece_bb[Piece.BLACK_PAWN.toU4()] | self.piece_bb[Piece.BLACK_KNIGHT.toU4()] | self.piece_bb[Piece.BLACK_BISHOP.toU4()] | self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()] | self.piece_bb[Piece.BLACK_KING.toU4()];    
-    }     
+    }  
+
+    pub inline fn all_white_pieces(self: *Position) u64 {
+        return self.piece_bb[Piece.WHITE_PAWN.toU4()] | self.piece_bb[Piece.WHITE_KNIGHT.toU4()] | self.piece_bb[Piece.WHITE_BISHOP.toU4()] | self.piece_bb[Piece.WHITE_ROOK.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()] | self.piece_bb[Piece.WHITE_KING.toU4()];    
+    } 
+
+    pub inline fn all_black_pieces(self: *Position) u64 {
+        return self.piece_bb[Piece.BLACK_PAWN.toU4()] | self.piece_bb[Piece.BLACK_KNIGHT.toU4()] | self.piece_bb[Piece.BLACK_BISHOP.toU4()] | self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()] | self.piece_bb[Piece.BLACK_KING.toU4()];    
+    }        
 
     pub inline fn attackers_from(self: *Position, s: u6, occ: u64, comptime C: Color) u64 {
         return if (C == Color.White) 
@@ -686,9 +702,25 @@ pub const Position = struct {
         (attacks.piece_attacks(s, occ, PieceType.Rook) & (self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()]));        
     } 
 
+    // pub inline fn all_attackers(self: *Position, s: u6, occ: u64) u64 {
+    //     return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
+    // }
+
     pub inline fn all_attackers(self: *Position, s: u6, occ: u64) u64 {
-        return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
-    }
+        //return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
+        //return self.attackers_plus_king_from(s, occ, Color.White) | self.attackers_plus_king_from(s, occ, Color.Black);
+        return         
+        (attacks.pawn_attacks_from_square(s, Color.Black) & self.piece_bb[Piece.WHITE_PAWN.toU4()]) | 
+        (attacks.piece_attacks(s, occ, PieceType.Knight) & self.piece_bb[Piece.WHITE_KNIGHT.toU4()]) | 
+        (attacks.piece_attacks(s, occ, PieceType.Bishop) & (self.piece_bb[Piece.WHITE_BISHOP.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()])) | 
+        (attacks.piece_attacks(s, occ, PieceType.Rook) & (self.piece_bb[Piece.WHITE_ROOK.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()])) |
+        (attacks.piece_attacks(s, occ, PieceType.King) & self.piece_bb[Piece.WHITE_KING.toU4()]) |
+        (attacks.pawn_attacks_from_square(s, Color.White) & self.piece_bb[Piece.BLACK_PAWN.toU4()]) | 
+        (attacks.piece_attacks(s, occ, PieceType.Knight) & self.piece_bb[Piece.BLACK_KNIGHT.toU4()]) | 
+        (attacks.piece_attacks(s, occ, PieceType.Bishop) & (self.piece_bb[Piece.BLACK_BISHOP.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()])) | 
+        (attacks.piece_attacks(s, occ, PieceType.Rook) & (self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()])) |
+        (attacks.piece_attacks(s, occ, PieceType.King) & self.piece_bb[Piece.BLACK_KING.toU4()]);  
+    }    
 
     pub inline fn in_check(self: *Position, comptime C: Color) bool {
         comptime var oC = if (C == Color.White) Color.Black else Color.White;
