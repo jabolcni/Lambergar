@@ -2,7 +2,7 @@ const std = @import("std");
 const position = @import("position.zig");
 const bb = @import("bitboard.zig");
 const attacks = @import("attacks.zig");
-const tuner = @import("tuner.zig");
+//const tuner = @import("tuner.zig");
 
 const Position = position.Position;
 const Square = position.Square;
@@ -237,8 +237,9 @@ pub const Evaluation = struct {
 
     }
 
-    pub fn clean_eval(self: *Evaluation, pos: *Position, tnr: *tuner.Tuner) i32 {
-        _ = tnr; // TUNER OFF
+    pub fn clean_eval(self: *Evaluation, pos: *Position) i32 {
+    //pub fn clean_eval(self: *Evaluation, pos: *Position, tnr: *tuner.Tuner) i32 {
+        //_ = tnr; // TUNER OFF
         var mat_white_mg: i32 = 0;
         var mat_white_eg: i32 = 0;
         var mat_black_mg: i32 = 0;

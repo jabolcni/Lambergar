@@ -370,6 +370,10 @@ pub const Search = struct {
             it_depth += 1;
         }
 
+        const move_name = self.best_move.to_str(allocator);
+        defer allocator.free(move_name);
+        _ = std.fmt.format(stdout, "bestmove {s}\n", .{move_name}) catch unreachable;
+
         // if (self.best_move.is_empty()) {
         //     var move_list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
         //     defer move_list.deinit();

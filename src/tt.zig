@@ -7,10 +7,8 @@ const Move = position.Move;
 const MATE_VALUE = search.MATE_VALUE;
 const MAX_PLY = search.MAX_PLY;
 
-const NB_BITS: u8 = 23; // 23...128 MB, 22...64 MB, 21...32 MB, 20...16 MB, 19...8 MB, 18...4 MB, 17...2 MB
-pub const HASH_SIZE: u64 = 1 << NB_BITS;
-const HASH_MASK: u64 = HASH_SIZE - 1;
 const AGE_INC: u6 = 1;
+const MB: u64 = 1 << 20;
 
 pub const perftEntry = packed struct {
     hash_key: u64,
@@ -53,50 +51,36 @@ pub const scoreEntry = packed struct {
     }
 };
 
-pub var tt_allocator = std.heap.ArenaAllocator.init(std.heap.c_allocator);
+pub var tt_allocator = std.heap.c_allocator;
 
 pub const TranspositionTable = struct {
-    ttArray: std.ArrayList(u128),
+    ttArray: []u128,
     size: u64,
     mask: u64,
     age: u6,
 
-    pub fn new() TranspositionTable {
-        return TranspositionTable{
-            .ttArray = std.ArrayList(u128).init(tt_allocator.allocator()),
-            .size = HASH_SIZE,
-            .mask = HASH_MASK,
-            .age = 0,
-        };
-    }
-
     pub fn init(self: *TranspositionTable, size_mb: u64) void {
-        self.ttArray.deinit();
+        tt_allocator.free(self.ttArray);
 
-        var size: u64 = 1 << NB_BITS;
-        const MB: u64 = 1 << 20;
-        var nb_bits: u5 = 16;
-        if (size_mb > 0) {
-            while (((@as(u64, 1) << nb_bits) * @sizeOf(scoreEntry) <= size_mb * MB / 2) and (nb_bits < 29)) : (nb_bits += 1) {}
-            size = @as(u64, 1) << nb_bits;
-        }
+        var size: usize = @as(usize, 1) << (std.math.log2_int(usize, size_mb * MB / @sizeOf(scoreEntry)));
+
+        std.debug.print("Hash size in item numbers: {}\n", .{size});
+        std.debug.print("Hash size in MB: {}\n", .{size * @sizeOf(scoreEntry) / MB});
+        std.debug.print("Hash size in bytes: {}\n", .{size * @sizeOf(scoreEntry)});
 
         var tt = TranspositionTable{
-            .ttArray = std.ArrayList(u128).init(tt_allocator.allocator()),
+            .ttArray = tt_allocator.alloc(u128, size) catch unreachable,
             .size = size,
             .mask = size - 1,
             .age = 0,
         };
-
-        tt.ttArray.ensureTotalCapacity(tt.size) catch {};
-        tt.ttArray.expandToCapacity();
 
         self.* = tt;
         self.clear();
     }
 
     pub inline fn clear(self: *TranspositionTable) void {
-        for (self.ttArray.items) |*e| {
+        for (self.ttArray) |*e| {
             e.* = 0;
         }
         self.age = 0;
@@ -123,7 +107,7 @@ pub const TranspositionTable = struct {
             //var raw = @atomicLoad(u128, &self.ttArray.items[(idx * 1000) & self.mask], .Acquire);
             //var entry = @as(*scoreEntry, @ptrCast(&raw)).*;
             // For Linux binaries
-            var entry = @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray.items[(idx * 1000) & self.mask]))).*;
+            var entry = @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray[(idx * 1000) & self.mask]))).*;
 
             if (entry.bound != Bound.BOUND_NONE and entry.age == self.age) {
                 count += 1;
@@ -136,7 +120,7 @@ pub const TranspositionTable = struct {
         // For modern win arhitectures
         //_ = @atomicRmw(u128, &self.ttArray.items[self.index(entry.hash_key)], .Xchg, @as(*const u128, @ptrCast(&entry)).*, .AcqRel);
         // For Linux binaries
-        var p = &self.ttArray.items[self.index(entry.hash_key)];
+        var p = &self.ttArray[self.index(entry.hash_key)];
         _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p))), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry))).*, .Acquire);
         _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p) + 8)), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry) + 8)).*, .Acquire);
     }
@@ -149,7 +133,7 @@ pub const TranspositionTable = struct {
     }
 
     pub inline fn prefetch(self: *TranspositionTable, hash: u64) void {
-        @prefetch(&self.ttArray.items[self.index(hash)], .{
+        @prefetch(&self.ttArray[self.index(hash)], .{
             .rw = .read,
             .locality = 1,
             .cache = .data,
@@ -157,7 +141,7 @@ pub const TranspositionTable = struct {
     }
 
     pub inline fn prefetch_write(self: *TranspositionTable, hash: u64) void {
-        @prefetch(&self.ttArray.items[self.index(hash)], .{
+        @prefetch(&self.ttArray[self.index(hash)], .{
             .rw = .write,
             .locality = 1,
             .cache = .data,
@@ -169,7 +153,7 @@ pub const TranspositionTable = struct {
         //var raw = @atomicLoad(u128, &self.ttArray.items[self.index(hash)], .Acquire);
         //return @as(*scoreEntry, @ptrCast(&raw)).*;
         // For Linux binaries
-        return @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray.items[self.index(hash)]))).*;
+        return @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray[self.index(hash)]))).*;
     }
 
     pub inline fn fetch(self: *TranspositionTable, hash: u64) ?scoreEntry {
@@ -199,4 +183,4 @@ pub const TranspositionTable = struct {
     }
 };
 
-pub var TT = TranspositionTable.new();
+pub var TT: TranspositionTable = undefined;
