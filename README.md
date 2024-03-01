@@ -77,7 +77,11 @@ Now run python script `convert_to_pickle.py` which will convert `data.csv` into 
 
 ## Strenght
 
-In November 2023 version v0.3.1 was proposed for testing on CCRL Blitz list, where it current stands at 2371 ELO. Latest version which is v0.4.0 has not been proposed for testing, but I estimate that it is around 2660 &plusmn; 20 CCRL Blitz ELO. Take that value with a grain of salt, I estimated strength of v0.3.1 at around 2400 &plusmn; 50 CCRL Blitz ELO. So my estimation was roughly correct, but I did overestimated the strength.
+In November 2023 version v0.3.1 was proposed for testing on CCRL Blitz list, where it current stands at 2369 ELO. 
+
+In February 2024 version v0.4.1 was poroposed for testing on CCRL Blitz list, where it current stands at 2691 ELO. 
+
+Latest version which is v0.5.0 has not been proposed for testing, but I estimate that it is around 2850 &plusmn; 20 CCRL Blitz ELO.
 
 ## Credits
 

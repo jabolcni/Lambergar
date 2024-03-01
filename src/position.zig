@@ -108,6 +108,11 @@ pub inline fn rank_of_u6(sq: u6) u6 {
     return sq >> 3;
 }
 
+pub inline fn relative_rank_of_u6(sq: u6, comptime c: Color) u6 {
+    var rank = rank_of_u6(sq);
+    return if (c == Color.White) rank else 7 - rank;
+}
+
 pub inline fn file_of_iter(sq: usize) usize {
     return sq & 0b111;
 }
@@ -754,6 +759,33 @@ pub const Position = struct {
         return false;
 
     }
+
+    pub inline fn upcoming_repetition(self: *Position) bool {
+        // repeatition test: position fen r5k1/pbN2rp1/4Q1Np/2pn1pB1/8/P7/1PP2PPP/6K1 b - - 0 25 moves d5c7 g6e7 g8f8 e7g6 f8g8 g6e7 g8f8 e7g6 f8g8
+
+        var fifty = self.history[self.game_ply].fifty;
+
+        if (fifty < 3) {
+            return false;
+        }
+
+        var index = @as(isize, self.game_ply) - 2;
+        var min_index = @as(isize, self.game_ply) - @as(isize, fifty);
+        var count: u2 = 0;
+
+        while (index >= min_index and index >= 0) {
+            if (self.hash == self.history[@as(usize,@intCast(index))].hash_key) {
+                count += 1;
+                if (count >= 1) {
+                    return true;
+                }
+            }  
+            index -= 2;    
+        }
+
+        return false;
+
+    }    
 
     pub inline fn is_fifty(self: *Position) bool {
         if (self.history[self.game_ply].fifty >= 100) {

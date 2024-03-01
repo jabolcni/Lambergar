@@ -9,7 +9,7 @@ const evaluation = @import("evaluation.zig");
 const search = @import("search.zig");
 const uci = @import("uci.zig");
 const ms = @import("movescorer.zig");
-//const tuner = @import("tuner.zig");
+const tuner = @import("tuner.zig");
 
 const Instant = std.time.Instant;
 
@@ -50,15 +50,16 @@ pub fn main() !void {
     var thinker = Search.new();
     var main_search_thread: std.Thread = undefined;
 
-    //    var tuner_instance = tuner.Tuner.new();  // TUNER ON
-    //    tuner_instance.init();  // TUNER ON
-    //    try tuner_instance.convertDataset();  // TUNER ON
+//        var tuner_instance = tuner.Tuner.new(); // TUNER ON
+//        tuner_instance.init(); // TUNER ON
+//        try tuner_instance.convertDataset(); // TUNER ON
 
     mainloop: while (true) {
+        //std.time.sleep(20 * 1000 * 1000);
         const command = try uci.next_command(allocator);
         try switch (command) {
             GuiCommand.uci => {
-                try send_command(EngineCommand{ .id = .{ .key = "name", .value = "Lambergar v0.4.1" } }, allocator);
+                try send_command(EngineCommand{ .id = .{ .key = "name", .value = "Lambergar v0.5.0" } }, allocator);
                 try send_command(EngineCommand{ .id = .{ .key = "author", .value = "Janez Podobnik" } }, allocator);
                 try send_command(EngineCommand{ .option = .{ .name = "Hash", .option_type = "spin", .default = "128", .min = "1", .max = "4096" } }, allocator);
                 //try send_command(EngineCommand{ .option = .{ .name = "Threads", .option_type = "spin", .default = "1", .min = "1", .max = "1" } }, allocator);
@@ -136,9 +137,6 @@ pub fn main() !void {
 
                 thinker.manager.set_time_limits(movestogo, movetime, rem_time, time_inc);
                 tt.TT.increase_age();
-                // search.start_search(&thinker, &pos);
-                // const best_move = thinker.best_move;
-                // try send_command(EngineCommand{ .bestmove = best_move }, allocator);
 
                 main_search_thread = try std.Thread.spawn(.{}, search.start_search, .{ &thinker, &pos });
                 main_search_thread.detach();

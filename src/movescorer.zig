@@ -13,40 +13,45 @@ const Color = position.Color;
 const MoveFlags = position.MoveFlags;
 const Search = searcher.Search;
 
-pub const SortHash = 3_000_000;
-pub const QueenPromotion = 71_000;
-pub const KnightPromotion = 70_000;
-pub const SortKiller1 = 69_001;
-pub const SortKiller2 = 69_000;
-pub const HistoryMax = 65_536;
-pub const SortCapture = 2 * HistoryMax;
-pub const sortCounter = 68_000;
-pub const Badpromotion = -QueenPromotion;
+pub const SortHash = 9000000;
+pub const QueenPromotionWithCapture = 1500000;
+pub const KnightPromotionWithCapture = 1400000;
+pub const SortCapture = 1200000;
+pub const QueenPromotion = 1100000;
+pub const KnightPromotion = 1000000;
+pub const SortKiller1 = 900000;
+pub const SortKiller2 = 800000;
+pub const sortCounter = 700000;
+pub const SortBadCapture = -900000;
+pub const Badpromotion = -QueenPromotionWithCapture;
 
 // pawns, knights, bishops, rooks, queens, kings
 const piece_val = [7]i32{ 100, 310, 330, 500, 1000, 20000, 0 };
-
-// tale pristop k move scoringu se zdi boljši
 
 pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayList(Move), score_list: *std.ArrayList(i32), hash_move: Move, comptime color: Color) void {
     for (move_list.items) |move| {
         var score: i32 = 0;
         if (move.equal(hash_move)) {
             score = SortHash;
-            //continue;
-        } else if (move.is_promotion()) {
+        } else if (move.is_promotion_with_capture()) {
             switch (move.flags) {
-                MoveFlags.PC_QUEEN => score = QueenPromotion,
-                MoveFlags.PC_KNIGHT => score = KnightPromotion,
+                MoveFlags.PC_QUEEN => score = QueenPromotionWithCapture,
+                MoveFlags.PC_KNIGHT => score = KnightPromotionWithCapture,
                 else => score = Badpromotion,
             }
         } else if (move.is_capture()) {
             const captured = if (move.flags == MoveFlags.EN_PASSANT) 0 else pos.board[move.to].type_of().toU3();
             const capturer = pos.board[move.from].type_of().toU3();
-            if (see(pos, move, 0)) {
-                score = 8 * piece_val[captured] - piece_val[capturer] + SortCapture;
+            if (see(pos, move, -98)) {
+                score = 10 * piece_val[captured] - piece_val[capturer] + SortCapture;
             } else {
-                score = 8 * piece_val[captured] - piece_val[capturer];
+                score = 10 * piece_val[captured] - piece_val[capturer] + SortBadCapture;
+            }
+        } else if (move.is_promotion_no_capture()) {
+            switch (move.flags) {
+                MoveFlags.PR_QUEEN => score = QueenPromotion,
+                MoveFlags.PR_KNIGHT => score = KnightPromotion,
+                else => score = Badpromotion,
             }
         } else {
             if (move.equal(search.mv_killer[search.ply][0])) {
@@ -57,8 +62,22 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayL
                 score = sortCounter;
             } else {
                 comptime var side: u4 = if (color == Color.White) Color.White.toU4() else Color.Black.toU4();
-                //var piece = pos.board[move.from];
+                var piece = pos.board[move.from];
                 score = search.sc_history[side][move.from][move.to];
+                if (search.ply >= 1) {
+                    var parent = search.ns_stack[search.ply - 1].move;
+                    var p_piece = search.ns_stack[search.ply - 1].piece;
+                    if (!parent.is_empty()) {
+                        score += search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to];
+                    }
+                }
+                if (search.ply >= 2) {
+                    var gparent = search.ns_stack[search.ply - 2].move;
+                    var gp_piece = search.ns_stack[search.ply - 2].piece;
+                    if (!gparent.is_empty()) {
+                        score += search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to];
+                    }
+                }
             }
         }
 
@@ -204,7 +223,6 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
     var rq: u64 = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
 
     var attackers: u64 = pos.all_attackers(to, occupied);
-    //bb.print_bitboard(attackers);
 
     var cnt: u5 = 1;
 

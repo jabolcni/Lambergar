@@ -19,6 +19,22 @@ pub const Tuner = struct {
 
     mat: [2][NPIECE_TYPES]u8 = undefined,
     psqt: [2][NPIECE_TYPES][64]u8 = undefined,
+    passed_pawn: [2][64]u8 = undefined,
+    isolated_pawn: [2][8]u8 = undefined,
+    blocked_passer: [2][8]u8 = undefined,
+    supported_pawn: [2][8]u8 = undefined,
+    pawn_phalanx: [2][8]u8 = undefined,
+    knight_mobility: [2][9]u8 = undefined,
+    bishop_mobility: [2][14]u8 = undefined,
+    rook_mobility: [2][15]u8 = undefined,
+    queen_mobility: [2][28]u8 = undefined,
+    pawn_attacking: [2][6]u8 = undefined,
+    knight_attacking: [2][6]u8 = undefined,
+    bishop_attacking: [2][6]u8 = undefined,
+    rook_attacking: [2][6]u8 = undefined,
+    queen_attacking: [2][6]u8 = undefined,
+    doubled_pawns: [2]u8 = undefined,
+    bishop_pair: [2]u8 = undefined,
 
     pub fn init(self: *Tuner) void {
         var tuner = Tuner{
@@ -37,6 +53,52 @@ pub const Tuner = struct {
             @memset(self.psqt[0][pt][0..64], @as(u8, 0));
             @memset(self.psqt[1][pt][0..64], @as(u8, 0));
         }
+
+        @memset(self.passed_pawn[0][0..64], @as(u8, 0));
+        @memset(self.passed_pawn[1][0..64], @as(u8, 0));
+
+        @memset(self.isolated_pawn[0][0..8], @as(u8, 0));
+        @memset(self.isolated_pawn[1][0..8], @as(u8, 0));
+
+        @memset(self.blocked_passer[0][0..8], @as(u8, 0));
+        @memset(self.blocked_passer[1][0..8], @as(u8, 0));
+
+        @memset(self.supported_pawn[0][0..8], @as(u8, 0));
+        @memset(self.supported_pawn[1][0..8], @as(u8, 0));
+
+        @memset(self.pawn_phalanx[0][0..8], @as(u8, 0));
+        @memset(self.pawn_phalanx[1][0..8], @as(u8, 0));
+
+        @memset(self.knight_mobility[0][0..9], @as(u8, 0));
+        @memset(self.knight_mobility[1][0..9], @as(u8, 0));
+
+        @memset(self.bishop_mobility[0][0..14], @as(u8, 0));
+        @memset(self.bishop_mobility[1][0..14], @as(u8, 0));
+
+        @memset(self.rook_mobility[0][0..15], @as(u8, 0));
+        @memset(self.rook_mobility[1][0..15], @as(u8, 0));
+
+        @memset(self.queen_mobility[0][0..28], @as(u8, 0));
+        @memset(self.queen_mobility[1][0..28], @as(u8, 0));
+
+        @memset(self.pawn_attacking[0][0..6], @as(u8, 0));
+        @memset(self.pawn_attacking[1][0..6], @as(u8, 0));
+
+        @memset(self.knight_attacking[0][0..6], @as(u8, 0));
+        @memset(self.knight_attacking[1][0..6], @as(u8, 0));
+
+        @memset(self.bishop_attacking[0][0..6], @as(u8, 0));
+        @memset(self.bishop_attacking[1][0..6], @as(u8, 0));
+
+        @memset(self.rook_attacking[0][0..6], @as(u8, 0));
+        @memset(self.rook_attacking[1][0..6], @as(u8, 0));
+
+        @memset(self.queen_attacking[0][0..6], @as(u8, 0));
+        @memset(self.queen_attacking[1][0..6], @as(u8, 0));
+
+        @memset(self.doubled_pawns[0..2], @as(u8, 0));
+
+        @memset(self.bishop_pair[0..2], @as(u8, 0));
     }
 
     pub fn new() Tuner {
@@ -60,6 +122,66 @@ pub const Tuner = struct {
                 try writer.print("PSQT_{}_{}_{},", .{ c, p, sq });
             }
         }
+
+        for (0..64) |sq| {
+            try writer.print("PASSED_{}_{},", .{ c, sq });
+        }
+
+        for (0..8) |f| {
+            try writer.print("ISOLATED_{}_{},", .{ c, f });
+        }
+
+        for (0..8) |r| {
+            try writer.print("BLOCKED_{}_{},", .{ c, r });
+        }
+
+        for (0..8) |r| {
+            try writer.print("SUPPORTED_{}_{},", .{ c, r });
+        }
+
+        for (0..8) |r| {
+            try writer.print("PHAL_{}_{},", .{ c, r });
+        }
+
+        for (0..9) |r| {
+            try writer.print("KN_MOB_{}_{},", .{ c, r });
+        }
+
+        for (0..14) |r| {
+            try writer.print("BISH_MOB_{}_{},", .{ c, r });
+        }
+
+        for (0..15) |r| {
+            try writer.print("ROOK_MOB_{}_{},", .{ c, r });
+        }
+
+        for (0..28) |r| {
+            try writer.print("QN_MOB_{}_{},", .{ c, r });
+        }
+
+        for (0..6) |pt| {
+            try writer.print("P_ATT_{}_{},", .{ c, pt });
+        }
+
+        for (0..6) |pt| {
+            try writer.print("KN_ATT_{}_{},", .{ c, pt });
+        }
+
+        for (0..6) |pt| {
+            try writer.print("BISH_ATT_{}_{},", .{ c, pt });
+        }
+
+        for (0..6) |pt| {
+            try writer.print("ROOK_ATT_{}_{},", .{ c, pt });
+        }
+
+        for (0..6) |pt| {
+            try writer.print("QN_ATT_{}_{},", .{ c, pt });
+        }
+
+        try writer.print("DOUBL_{},", .{c});
+
+        try writer.print("BISH_PAIR_{},", .{c});
     }
 
     pub fn write_params(self: *Tuner, fileOut: fs.File, comptime color: Color) !void {
@@ -75,17 +197,76 @@ pub const Tuner = struct {
                 try writer.print("{},", .{self.psqt[c][p][sq]});
             }
         }
+
+        for (0..64) |sq| {
+            try writer.print("{},", .{self.passed_pawn[c][sq]});
+        }
+
+        for (0..8) |f| {
+            try writer.print("{},", .{self.isolated_pawn[c][f]});
+        }
+
+        for (0..8) |r| {
+            try writer.print("{},", .{self.blocked_passer[c][r]});
+        }
+
+        for (0..8) |r| {
+            try writer.print("{},", .{self.supported_pawn[c][r]});
+        }
+
+        for (0..8) |r| {
+            try writer.print("{},", .{self.pawn_phalanx[c][r]});
+        }
+
+        for (0..9) |r| {
+            try writer.print("{},", .{self.knight_mobility[c][r]});
+        }
+
+        for (0..14) |r| {
+            try writer.print("{},", .{self.bishop_mobility[c][r]});
+        }
+
+        for (0..15) |r| {
+            try writer.print("{},", .{self.rook_mobility[c][r]});
+        }
+
+        for (0..28) |r| {
+            try writer.print("{},", .{self.queen_mobility[c][r]});
+        }
+
+        for (0..6) |pt| {
+            try writer.print("{},", .{self.pawn_attacking[c][pt]});
+        }
+
+        for (0..6) |pt| {
+            try writer.print("{},", .{self.knight_attacking[c][pt]});
+        }
+
+        for (0..6) |pt| {
+            try writer.print("{},", .{self.bishop_attacking[c][pt]});
+        }
+
+        for (0..6) |pt| {
+            try writer.print("{},", .{self.rook_attacking[c][pt]});
+        }
+
+        for (0..6) |pt| {
+            try writer.print("{},", .{self.queen_attacking[c][pt]});
+        }
+
+        try writer.print("{},", .{self.doubled_pawns[c]});
+
+        try writer.print("{},", .{self.bishop_pair[c]});
     }
 
     pub const NPOS: u32 = 1_428_000;
-    //pub const NPOS: u32 = 5_052_234;
     //pub const NPOS: u32 = 9_999_740;
+    //pub const NPOS: u32 = 5_052_234;
 
     pub fn convertDataset(self: *Tuner) !void {
         var file = try std.fs.cwd().openFile("quiet-labeled.epd", .{});
         //var file = try std.fs.cwd().openFile("big3.epd", .{});
-        //var file = try std.fs.cwd().openFile("E12.33-1M-D12-Resolved.book", .{});
-
+        //var file = try std.fs.cwd().openFile("quiet-labeled.epd", .{});
         defer file.close();
 
         var buf_reader = std.io.bufferedReader(file.reader());

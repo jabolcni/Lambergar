@@ -1,5 +1,12 @@
 const std = @import("std");
 
+// zig build -Doptimize=ReleaseFast
+// zig build -Dtarget=x86_64-windows -Dcpu=haswell -Doptimize=ReleaseFast   
+// zig build -Dtarget=x86_64-windows -Dcpu=raptorlake -Doptimize=ReleaseFast 
+// zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast 
+// zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast
+// zig build -Dtarget=aarch64-macos -Dcpu=apple_m1 -Doptimize=ReleaseFast
+
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
