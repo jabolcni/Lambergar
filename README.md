@@ -12,7 +12,7 @@
 
 ## Introduction
 
-Lambergar is a chess engine developed in the Zig programming language. The project stemmed from a series of specific objectives:
+Lambergar is a chess engine developed in the Zig programming language. It uses UCI protocol and HCE (human crafted evaluation) for evaluting the chess positions to find the best mobve. I set out on this project with a defined set of specific objectives in mind:
 
 - *Chess Engine Creation*: the desire to construct a chess engine from the ground up. 
 - *Resourceful Development*: while I aimed to build it independently, I also sought to leverage existing resources and learn from the codebase of other engines. I found that, at least in my case, resources from [Chess Programming Wiki](https://www.chessprogramming.org/) are great to understand the concepts, however the code from open-source engines actually tells you how to practically implement the concept, especially the more complex ones.
@@ -77,9 +77,9 @@ Now run python script `convert_to_pickle.py` which will convert `data.csv` into 
 
 ## Strenght
 
-In November 2023 version v0.3.1 was proposed for testing on CCRL Blitz list, where it current stands at 2369 &plusmn; 20 ELO. 
+In November 2023 version v0.3.1 was proposed for testing on CCRL Blitz list, where it current stands at 2368 &plusmn; 20 ELO. 
 
-In February 2024 version v0.4.1 was proposed for testing on CCRL Blitz list, where it current stands at 2691 &plusmn; 20 ELO. 
+In February 2024 version v0.4.1 was proposed for testing on CCRL Blitz list, where it current stands at 2687 &plusmn; 20 ELO. 
 
 Latest version which is v0.5.0 has not been proposed for testing, but I estimate that it is around 2850  CCRL Blitz ELO.
 
