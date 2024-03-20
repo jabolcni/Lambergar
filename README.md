@@ -81,7 +81,8 @@ In November 2023 version v0.3.1 was proposed for testing on CCRL Blitz list, whe
 
 In February 2024 version v0.4.1 was proposed for testing on CCRL Blitz list, where it current stands at 2687 &plusmn; 20 ELO. 
 
-Latest version which is v0.5.0 has not been proposed for testing, but I estimate that it is around 2850  CCRL Blitz ELO.
+In March 2024 version v0.5.0 was tested on CCRL Blitz list, where it currently stands at 2916 &plusmn; 30 ELO. 
+
 
 ## Credits
 
