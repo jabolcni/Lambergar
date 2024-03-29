@@ -52,8 +52,12 @@ pub inline fn _mate_in(score: i32) i32 {
 }
 
 pub inline fn init_lmr() void {
-    for (0..MAX_DEPTH) |depth| {
-        for (0..MAX_MOVES) |played| {
+    lmr[0][0] = 1.0;
+    lmr[0][1] = 1.0;
+    lmr[1][0] = 1.0;
+
+    for (1..MAX_DEPTH) |depth| {
+        for (1..MAX_MOVES) |played| {
             lmr[depth][played] = @intFromFloat(1.0 + @log(@as(f32, @floatFromInt(depth))) * @log(@as(f32, @floatFromInt(played))) * 0.5);
         }
     }
@@ -157,10 +161,7 @@ pub const Search = struct {
     manager: SearchManager = undefined,
 
     pub fn new() Search {
-        var searcher = Search{};
-
-        searcher.clear_for_new_game();
-        return searcher;
+        return Search{};
     }
 
     inline fn clear_pv_table(self: *Search) void {
@@ -491,14 +492,6 @@ pub const Search = struct {
         }
 
         if (!is_root) {
-            // TO TEST, idea from weiss
-            // if (pos.upcoming_repetition() and alpha < 0) {
-            //     alpha = 1 - (@as(i32, @intCast(self.nodes & 2)));
-            //     if (alpha >= beta) {
-            //         return alpha;
-            //     }
-            // }
-
             if (pos.is_draw()) return 1 - (@as(i32, @intCast(self.nodes & 2)));
 
             if (self.ply >= MAX_PLY) {
@@ -519,8 +512,6 @@ pub const Search = struct {
         var tt_depth: u8 = 0;
 
         var entry = tt.TT.fetch(pos.hash);
-        //var tt_hit: bool = if (entry != null) true else false;
-        //var tt_hit: bool = !skip_move and !is_null and (entry != null);
         var tt_hit: bool = !skip_move and (entry != null);
 
         if (tt_hit) {
@@ -553,10 +544,6 @@ pub const Search = struct {
             depth -= 1;
         }
 
-        // if (depth >= 8 and tt_bound == tt.Bound.BOUND_NONE and cutnode) {
-        //     depth -= 1;
-        // }
-
         var static_eval = pos.eval.eval(pos, me);
         best_score = static_eval;
 
@@ -576,8 +563,7 @@ pub const Search = struct {
         var prune: bool = true;
         if (prune and !in_check and !is_pv and !skip_move) {
             const razor_depth = 2;
-            const razor_margin = 150 + @as(i32, @intCast(improving)) * 75; // + 75 * (if (depth > 2) (depth - 2) else 0);
-            //if (depth <= 2 and static_eval + 150 < alpha) {
+            const razor_margin = 150 + @as(i32, @intCast(improving)) * 75;
             if (depth <= razor_depth and static_eval + razor_margin <= alpha) {
                 const raz_score = self.quiescence(alpha, beta, pos, me);
                 if (raz_score <= alpha) {
@@ -621,7 +607,6 @@ pub const Search = struct {
                     if (score >= beta) {
                         return score;
                     }
-                    //return if (_is_mate_score(score)) beta else score;
                 }
             }
 
@@ -769,7 +754,8 @@ pub const Search = struct {
                     }
                 }
 
-                var see_val = if (mv_quiet) -46 * depth else -10 * depth * depth;
+                const d_32 = depth_as_i32(depth);
+                var see_val = if (mv_quiet) -46 * d_32 else -10 * d_32 * d_32;
                 if (depth < 3 and ms.see_value(pos, move, false) < see_val) {
                     continue;
                 }
@@ -845,7 +831,6 @@ pub const Search = struct {
 
             var reduction: i8 = 0;
 
-            //const mv_idx_limit = if (is_root) 0 else 2;
             if (mv_idx > 0 and depth > 2) {
                 if (mv_quiet) {
                     reduction = lmr[@as(usize, @intCast(@min(depth, MAX_DEPTH - 1)))][@as(usize, @intCast(@min(mv_idx + 1, MAX_MOVES - 1)))];
@@ -900,10 +885,8 @@ pub const Search = struct {
                     self.update_pv(move);
 
                     alpha = score;
-                    //hash_bound = tt.Bound.BOUND_EXACT;
 
                     if (alpha >= beta) {
-                        //hash_bound = tt.Bound.BOUND_LOWER;
                         if (mv_quiet) {
                             history.update_all_history(self, move, quiet_list, quet_mv_pieces, depth, me);
                         }
@@ -930,7 +913,6 @@ pub const Search = struct {
         var best_score: i32 = undefined;
         var score: i32 = undefined;
         var in_check = pos.in_check(color);
-        //var is_pv: bool = if (alpha != beta - 1) true else false;
 
         self.pv_length[self.ply] = 0;
         self.seldepth = @max(self.ply, self.seldepth);
@@ -960,7 +942,6 @@ pub const Search = struct {
             tt_score = tt.TT.adjust_hash_score(entry.?.score, self.ply);
             tt_depth = entry.?.depth;
 
-            //if (!is_pv and tt_depth > depth) {
             if ((tt_bound == tt.Bound.BOUND_LOWER and tt_score >= beta) or
                 (tt_bound == tt.Bound.BOUND_UPPER and tt_score <= alpha) or
                 (tt_bound == tt.Bound.BOUND_EXACT))
@@ -969,8 +950,6 @@ pub const Search = struct {
             }
             //}
         }
-
-        // best_score = if (self.ns_stack[self.ply - 1].is_null) -self.ns_stack[self.ply - 1].eval + evaluation.TEMPO * 2 else pos.eval.eval(pos, color);
 
         if (in_check) {
             best_score = -MATE_VALUE + @as(i32, self.ply);
@@ -1036,11 +1015,8 @@ pub const Search = struct {
                     best_move = move;
                     self.update_pv(move);
                     alpha = score;
-                    //hash_bound = tt.Bound.BOUND_EXACT;
 
                     if (alpha >= beta) {
-
-                        //hash_bound = tt.Bound.BOUND_LOWER;
                         break;
                     }
                 }

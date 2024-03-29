@@ -10,13 +10,10 @@ const PieceType = position.PieceType;
 const Position = position.Position;
 
 pub const max_histroy = 400;
-const histry_multiplier = 32;
-//const history_divider = 512;
-const history_divider = 1200;
+const history_divider = 16384;
 
 pub inline fn histoy_bonus(_entry: i32, bonus: i32) i32 {
-    return _entry + histry_multiplier * bonus - @as(i32, @intCast(@divTrunc(@abs(_entry * bonus), history_divider)));
-    //return _entry + histry_multiplier * bonus - _entry * @as(i32, @intCast(@divTrunc(@abs(bonus), history_divider)));
+    return _entry + bonus - @as(i32, @intCast(@divTrunc(@abs(_entry * bonus), history_divider)));
 }
 
 pub fn update_all_history(search: *Search, move: Move, quet_moves: std.ArrayList(Move), quet_mv_pieces: std.ArrayList(Piece), depth: i8, comptime color: Color) void {

@@ -707,13 +707,7 @@ pub const Position = struct {
         (attacks.piece_attacks(s, occ, PieceType.Rook) & (self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()]));        
     } 
 
-    // pub inline fn all_attackers(self: *Position, s: u6, occ: u64) u64 {
-    //     return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
-    // }
-
     pub inline fn all_attackers(self: *Position, s: u6, occ: u64) u64 {
-        //return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
-        //return self.attackers_plus_king_from(s, occ, Color.White) | self.attackers_plus_king_from(s, occ, Color.Black);
         return         
         (attacks.pawn_attacks_from_square(s, Color.Black) & self.piece_bb[Piece.WHITE_PAWN.toU4()]) | 
         (attacks.piece_attacks(s, occ, PieceType.Knight) & self.piece_bb[Piece.WHITE_KNIGHT.toU4()]) | 

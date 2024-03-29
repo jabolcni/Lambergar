@@ -81,10 +81,13 @@ In November 2023 version v0.3.1 was proposed for testing on CCRL Blitz list, whe
 
 In February 2024 version v0.4.1 was proposed for testing on CCRL Blitz list, where it current stands at 2687 &plusmn; 20 ELO. 
 
-In March 2024 version v0.5.0 was tested on CCRL Blitz list, where it currently stands at 2916 &plusmn; 30 ELO. 
+In March 2024 version v0.5.0 was tested on CCRL Blitz list, where it currently stands at 2908 &plusmn; 20 ELO.
 
+Latest version which is v0.5.1 has not been proposed for testing, but I estimate that it is around 2950 &plusmn; 20 ELO.
 
 ## Credits
+
+- [Chess Programming Wiki](https://www.chessprogramming.org/)
 
 -  [BitBoard Chess Engine in C YouTube playlist](https://www.youtube.com/playlist?list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs) by [@maksimKorzh](https://github.com/maksimKorzh) in which the authors explains the developement of [BBC](https://github.com/maksimKorzh/bbc) engine
 
@@ -94,10 +97,8 @@ In March 2024 version v0.5.0 was tested on CCRL Blitz list, where it currently s
 
 - [Koala Chess Engine](https://github.com/Wuelle/Kaola/tree/main) by [Wuelle](https://github.com/Wuelle). The UCI protocol implementation and FEN string parsing are directly derived from the Koala chess engine and slightly updated.
 
-- [Chess Programming Wiki](https://www.chessprogramming.org/)
-
 - [Avalanche Chess Engine](https://github.com/SnowballSH/Avalanche/tree/master) by [SnowballSH](https://github.com/SnowballSH). Usefull examples hot to programm chess engine in Zig langugae.
 
 ## License
 
-Lambergar is licensed under the MIT License. Check out LICENSE.md for the full text. Feel free to use this program, but please credit this repository in your project if you use it.
+Lambergar is licensed under the MIT License. Check out LICENSE for the full text. Feel free to use this program, but please credit this repository in your project if you use it.

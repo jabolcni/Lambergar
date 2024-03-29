@@ -48,18 +48,19 @@ pub fn main() !void {
     var pos = Position.new();
     try pos.set(start_position);
     var thinker = Search.new();
+    thinker.clear_for_new_game();
     var main_search_thread: std.Thread = undefined;
 
-//        var tuner_instance = tuner.Tuner.new(); // TUNER ON
-//        tuner_instance.init(); // TUNER ON
-//        try tuner_instance.convertDataset(); // TUNER ON
+    //        var tuner_instance = tuner.Tuner.new(); // TUNER ON
+    //        tuner_instance.init(); // TUNER ON
+    //        try tuner_instance.convertDataset(); // TUNER ON
 
     mainloop: while (true) {
         //std.time.sleep(20 * 1000 * 1000);
         const command = try uci.next_command(allocator);
         try switch (command) {
             GuiCommand.uci => {
-                try send_command(EngineCommand{ .id = .{ .key = "name", .value = "Lambergar v0.5.0" } }, allocator);
+                try send_command(EngineCommand{ .id = .{ .key = "name", .value = "Lambergar v0.5.1" } }, allocator);
                 try send_command(EngineCommand{ .id = .{ .key = "author", .value = "Janez Podobnik" } }, allocator);
                 try send_command(EngineCommand{ .option = .{ .name = "Hash", .option_type = "spin", .default = "128", .min = "1", .max = "4096" } }, allocator);
                 //try send_command(EngineCommand{ .option = .{ .name = "Threads", .option_type = "spin", .default = "1", .min = "1", .max = "1" } }, allocator);
@@ -68,7 +69,8 @@ pub fn main() !void {
             GuiCommand.isready => send_command(EngineCommand.readyok, allocator),
             GuiCommand.debug => {},
             GuiCommand.newgame => {
-                thinker = Search.new();
+                //thinker = Search.new();
+                thinker.clear_for_new_game();
                 tt.TT.clear();
                 try pos.set(start_position);
             },
