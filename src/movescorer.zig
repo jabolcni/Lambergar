@@ -26,7 +26,7 @@ pub const SortBadCapture = -900000;
 pub const Badpromotion = -QueenPromotionWithCapture;
 
 // pawns, knights, bishops, rooks, queens, kings
-const piece_val = [7]i32{ 100, 310, 330, 500, 1000, 20000, 0 };
+const piece_val = [7]i32{ 100, 300, 300, 500, 900, 20000, 0 };
 
 pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayList(Move), score_list: *std.ArrayList(i32), hash_move: Move, comptime color: Color) void {
     for (move_list.items) |move| {
@@ -61,7 +61,7 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayL
             } else if (move.equal(history.get_counter_move(search))) {
                 score = sortCounter;
             } else {
-                comptime var side: u4 = if (color == Color.White) Color.White.toU4() else Color.Black.toU4();
+                const side: u4 = if (color == Color.White) Color.White.toU4() else Color.Black.toU4();
                 var piece = pos.board[move.from];
                 score = search.sc_history[side][move.from][move.to];
                 if (search.ply >= 1) {
@@ -108,8 +108,8 @@ pub inline fn see(pos: *Position, move: Move, thr: i32) bool {
         return true;
     }
 
-    var from = move.from;
-    var to = move.to;
+    const from = move.from;
+    const to = move.to;
 
     var target = pos.board[to];
     var value: i32 = piece_val[target.type_of().toU3()] - thr;
@@ -131,9 +131,9 @@ pub inline fn see(pos: *Position, move: Move, thr: i32) bool {
     var attackers: u64 = pos.all_attackers(to, occupied);
 
     //var bishops: u6 = pos.piece_bb[Piece.WHITE_BISHOP.toU4()] | pos.piece_bb[Piece.WHITE_QUEEN.toU4()] | pos.piece_bb[Piece.BLACK_BISHOP.toU4()] | pos.piece_bb[Piece.BLACK_QUEEN.toU4()];
-    var bishops: u64 = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
+    const bishops: u64 = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
     //var rooks: u6 = pos.piece_bb[Piece.WHITE_ROOK.toU4()] | pos.piece_bb[Piece.WHITE_QUEEN.toU4()] | pos.piece_bb[Piece.BLACK_ROOK.toU4()] | pos.piece_bb[Piece.BLACK_QUEEN.toU4()];
-    var rooks: u64 = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
+    const rooks: u64 = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
 
     var side = attacker.color().change_side();
 
@@ -141,7 +141,7 @@ pub inline fn see(pos: *Position, move: Move, thr: i32) bool {
         attackers &= occupied;
 
         var occ_side = if (side == Color.White) pos.all_pieces(Color.White) else pos.all_pieces(Color.Black);
-        var my_attackers: u64 = attackers & occ_side;
+        const my_attackers: u64 = attackers & occ_side;
 
         if (my_attackers == 0) {
             break;
@@ -189,8 +189,8 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
     // }
     var gain: [32]i32 = undefined;
 
-    var from = move.from;
-    var to = move.to;
+    const from = move.from;
+    const to = move.to;
 
     var p = pos.board[from];
     var captured = pos.board[to];
@@ -207,7 +207,7 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
     }
 
     //var is_promotion = move.is_promotion();
-    var pqv = piece_val[move.flags.promote_type().toU3()] - piece_val[0];
+    const pqv = piece_val[move.flags.promote_type().toU3()] - piece_val[0];
     var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ bb.SQUARE_BB[from];
 
     gain[0] = captured_value;
@@ -219,8 +219,8 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
         gain[0] = piece_val[0];
     }
 
-    var bq: u64 = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
-    var rq: u64 = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
+    const bq: u64 = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
+    const rq: u64 = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
 
     var attackers: u64 = pos.all_attackers(to, occupied);
 
@@ -231,8 +231,8 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
     while (attackers != 0 and cnt < 32) {
         attackers &= occupied;
         side = side.change_side();
-        var occ_side = if (side == Color.White) pos.all_pieces(Color.White) else pos.all_pieces(Color.Black);
-        var side_att = attackers & occ_side;
+        const occ_side = if (side == Color.White) pos.all_pieces(Color.White) else pos.all_pieces(Color.Black);
+        const side_att = attackers & occ_side;
 
         if (attackers == 0 or cnt >= 32) {
             break;

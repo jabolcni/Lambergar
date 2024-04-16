@@ -62,13 +62,13 @@ pub const TranspositionTable = struct {
     pub fn init(self: *TranspositionTable, size_mb: u64) void {
         tt_allocator.free(self.ttArray);
 
-        var size: usize = @as(usize, 1) << (std.math.log2_int(usize, size_mb * MB / @sizeOf(scoreEntry)));
+        const size: usize = @as(usize, 1) << (std.math.log2_int(usize, size_mb * MB / @sizeOf(scoreEntry)));
 
         std.debug.print("Hash size in item numbers: {}\n", .{size});
         std.debug.print("Hash size in MB: {}\n", .{size * @sizeOf(scoreEntry) / MB});
         std.debug.print("Hash size in bytes: {}\n", .{size * @sizeOf(scoreEntry)});
 
-        var tt = TranspositionTable{
+        const tt = TranspositionTable{
             .ttArray = tt_allocator.alloc(u128, size) catch unreachable,
             .size = size,
             .mask = size - 1,
@@ -107,7 +107,7 @@ pub const TranspositionTable = struct {
             //var raw = @atomicLoad(u128, &self.ttArray.items[(idx * 1000) & self.mask], .Acquire);
             //var entry = @as(*scoreEntry, @ptrCast(&raw)).*;
             // For Linux binaries
-            var entry = @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray[(idx * 1000) & self.mask]))).*;
+            const entry = @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray[(idx * 1000) & self.mask]))).*;
 
             if (entry.bound != Bound.BOUND_NONE and entry.age == self.age) {
                 count += 1;
@@ -120,13 +120,13 @@ pub const TranspositionTable = struct {
         // For modern win arhitectures
         //_ = @atomicRmw(u128, &self.ttArray.items[self.index(entry.hash_key)], .Xchg, @as(*const u128, @ptrCast(&entry)).*, .AcqRel);
         // For Linux binaries
-        var p = &self.ttArray[self.index(entry.hash_key)];
+        const p = &self.ttArray[self.index(entry.hash_key)];
         _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p))), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry))).*, .Acquire);
         _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p) + 8)), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry) + 8)).*, .Acquire);
     }
 
     pub inline fn store(self: *TranspositionTable, entry: scoreEntry) void {
-        var probe_entry = self.get(entry.hash_key);
+        const probe_entry = self.get(entry.hash_key);
         if (probe_entry.hash_key == 0 or entry.bound == Bound.BOUND_EXACT or probe_entry.age != self.age or probe_entry.hash_key != entry.hash_key or (entry.depth + 4) > probe_entry.depth) {
             self.set(entry);
         }
@@ -157,7 +157,9 @@ pub const TranspositionTable = struct {
     }
 
     pub inline fn fetch(self: *TranspositionTable, hash: u64) ?scoreEntry {
-        var entry = self.get(hash);
+        //_ = self;
+        //_ = hash;
+        const entry = self.get(hash);
         if (entry.hash_key == hash and entry.bound != Bound.BOUND_NONE) return entry;
         return null;
     }

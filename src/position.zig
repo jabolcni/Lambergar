@@ -109,7 +109,7 @@ pub inline fn rank_of_u6(sq: u6) u6 {
 }
 
 pub inline fn relative_rank_of_u6(sq: u6, comptime c: Color) u6 {
-    var rank = rank_of_u6(sq);
+    const rank = rank_of_u6(sq);
     return if (c == Color.White) rank else 7 - rank;
 }
 
@@ -369,7 +369,11 @@ pub const Move = packed struct {
     }
 
     pub inline fn is_capture(self: Move) bool {
-        return if ((self.flags.toU4() & MoveFlags.CAPTURE.toU4()) == 0) false else true;
+        const flag: u4 = self.flags.toU4();
+        //std.debug.print("flag = {}\n", .{flag}); 
+        const is_not_capture: bool = flag & MoveFlags.CAPTURE.toU4() == 0;
+        //std.debug.print("is_capture = {}\n", .{!is_not_capture});
+        return if (is_not_capture) false else true;
     }
 
     pub inline fn is_promotion(self: Move) bool {
@@ -386,11 +390,14 @@ pub const Move = packed struct {
     } 
 
     pub inline fn is_tactical(self: Move) bool {
+        //std.debug.print("is_tactical\n", .{});
         return (self.is_capture() or self.is_promotion());
+        //return if (self.is_capture()) true else false;
     }
 
     pub inline fn is_quiet(self: Move) bool {
-        return !self.is_tactical();
+        //std.debug.print("is_quiet\n", .{});
+        return if (self.is_tactical()) false else true;
     }
 
     pub inline fn equal(self: Move, a: Move) bool {
@@ -404,14 +411,17 @@ pub const Move = packed struct {
     pub fn to_str(self: Move, allocator: Allocator) []const u8 {
         if (self.is_promotion()) {
             var move_str = allocator.alloc(u8, 5) catch unreachable;
-            std.mem.copy(u8, move_str[0..2], sq_to_coord[self.from]);
-            std.mem.copy(u8, move_str[2..4], sq_to_coord[self.to]);
+
+            //std.mem.copyBackwards(comptime T: type, dest: []T, source: []const T)
+
+            std.mem.copyBackwards(u8, move_str[0..2], sq_to_coord[self.from]);
+            std.mem.copyBackwards(u8, move_str[2..4], sq_to_coord[self.to]);
             move_str[4] = PROM_TYPESTR[self.flags.toU4()][0];
             return move_str;
         } else {
             var move_str = allocator.alloc(u8, 4) catch unreachable;
-            std.mem.copy(u8, move_str[0..2], sq_to_coord[self.from]);
-            std.mem.copy(u8, move_str[2..4], sq_to_coord[self.to]);
+            std.mem.copyBackwards(u8, move_str[0..2], sq_to_coord[self.from]);
+            std.mem.copyBackwards(u8, move_str[2..4], sq_to_coord[self.to]);
             return move_str;
         }
 
@@ -634,13 +644,13 @@ pub const Position = struct {
     pub inline fn move_piece(self: *Position, from: u6, to: u6) void {
         
         var from_pc = self.board[from];
-        var from_idx = from_pc.toU4();
+        const from_idx = from_pc.toU4();
         var to_pc = self.board[to];
-        var to_idx = to_pc.toU4();
+        const to_idx = to_pc.toU4();
 
         self.hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to] ^ zobrist.zobrist_table[to_idx][to];
         self.eval.move_piece(from_pc, to_pc, from, to);
-        var mask = SQUARE_BB[from] | SQUARE_BB[to];
+        const mask = SQUARE_BB[from] | SQUARE_BB[to];
         self.piece_bb[from_idx] ^= mask;
         self.piece_bb[to_idx] &= ~mask;
         self.board[to] = self.board[from];
@@ -649,7 +659,7 @@ pub const Position = struct {
 
     pub inline fn move_piece_quiet(self: *Position, from: u6, to: u6) void {
         var from_pc = self.board[from];
-        var from_idx = from_pc.toU4();
+        const from_idx = from_pc.toU4();
         
         self.hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
         self.eval.move_piece_quiet(from_pc, from, to);
@@ -707,7 +717,13 @@ pub const Position = struct {
         (attacks.piece_attacks(s, occ, PieceType.Rook) & (self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()]));        
     } 
 
+    // pub inline fn all_attackers(self: *Position, s: u6, occ: u64) u64 {
+    //     return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
+    // }
+
     pub inline fn all_attackers(self: *Position, s: u6, occ: u64) u64 {
+        //return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
+        //return self.attackers_plus_king_from(s, occ, Color.White) | self.attackers_plus_king_from(s, occ, Color.Black);
         return         
         (attacks.pawn_attacks_from_square(s, Color.Black) & self.piece_bb[Piece.WHITE_PAWN.toU4()]) | 
         (attacks.piece_attacks(s, occ, PieceType.Knight) & self.piece_bb[Piece.WHITE_KNIGHT.toU4()]) | 
@@ -722,7 +738,7 @@ pub const Position = struct {
     }    
 
     pub inline fn in_check(self: *Position, comptime C: Color) bool {
-        comptime var oC = if (C == Color.White) Color.Black else Color.White;
+        const oC = if (C == Color.White) Color.Black else Color.White;
         const square = Square.fromU6(bb.get_ls1b_index(self.piece_bb[Piece.new(C, PieceType.King).toU4()]));
         return (self.attackers_from(square.toU6(), (self.all_pieces(Color.White) | self.all_pieces(Color.Black)), oC) != 0);
     }
@@ -730,14 +746,14 @@ pub const Position = struct {
     pub inline fn is_repetition(self: *Position) bool {
         // repeatition test: position fen r5k1/pbN2rp1/4Q1Np/2pn1pB1/8/P7/1PP2PPP/6K1 b - - 0 25 moves d5c7 g6e7 g8f8 e7g6 f8g8 g6e7 g8f8 e7g6 f8g8
 
-        var fifty = self.history[self.game_ply].fifty;
+        const fifty = self.history[self.game_ply].fifty;
 
         if (fifty < 4) {
             return false;
         }
 
         var index = @as(isize, self.game_ply) - 2;
-        var min_index = @as(isize, self.game_ply) - @as(isize, fifty);
+        const min_index = @as(isize, self.game_ply) - @as(isize, fifty);
         var count: u2 = 0;
 
         while (index >= min_index and index >= 0) {
@@ -757,14 +773,14 @@ pub const Position = struct {
     pub inline fn upcoming_repetition(self: *Position) bool {
         // repeatition test: position fen r5k1/pbN2rp1/4Q1Np/2pn1pB1/8/P7/1PP2PPP/6K1 b - - 0 25 moves d5c7 g6e7 g8f8 e7g6 f8g8 g6e7 g8f8 e7g6 f8g8
 
-        var fifty = self.history[self.game_ply].fifty;
+        const fifty = self.history[self.game_ply].fifty;
 
         if (fifty < 3) {
             return false;
         }
 
         var index = @as(isize, self.game_ply) - 2;
-        var min_index = @as(isize, self.game_ply) - @as(isize, fifty);
+        const min_index = @as(isize, self.game_ply) - @as(isize, fifty);
         var count: u2 = 0;
 
         while (index >= min_index and index >= 0) {
@@ -789,23 +805,23 @@ pub const Position = struct {
     }
 
     pub inline fn pawns_count(self: *Position) u7 {
-        var pawns = self.piece_bb[Piece.WHITE_PAWN.toU4()] | self.piece_bb[Piece.BLACK_PAWN.toU4()];
+        const pawns = self.piece_bb[Piece.WHITE_PAWN.toU4()] | self.piece_bb[Piece.BLACK_PAWN.toU4()];
         return bb.pop_count(pawns);
     }
 
     pub inline fn piece_count(self: *Position, pc: Piece) u7 {
-        var pieces = self.piece_bb[pc.toU4()];
+        const pieces = self.piece_bb[pc.toU4()];
         return bb.pop_count(pieces);
     }
 
     pub inline fn is_insufficient_material(self: *Position) bool {
-        var remaining_pieces = self.all_pieces(Color.White) | self.all_pieces(Color.Black);
-        var white_bishop = self.piece_bb[Piece.WHITE_BISHOP.toU4()];
-        var black_bishop = self.piece_bb[Piece.BLACK_BISHOP.toU4()];
-        var white_knight = self.piece_bb[Piece.WHITE_KNIGHT.toU4()];
-        var black_knight = self.piece_bb[Piece.BLACK_KNIGHT.toU4()];
+        const remaining_pieces = self.all_pieces(Color.White) | self.all_pieces(Color.Black);
+        const white_bishop = self.piece_bb[Piece.WHITE_BISHOP.toU4()];
+        const black_bishop = self.piece_bb[Piece.BLACK_BISHOP.toU4()];
+        const white_knight = self.piece_bb[Piece.WHITE_KNIGHT.toU4()];
+        const black_knight = self.piece_bb[Piece.BLACK_KNIGHT.toU4()];
 
-        var piece_cnt = bb.pop_count(remaining_pieces);
+        const piece_cnt = bb.pop_count(remaining_pieces);
 
         if (piece_cnt == 2) {
             return true;
@@ -836,7 +852,7 @@ pub const Position = struct {
         self.game_ply += 1;
         self.history[self.game_ply] = UndoInfo.copy(self.history[self.game_ply-1]);
 
-        var update_entry = SQUARE_BB[m.to] | SQUARE_BB[m.from];
+        const update_entry = SQUARE_BB[m.to] | SQUARE_BB[m.from];
         self.history[self.game_ply].entry |= update_entry;
 
         if ((self.history[self.game_ply].castling > 0) ){
@@ -1048,7 +1064,7 @@ pub const Position = struct {
     }    
 
     pub fn generate_legals(self: *Position, comptime Us: Color, list: *std.ArrayList(Move)) void {
-        comptime var Them = Us.change_side();
+        const Them = Us.change_side();
 
         const us_bb = self.all_pieces(Us);
         const them_bb = self.all_pieces(Them);
@@ -1143,12 +1159,12 @@ pub const Position = struct {
             1 => {
                 //It's a single check!
 
-                var checker_square = bb.get_ls1b_index(self.checkers);
+                const checker_square = bb.get_ls1b_index(self.checkers);
                 switch (self.board[checker_square]) {
                     Piece.new(Them, PieceType.Pawn) => {
                         //If the checker is a pawn, we must check for e.p. moves that can capture it
                         //This evaluates to true if the checking piece is the one which just double pushed                        
-                        var sq_idx = self.history[self.game_ply].epsq.toU6();
+                        const sq_idx = self.history[self.game_ply].epsq.toU6();
                         if (self.checkers == shift(SQUARE_BB[sq_idx], Direction.relative_dir(Direction.SOUTH, Us))) {
                             b1 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn) & not_pinned;
                             while (b1 != 0) {
@@ -1186,20 +1202,20 @@ pub const Position = struct {
 
                 if (self.history[self.game_ply].epsq != Square.NO_SQUARE) {
                     //b1 contains our pawns that can perform an e.p. capture
-                    var sq_idx = self.history[self.game_ply].epsq.toU6();
+                    const sq_idx = self.history[self.game_ply].epsq.toU6();
                     b2 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn);
                     b1 = b2 & not_pinned;
                     while (b1 != 0) {
                         s = bb.pop_lsb(&b1);
 
-                        var b4 = all_bb ^ SQUARE_BB[s] ^ shift(SQUARE_BB[self.history[self.game_ply].epsq.toU6()], Direction.SOUTH.relative_dir(Us));
-                        var mr = bb.MASK_RANK[rank_of_u6(our_king)]; // pozor
-                        var md = bb.MASK_DIAGONAL[diagonal_of_u6(our_king)];
-                        var mad = bb.MASK_ANTI_DIAGONAL[anti_diagonal_of_u6(our_king)];
+                        const b4 = all_bb ^ SQUARE_BB[s] ^ shift(SQUARE_BB[self.history[self.game_ply].epsq.toU6()], Direction.SOUTH.relative_dir(Us));
+                        const mr = bb.MASK_RANK[rank_of_u6(our_king)]; // pozor
+                        const md = bb.MASK_DIAGONAL[diagonal_of_u6(our_king)];
+                        const mad = bb.MASK_ANTI_DIAGONAL[anti_diagonal_of_u6(our_king)];
 
-                        var cond1 = attacks.sliding_attacks(our_king, b4, mr) & their_orth_sliders;
-                        var cond2 = attacks.sliding_attacks(our_king, b4, md) & their_diag_sliders;
-                        var cond3 = attacks.sliding_attacks(our_king, b4, mad) & their_diag_sliders;
+                        const cond1 = attacks.sliding_attacks(our_king, b4, mr) & their_orth_sliders;
+                        const cond2 = attacks.sliding_attacks(our_king, b4, md) & their_diag_sliders;
+                        const cond3 = attacks.sliding_attacks(our_king, b4, mad) & their_diag_sliders;
 
                         if ((cond1 | cond2 | cond3 ) == 0) {
                             list.append(Move.new(Square.fromU6(s), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT)) catch unreachable;
@@ -1237,7 +1253,7 @@ pub const Position = struct {
                 //For each pinned rook, bishop or queen...
                 b1 = ~(not_pinned | self.bitboard_of_pt(Us, PieceType.Knight) | self.bitboard_of_pt(Us, PieceType.Pawn));
                 while (b1 != 0) {
-                    var s1 = bb.pop_lsb(&b1);
+                    const s1 = bb.pop_lsb(&b1);
 
                     //...only include attacks that are aligned with our king, since pinned pieces
                     //are constrained to move in this direction only
@@ -1258,10 +1274,10 @@ pub const Position = struct {
                         //in check  
                         b2 = attacks.pawn_attacks_from_square(s, Us) & capture_mask & attacks.LINE[our_king][s];
 
-                        var sq_from = Square.fromU6(s);
+                        const sq_from = Square.fromU6(s);
 
                         while (b2 != 0) {
-                            var sq_to = Square.fromU6(bb.pop_lsb(&b2));
+                            const sq_to = Square.fromU6(bb.pop_lsb(&b2));
 
                             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_KNIGHT)) catch unreachable;
                             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_BISHOP)) catch unreachable;
@@ -1287,7 +1303,7 @@ pub const Position = struct {
         //Non-pinned knight moves
         b1 = self.bitboard_of_pt(Us, PieceType.Knight) & not_pinned;
         while (b1 != 0) {
-            var s1 = bb.pop_lsb(&b1);
+            const s1 = bb.pop_lsb(&b1);
             b2 = attacks.piece_attacks(s1, all_bb, PieceType.Knight);
             make(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
             make(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
@@ -1296,7 +1312,7 @@ pub const Position = struct {
         //Non-pinned bishops and queens
         b1 = our_diag_sliders & not_pinned;
         while (b1 != 0) {
-            var s1 = bb.pop_lsb(&b1);
+            const s1 = bb.pop_lsb(&b1);
             b2 = attacks.piece_attacks(s1, all_bb, PieceType.Bishop);
             make(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
             make(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
@@ -1305,7 +1321,7 @@ pub const Position = struct {
         //Non-pinned rooks and queens
         b1 = our_orth_sliders & not_pinned;
         while (b1 != 0) {
-            var s1 = bb.pop_lsb(&b1);
+            const s1 = bb.pop_lsb(&b1);
             b2 = attacks.piece_attacks(s1, all_bb, PieceType.Rook);
             make(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
             make(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
@@ -1325,12 +1341,12 @@ pub const Position = struct {
         b2 &= quiet_mask;
 
         while (b2 != 0) {
-            var s1 = bb.pop_lsb(&b2);
+            const s1 = bb.pop_lsb(&b2);
             list.append(Move.new(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH.relative_dir(Us).toI8()))), Square.fromU6(s1), MoveFlags.QUIET)) catch unreachable;
         }
 
         while (b3 != 0) {
-            var s1 = bb.pop_lsb(&b3);
+            const s1 = bb.pop_lsb(&b3);
             list.append(Move.new(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_NORTH.relative_dir(Us).toI8()))), Square.fromU6(s1), MoveFlags.DOUBLE_PUSH)) catch unreachable;
         }
 
@@ -1339,12 +1355,12 @@ pub const Position = struct {
         b3 = shift(b1, Direction.NORTH_EAST.relative_dir(Us)) & capture_mask;
 
         while (b2 != 0) {
-            var s1 = bb.pop_lsb(&b2);
+            const s1 = bb.pop_lsb(&b2);
             list.append(Move.new(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_WEST.relative_dir(Us).toI8()))), Square.fromU6(s1), MoveFlags.CAPTURE)) catch unreachable;
         }
 
         while (b3 != 0) {
-            var s1 = bb.pop_lsb(&b3);
+            const s1 = bb.pop_lsb(&b3);
             list.append(Move.new(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8()))), Square.fromU6(s1), MoveFlags.CAPTURE)) catch unreachable;
         }
 
@@ -1354,9 +1370,9 @@ pub const Position = struct {
             //Quiet promotions
             b2 = shift(b1, Direction.NORTH.relative_dir(Us)) & quiet_mask;
             while (b2 != 0) {
-                var s1 = bb.pop_lsb(&b2);
-                var Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH.relative_dir(Us).toI8())));
-                var Sq1 = Square.fromU6(s1);
+                const s1 = bb.pop_lsb(&b2);
+                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH.relative_dir(Us).toI8())));
+                const Sq1 = Square.fromU6(s1);
 
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PR_KNIGHT)) catch unreachable;
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PR_BISHOP)) catch unreachable;
@@ -1369,10 +1385,10 @@ pub const Position = struct {
             b2 = shift(b1, Direction.NORTH_WEST.relative_dir(Us)) & capture_mask;
             b3 = shift(b1, Direction.NORTH_EAST.relative_dir(Us)) & capture_mask; 
             while (b2 != 0) {
-                var s1 = bb.pop_lsb(&b2);
+                const s1 = bb.pop_lsb(&b2);
                 //One move is added for each promotion piece
-                var Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_WEST.relative_dir(Us).toI8())));
-                var Sq1 = Square.fromU6(s1);
+                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_WEST.relative_dir(Us).toI8())));
+                const Sq1 = Square.fromU6(s1);
 
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PC_KNIGHT)) catch unreachable;
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PC_BISHOP)) catch unreachable;
@@ -1381,10 +1397,10 @@ pub const Position = struct {
             }  
 
             while (b3 != 0) {
-                var s1 = bb.pop_lsb(&b3);
+                const s1 = bb.pop_lsb(&b3);
                 //One move is added for each promotion piece
-                var Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8())));
-                var Sq1 = Square.fromU6(s1);
+                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8())));
+                const Sq1 = Square.fromU6(s1);
 
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PC_KNIGHT)) catch unreachable;
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PC_BISHOP)) catch unreachable;
@@ -1397,7 +1413,8 @@ pub const Position = struct {
     }
 
     pub fn generate_captures(self: *Position, comptime Us: Color, list: *std.ArrayList(Move)) void {
-        comptime var Them = Us.change_side();
+        //comptime var Them = Us.change_side();
+        const Them = Us.change_side();
 
         const us_bb = self.all_pieces(Us);
         const them_bb = self.all_pieces(Them);
@@ -1492,12 +1509,12 @@ pub const Position = struct {
             1 => {
                 //It's a single check!
 
-                var checker_square = bb.get_ls1b_index(self.checkers);
+                const checker_square = bb.get_ls1b_index(self.checkers);
                 switch (self.board[checker_square]) {
                     Piece.new(Them, PieceType.Pawn) => {
                         //If the checker is a pawn, we must check for e.p. moves that can capture it
                         //This evaluates to true if the checking piece is the one which just double pushed
-                        var sq_idx = self.history[self.game_ply].epsq.toU6();
+                        const sq_idx = self.history[self.game_ply].epsq.toU6();
                         if (self.checkers == shift(SQUARE_BB[sq_idx], Direction.relative_dir(Direction.SOUTH, Us))) {
                             b1 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn) & not_pinned;
                             while (b1 != 0) {
@@ -1535,20 +1552,20 @@ pub const Position = struct {
 
                 if (self.history[self.game_ply].epsq != Square.NO_SQUARE) {
                     //b1 contains our pawns that can perform an e.p. capture
-                    var sq_idx = self.history[self.game_ply].epsq.toU6();
+                    const sq_idx = self.history[self.game_ply].epsq.toU6();
                     b2 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn);
                     b1 = b2 & not_pinned;
                     while (b1 != 0) {
                         s = bb.pop_lsb(&b1);
 
-                        var b4 = all_bb ^ SQUARE_BB[s] ^ shift(SQUARE_BB[self.history[self.game_ply].epsq.toU6()], Direction.SOUTH.relative_dir(Us));
-                        var mr = bb.MASK_RANK[rank_of_u6(our_king)]; // pozor
-                        var md = bb.MASK_DIAGONAL[diagonal_of_u6(our_king)];
-                        var mad = bb.MASK_ANTI_DIAGONAL[anti_diagonal_of_u6(our_king)];
+                        const b4 = all_bb ^ SQUARE_BB[s] ^ shift(SQUARE_BB[self.history[self.game_ply].epsq.toU6()], Direction.SOUTH.relative_dir(Us));
+                        const mr = bb.MASK_RANK[rank_of_u6(our_king)]; // pozor
+                        const md = bb.MASK_DIAGONAL[diagonal_of_u6(our_king)];
+                        const mad = bb.MASK_ANTI_DIAGONAL[anti_diagonal_of_u6(our_king)];
 
-                        var cond1 = attacks.sliding_attacks(our_king, b4, mr) & their_orth_sliders;
-                        var cond2 = attacks.sliding_attacks(our_king, b4, md) & their_diag_sliders;
-                        var cond3 = attacks.sliding_attacks(our_king, b4, mad) & their_diag_sliders;
+                        const cond1 = attacks.sliding_attacks(our_king, b4, mr) & their_orth_sliders;
+                        const cond2 = attacks.sliding_attacks(our_king, b4, md) & their_diag_sliders;
+                        const cond3 = attacks.sliding_attacks(our_king, b4, mad) & their_diag_sliders;
 
                         if ((cond1 | cond2 | cond3) == 0) {
                             list.append(Move.new(Square.fromU6(s), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT)) catch unreachable;
@@ -1565,7 +1582,7 @@ pub const Position = struct {
                 //For each pinned rook, bishop or queen...
                 b1 = ~(not_pinned | self.bitboard_of_pt(Us, PieceType.Knight) | self.bitboard_of_pt(Us, PieceType.Pawn));
                 while (b1 != 0) {
-                    var s1 = bb.pop_lsb(&b1);
+                    const s1 = bb.pop_lsb(&b1);
 
                     //...only include attacks that are aligned with our king, since pinned pieces
                     //are constrained to move in this direction only
@@ -1585,10 +1602,10 @@ pub const Position = struct {
                         //in check
                         b2 = attacks.pawn_attacks_from_square(s, Us) & capture_mask & attacks.LINE[our_king][s];
                         //make(Square.fromU6(s), b2, MoveFlags.PROMOTION_CAPTURES, list);
-                        var sq_from = Square.fromU6(s);
+                        const sq_from = Square.fromU6(s);
 
                         while (b2 != 0) {
-                            var sq_to = Square.fromU6(bb.pop_lsb(&b2));
+                            const sq_to = Square.fromU6(bb.pop_lsb(&b2));
 
                             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_KNIGHT)) catch unreachable;
                             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_BISHOP)) catch unreachable;
@@ -1607,7 +1624,7 @@ pub const Position = struct {
         //Non-pinned knight moves
         b1 = self.bitboard_of_pt(Us, PieceType.Knight) & not_pinned;
         while (b1 != 0) {
-            var s1 = bb.pop_lsb(&b1);
+            const s1 = bb.pop_lsb(&b1);
             b2 = attacks.piece_attacks(s1, all_bb, PieceType.Knight);
             make(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
         }
@@ -1615,7 +1632,7 @@ pub const Position = struct {
         //Non-pinned bishops and queens
         b1 = our_diag_sliders & not_pinned;
         while (b1 != 0) {
-            var s1 = bb.pop_lsb(&b1);
+            const s1 = bb.pop_lsb(&b1);
             b2 = attacks.piece_attacks(s1, all_bb, PieceType.Bishop);
             make(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
         }
@@ -1623,7 +1640,7 @@ pub const Position = struct {
         //Non-pinned rooks and queens
         b1 = our_orth_sliders & not_pinned;
         while (b1 != 0) {
-            var s1 = bb.pop_lsb(&b1);
+            const s1 = bb.pop_lsb(&b1);
             b2 = attacks.piece_attacks(s1, all_bb, PieceType.Rook);
             make(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
         }
@@ -1636,12 +1653,12 @@ pub const Position = struct {
         b3 = shift(b1, Direction.NORTH_EAST.relative_dir(Us)) & capture_mask;
 
         while (b2 != 0) {
-            var s1 = bb.pop_lsb(&b2);
+            const s1 = bb.pop_lsb(&b2);
             list.append(Move.new(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_WEST.relative_dir(Us).toI8()))), Square.fromU6(s1), MoveFlags.CAPTURE)) catch unreachable;
         }
 
         while (b3 != 0) {
-            var s1 = bb.pop_lsb(&b3);
+            const s1 = bb.pop_lsb(&b3);
             list.append(Move.new(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8()))), Square.fromU6(s1), MoveFlags.CAPTURE)) catch unreachable;
         }
 
@@ -1651,9 +1668,9 @@ pub const Position = struct {
             //Quiet promotions
             b2 = shift(b1, Direction.NORTH.relative_dir(Us)) & quiet_mask;
             while (b2 != 0) {
-                var s1 = bb.pop_lsb(&b2);
-                var Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH.relative_dir(Us).toI8())));
-                var Sq1 = Square.fromU6(s1);
+                const s1 = bb.pop_lsb(&b2);
+                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH.relative_dir(Us).toI8())));
+                const Sq1 = Square.fromU6(s1);
 
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PR_KNIGHT)) catch unreachable;
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PR_BISHOP)) catch unreachable;
@@ -1666,10 +1683,10 @@ pub const Position = struct {
             b2 = shift(b1, Direction.NORTH_WEST.relative_dir(Us)) & capture_mask;
             b3 = shift(b1, Direction.NORTH_EAST.relative_dir(Us)) & capture_mask;
             while (b2 != 0) {
-                var s1 = bb.pop_lsb(&b2);
+                const s1 = bb.pop_lsb(&b2);
                 //One move is added for each promotion piece
-                var Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_WEST.relative_dir(Us).toI8())));
-                var Sq1 = Square.fromU6(s1);
+                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_WEST.relative_dir(Us).toI8())));
+                const Sq1 = Square.fromU6(s1);
 
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PC_KNIGHT)) catch unreachable;
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PC_BISHOP)) catch unreachable;
@@ -1678,10 +1695,10 @@ pub const Position = struct {
             }
 
             while (b3 != 0) {
-                var s1 = bb.pop_lsb(&b3);
+                const s1 = bb.pop_lsb(&b3);
                 //One move is added for each promotion piece
-                var Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8())));
-                var Sq1 = Square.fromU6(s1);
+                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8())));
+                const Sq1 = Square.fromU6(s1);
 
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PC_KNIGHT)) catch unreachable;
                 list.append(Move.new(Sq2, Sq1, MoveFlags.PC_BISHOP)) catch unreachable;
@@ -1697,8 +1714,8 @@ pub const Position = struct {
         var hash: u64 = 0;
 
         for (0..64) |s_idx| {
-            var pc_idx = self.board[s_idx].toU4();
-            var zh = zobrist.zobrist_table[pc_idx][s_idx];
+            const pc_idx = self.board[s_idx].toU4();
+            const zh = zobrist.zobrist_table[pc_idx][s_idx];
             if (zh != 0) {
                 hash ^= zh;
             }
@@ -1759,8 +1776,8 @@ pub const Position = struct {
         std.debug.print("{s}", .{s});
         std.debug.print("{s}\n", .{t});
 
-        var side = if (self.side_to_play == Color.White) "White" else "Black";
-        var epsq = if (self.history[self.game_ply].epsq != Square.NO_SQUARE) sq_to_coord[self.history[self.game_ply].epsq.toU6()] else "no";
+        const side = if (self.side_to_play == Color.White) "White" else "Black";
+        const epsq = if (self.history[self.game_ply].epsq != Square.NO_SQUARE) sq_to_coord[self.history[self.game_ply].epsq.toU6()] else "no";
 
         std.debug.print("{s} to move\n", .{side});
         std.debug.print("Enpassant: {s}\n", .{epsq});

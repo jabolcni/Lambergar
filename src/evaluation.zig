@@ -178,8 +178,8 @@ pub inline fn distance(sq1: u6, sq2: u6) u4 {
         // zig fmt: on       
     };
 
-    var drank:i8 = @as(i8,@intCast(position.rank_of_u6(sq1)))-@as(i8,@intCast(position.rank_of_u6(sq2)));
-    var dfile = @as(i8,@intCast(position.file_of_u6(sq1)))-@as(i8,@intCast(position.file_of_u6(sq2)));
+    const drank:i8 = @as(i8,@intCast(position.rank_of_u6(sq1)))-@as(i8,@intCast(position.rank_of_u6(sq2)));
+    const dfile = @as(i8,@intCast(position.file_of_u6(sq1)))-@as(i8,@intCast(position.file_of_u6(sq2)));
     return dist[@as(u7, (@intCast(drank*drank + dfile*dfile)))];
 
 }
@@ -298,14 +298,14 @@ pub const Evaluation = struct {
 
         for (Piece.WHITE_PAWN.toU4()..(Piece.WHITE_KING.toU4()+1)) |pc| {
             var b1 = pos.piece_bb[pc];
-            var pc_count = bb.pop_count(b1);
-            var pc_type_idx = pc;
+            const pc_count = bb.pop_count(b1);
+            const pc_type_idx = pc;
             mat_white_mg += material_mg[pc_type_idx]*pc_count;
             mat_white_eg += material_eg[pc_type_idx]*pc_count;
             //tnr.mat[0][pc_type_idx] = @as(u8, @intCast(pc_count));
 
             while (b1 != 0) {
-                var s_idx = bb.pop_lsb(&b1);
+                const s_idx = bb.pop_lsb(&b1);
                 pos_white_mg += midgame_table[Color.White.toU4()][pc_type_idx][s_idx];
                 pos_white_eg += endgame_table[Color.White.toU4()][pc_type_idx][s_idx];
                 //tnr.psqt[0][pc_type_idx][s_idx] += 1;
@@ -317,14 +317,14 @@ pub const Evaluation = struct {
 
         for (Piece.BLACK_PAWN.toU4()..(Piece.BLACK_KING.toU4()+1)) |pc| {
             var b1 = pos.piece_bb[pc];
-            var pc_count = bb.pop_count(b1);
-            var pc_type_idx = pc - 8;
+            const pc_count = bb.pop_count(b1);
+            const pc_type_idx = pc - 8;
             mat_black_mg += material_mg[pc_type_idx]*pc_count;
             mat_black_eg += material_eg[pc_type_idx]*pc_count;
             //tnr.mat[1][pc_type_idx] = @as(u8, @intCast(pc_count));
 
             while (b1 != 0) {
-                var s_idx = bb.pop_lsb(&b1);
+                const s_idx = bb.pop_lsb(&b1);
                 pos_black_mg += midgame_table[Color.Black.toU4()][pc_type_idx][s_idx];
                 pos_black_eg += endgame_table[Color.Black.toU4()][pc_type_idx][s_idx];
                 //tnr.psqt[1][pc_type_idx][s_idx^56] += 1;
@@ -338,18 +338,17 @@ pub const Evaluation = struct {
         self.phase[0] = phase_white;
         self.phase[1] = phase_black;
 
-        var phase_bounded = @min(self.phase[Color.White.toU4()]+self.phase[Color.Black.toU4()], 64);
+        const phase_bounded = @min(self.phase[Color.White.toU4()]+self.phase[Color.Black.toU4()], 64);
 
         var eval_mg = self.eval_mg;
         var eval_eg = self.eval_eg;   
 
 //         var piece_scores = self.eval_pieces(pos, tnr); // TUNER ON
-        var piece_scores = self.eval_pieces(pos); // TUNER OFF
+        const piece_scores = self.eval_pieces(pos); // TUNER OFF
         eval_mg += piece_scores[0];
         eval_eg += piece_scores[1];        
 
         var e: i32 = @divTrunc((eval_mg * phase_bounded + eval_eg * (64-phase_bounded)), 64);
-        //const tempo = @divTrunc((mg_tempo * phase_bounded + eg_tempo * (64-phase_bounded)), 64);
 
             if (self.phase[Color.White.toU4()] > 3 and self.phase[Color.Black.toU4()] == 0 and pos.piece_count(Piece.BLACK_PAWN) == 0) {
 
@@ -391,13 +390,13 @@ pub const Evaluation = struct {
 
     pub fn eval(self: *Evaluation, pos: *Position, comptime perspective_color: Color) i32 {
 
-        var phase_bounded: i32 = @intCast(@min(self.phase[Color.White.toU4()]+self.phase[Color.Black.toU4()], 64));
+        const phase_bounded: i32 = @intCast(@min(self.phase[Color.White.toU4()]+self.phase[Color.Black.toU4()], 64));
         const perspective = if (perspective_color == Color.White) @as(i32, 1) else @as(i32, -1);
 
         var eval_mg = self.eval_mg;
         var eval_eg = self.eval_eg;
 
-        var pieces_score = self.eval_pieces(pos); // TUNER OFF
+        const pieces_score = self.eval_pieces(pos); // TUNER OFF
         eval_mg += pieces_score[0]; // TUNER OFF
         eval_eg += pieces_score[1]; // TUNER OFF
 
@@ -447,33 +446,33 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
         _ = self;
 
-        var white_pawns = pos.piece_bb[Piece.WHITE_PAWN.toU4()];
-        var white_knight = pos.piece_bb[Piece.WHITE_KNIGHT.toU4()];
-        var white_bishop = pos.piece_bb[Piece.WHITE_BISHOP.toU4()];
-        var white_rook = pos.piece_bb[Piece.WHITE_ROOK.toU4()];
-        var white_queen = pos.piece_bb[Piece.WHITE_QUEEN.toU4()];
-        var white_pieces = pos.all_white_pieces();
-        var white_pawn_attacks = attacks.pawn_attacks_from_bitboard(pos.piece_bb[Piece.WHITE_PAWN.toU4()], Color.White);
+        const white_pawns = pos.piece_bb[Piece.WHITE_PAWN.toU4()];
+        const white_knight = pos.piece_bb[Piece.WHITE_KNIGHT.toU4()];
+        const white_bishop = pos.piece_bb[Piece.WHITE_BISHOP.toU4()];
+        const white_rook = pos.piece_bb[Piece.WHITE_ROOK.toU4()];
+        const white_queen = pos.piece_bb[Piece.WHITE_QUEEN.toU4()];
+        const white_pieces = pos.all_white_pieces();
+        const white_pawn_attacks = attacks.pawn_attacks_from_bitboard(pos.piece_bb[Piece.WHITE_PAWN.toU4()], Color.White);
         var white_att: u64 = 0;
-        var white_king_sq = bb.get_ls1b_index(pos.piece_bb[Piece.WHITE_KING.toU4()]);
-        var white_king_zone = KingArea[white_king_sq];
+        const white_king_sq = bb.get_ls1b_index(pos.piece_bb[Piece.WHITE_KING.toU4()]);
+        const white_king_zone = KingArea[white_king_sq];
         var white_danger_score: i32 = 0;
         var white_danger_pieces: u5 = 0;
 
-        var black_pawns = pos.piece_bb[Piece.BLACK_PAWN.toU4()];
-        var black_knight = pos.piece_bb[Piece.BLACK_KNIGHT.toU4()];
-        var black_bishop = pos.piece_bb[Piece.BLACK_BISHOP.toU4()];
-        var black_rook = pos.piece_bb[Piece.BLACK_ROOK.toU4()];
-        var black_queen = pos.piece_bb[Piece.BLACK_QUEEN.toU4()];  
-        var black_pieces = pos.all_black_pieces();
-        var black_pawn_attacks = attacks.pawn_attacks_from_bitboard(pos.piece_bb[Piece.BLACK_PAWN.toU4()], Color.Black);
+        const black_pawns = pos.piece_bb[Piece.BLACK_PAWN.toU4()];
+        const black_knight = pos.piece_bb[Piece.BLACK_KNIGHT.toU4()];
+        const black_bishop = pos.piece_bb[Piece.BLACK_BISHOP.toU4()];
+        const black_rook = pos.piece_bb[Piece.BLACK_ROOK.toU4()];
+        const black_queen = pos.piece_bb[Piece.BLACK_QUEEN.toU4()];  
+        const black_pieces = pos.all_black_pieces();
+        const black_pawn_attacks = attacks.pawn_attacks_from_bitboard(pos.piece_bb[Piece.BLACK_PAWN.toU4()], Color.Black);
         var black_att: u64 = 0;
-        var black_king_sq = bb.get_ls1b_index(pos.piece_bb[Piece.BLACK_KING.toU4()]);
-        var black_king_zone = KingArea[black_king_sq];
+        const black_king_sq = bb.get_ls1b_index(pos.piece_bb[Piece.BLACK_KING.toU4()]);
+        const black_king_zone = KingArea[black_king_sq];
         var black_danger_score: i32 = 0;
         var black_danger_pieces: u5 = 0;
 
-        var occ = white_pieces | black_pieces;
+        const occ = white_pieces | black_pieces;
 
         var pawn_structure_score = [_]i32{0,0};
         var threat_score = [_]i32{0,0};
@@ -485,12 +484,12 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
         // Pawns
         var pc_bb = white_pawns;
         while (pc_bb != 0) {
-            var sq = bb.pop_lsb(&pc_bb);
-            var file = position.file_of_u6(sq);
-            var rank = position.rank_of_u6(sq);
+            const sq = bb.pop_lsb(&pc_bb);
+            const file = position.file_of_u6(sq);
+            const rank = position.rank_of_u6(sq);
 
             // Get attacks & update king danger scores
-            var att = attacks.WHITE_PAWN_ATTACKS[sq] & ~white_pieces;
+            const att = attacks.WHITE_PAWN_ATTACKS[sq] & ~white_pieces;
             white_att |= att;
             if ((black_king_zone & att) != 0) {
                 black_danger_score += PieceDangers[PieceType.Pawn.toU3()];
@@ -499,7 +498,7 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             // Isolated pawn evaluation
             if (pos.piece_bb[Piece.WHITE_PAWN.toU4()] & IsolatedPawnMask[file] == 0) {
-                var tmp_sc = get_isolated_pawn_score(file);
+                const tmp_sc = get_isolated_pawn_score(file);
                 //tnr.isolated_pawn[0][file] += 1;
                 pawn_structure_score[0] += tmp_sc[0];
                 pawn_structure_score[1] += tmp_sc[1];
@@ -524,32 +523,32 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             // Threats
             var b1 = att & pos.piece_bb[Piece.BLACK_KNIGHT.toU4()];
             if (b1 != 0) {
-                var tmp_sc = get_pawn_threat(PieceType.Knight);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_sc = get_pawn_threat(PieceType.Knight);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count;
                 //tnr.pawn_attacking[0][PieceType.Knight.toU3()] += tmp_count;
             }
             b1 = att & pos.piece_bb[Piece.BLACK_BISHOP.toU4()];
             if (b1 != 0) {
-                var tmp_sc = get_pawn_threat(PieceType.Bishop);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_sc = get_pawn_threat(PieceType.Bishop);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count;    
                 //tnr.pawn_attacking[0][PieceType.Bishop.toU3()] += tmp_count;            
             }     
             b1 = att & pos.piece_bb[Piece.BLACK_ROOK.toU4()];
             if (b1 != 0) {
-                var tmp_sc = get_pawn_threat(PieceType.Rook);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_sc = get_pawn_threat(PieceType.Rook);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count;
                 //tnr.pawn_attacking[0][PieceType.Rook.toU3()] += tmp_count;                  
             }         
             b1 = att & pos.piece_bb[Piece.BLACK_QUEEN.toU4()];
             if (b1 != 0) {
-                var tmp_sc = get_pawn_threat(PieceType.Queen);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_sc = get_pawn_threat(PieceType.Queen);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count;
                 //tnr.pawn_attacking[0][PieceType.Queen.toU3()] += tmp_count;                  
@@ -557,7 +556,7 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             // Pawn is supported?
             if (white_pawn_attacks & bb.SQUARE_BB[sq] != 0) {
-                var tmp_sc = get_supported_pawn_bonus(rank);
+                const tmp_sc = get_supported_pawn_bonus(rank);
                 //tnr.supported_pawn[0][rank] += 1;
                 pawn_structure_score[0] += tmp_sc[0];
                 pawn_structure_score[1] += tmp_sc[1];
@@ -565,7 +564,7 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             // Pawn phalanx
             if ((file != 7) and (pos.board[sq+1] == Piece.WHITE_PAWN)) {
-                var tmp_sc = get_phalanx_score(rank);
+                const tmp_sc = get_phalanx_score(rank);
                 //tnr.pawn_phalanx[0][rank] += 1;
                 pawn_structure_score[0] += tmp_sc[0];
                 pawn_structure_score[1] += tmp_sc[1];                
@@ -575,12 +574,12 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
         pc_bb = black_pawns;
         while (pc_bb != 0) {
-            var sq = bb.pop_lsb(&pc_bb);
-            var file = position.file_of_u6(sq);
-            var rank = position.rank_of_u6(sq);
+            const sq = bb.pop_lsb(&pc_bb);
+            const file = position.file_of_u6(sq);
+            const rank = position.rank_of_u6(sq);
 
             // Get attacks & update king danger scores
-            var att = attacks.BLACK_PAWN_ATTACKS[sq] & ~black_pieces;
+            const att = attacks.BLACK_PAWN_ATTACKS[sq] & ~black_pieces;
             black_att |= att;
             if ((white_king_zone & att) != 0) {
                 white_danger_score += PieceDangers[PieceType.Pawn.toU3()];
@@ -589,7 +588,7 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             // Isolated pawn evaluation
             if (pos.piece_bb[Piece.BLACK_PAWN.toU4()] & IsolatedPawnMask[file] == 0) {
-                var tmp_sc = get_isolated_pawn_score(7-file);
+                const tmp_sc = get_isolated_pawn_score(7-file);
                 //tnr.isolated_pawn[1][7-file] += 1;
                 pawn_structure_score[0] -= tmp_sc[0];
                 pawn_structure_score[1] -= tmp_sc[1];                
@@ -614,32 +613,32 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             // Threats
             var b1 = att & pos.piece_bb[Piece.WHITE_KNIGHT.toU4()];
             if (b1 != 0) {
-                var tmp_sc = get_pawn_threat(PieceType.Knight);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_sc = get_pawn_threat(PieceType.Knight);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count;  
                 //tnr.pawn_attacking[1][PieceType.Knight.toU3()] += tmp_count;              
             }
             b1 = att & pos.piece_bb[Piece.WHITE_BISHOP.toU4()];
             if (b1 != 0) {
-                var tmp_sc = get_pawn_threat(PieceType.Bishop);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_sc = get_pawn_threat(PieceType.Bishop);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count;   
                 //tnr.pawn_attacking[1][PieceType.Bishop.toU3()] += tmp_count;              
             }     
             b1 = att & pos.piece_bb[Piece.WHITE_ROOK.toU4()];
             if (b1 != 0) {
-                var tmp_sc = get_pawn_threat(PieceType.Rook);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_sc = get_pawn_threat(PieceType.Rook);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.pawn_attacking[1][PieceType.Rook.toU3()] += tmp_count;                
             }         
             b1 = att & pos.piece_bb[Piece.WHITE_QUEEN.toU4()];
             if (b1 != 0) {
-                var tmp_sc = get_pawn_threat(PieceType.Queen);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_sc = get_pawn_threat(PieceType.Queen);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.pawn_attacking[1][PieceType.Queen.toU3()] += tmp_count;                
@@ -647,7 +646,7 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             // Pawn is supported?
             if ((black_pawn_attacks & bb.SQUARE_BB[sq]) != 0) {
-                var tmp_sc = get_supported_pawn_bonus(7-rank);
+                const tmp_sc = get_supported_pawn_bonus(7-rank);
                 //tnr.supported_pawn[1][7-rank] += 1;
                 pawn_structure_score[0] -= tmp_sc[0];
                 pawn_structure_score[1] -= tmp_sc[1];            
@@ -655,7 +654,7 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             // Pawn phalanx
             if ((file != 7) and (pos.board[sq+1] == Piece.BLACK_PAWN)) {
-                var tmp_sc = get_phalanx_score(7-rank);
+                const tmp_sc = get_phalanx_score(7-rank);
                 //tnr.pawn_phalanx[1][7-rank] += 1;
                 pawn_structure_score[0] -= tmp_sc[0];
                 pawn_structure_score[1] -= tmp_sc[1];                   
@@ -666,11 +665,11 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
         // Knights
         pc_bb = white_knight;
         while (pc_bb != 0) {
-            var sq = bb.pop_lsb(&pc_bb);
-            var att = attacks.KNIGHT_ATTACKS[sq];
-            var mobility = att & ~white_pieces;
+            const sq = bb.pop_lsb(&pc_bb);
+            const att = attacks.KNIGHT_ATTACKS[sq];
+            const mobility = att & ~white_pieces;
             white_att |= mobility;
-            var index = bb.pop_count(mobility & ~black_pawn_attacks);
+            const index = bb.pop_count(mobility & ~black_pawn_attacks);
             var tmp_sc = get_knight_mobility_score(index);
             //tnr.knight_mobility[0][index] += 1;
             mobility_score[0] += tmp_sc[0];
@@ -682,9 +681,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             var b1 = mobility & black_pawns;
             if (b1 != 0) {
-                var pt = PieceType.Pawn;
+                const pt = PieceType.Pawn;
                 tmp_sc = get_knight_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
@@ -692,9 +691,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_bishop;
             if (b1 != 0) {
-                var pt = PieceType.Bishop;
+                const pt = PieceType.Bishop;
                 tmp_sc = get_knight_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
@@ -702,9 +701,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_rook;
             if (b1 != 0) {
-                var pt = PieceType.Rook;
+                const pt = PieceType.Rook;
                 tmp_sc = get_knight_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
@@ -712,9 +711,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_queen;
             if (b1 != 0) {
-                var pt = PieceType.Queen;
+                const pt = PieceType.Queen;
                 tmp_sc = get_knight_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
@@ -724,11 +723,11 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
         pc_bb = black_knight;
         while (pc_bb != 0) {
-            var sq = bb.pop_lsb(&pc_bb);
-            var att = attacks.KNIGHT_ATTACKS[sq];
-            var mobility = att & ~black_pieces;
+            const sq = bb.pop_lsb(&pc_bb);
+            const att = attacks.KNIGHT_ATTACKS[sq];
+            const mobility = att & ~black_pieces;
             black_att |= mobility;
-            var index = bb.pop_count(mobility & ~white_pawn_attacks);
+            const index = bb.pop_count(mobility & ~white_pawn_attacks);
             var tmp_sc = get_knight_mobility_score(index);
             //tnr.knight_mobility[1][index] += 1;
             mobility_score[0] -= tmp_sc[0];
@@ -740,9 +739,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                       
             var b1 = mobility & white_pawns;
             if (b1 != 0) {
-                var pt = PieceType.Pawn;
+                const pt = PieceType.Pawn;
                 tmp_sc = get_knight_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
@@ -750,9 +749,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & white_bishop;
             if (b1 != 0) {
-                var pt = PieceType.Bishop;
+                const pt = PieceType.Bishop;
                 tmp_sc = get_knight_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
@@ -760,9 +759,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & white_rook;
             if (b1 != 0) {
-                var pt = PieceType.Rook;
+                const pt = PieceType.Rook;
                 tmp_sc = get_knight_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
@@ -770,9 +769,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & white_queen;
             if (b1 != 0) {
-                var pt = PieceType.Queen;
+                const pt = PieceType.Queen;
                 tmp_sc = get_knight_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
@@ -782,11 +781,11 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
         pc_bb = white_bishop;
         while (pc_bb != 0) {
-            var sq = bb.pop_lsb(&pc_bb);
-            var att = attacks.get_bishop_attacks(sq, occ);
-            var mobility = att & ~white_pieces;
+            const sq = bb.pop_lsb(&pc_bb);
+            const att = attacks.get_bishop_attacks(sq, occ);
+            const mobility = att & ~white_pieces;
             white_att |= mobility;
-            var index = bb.pop_count(mobility & ~black_pawn_attacks);
+            const index = bb.pop_count(mobility & ~black_pawn_attacks);
             var tmp_sc = get_bishop_mobility_score(index);
             //tnr.bishop_mobility[0][index] += 1;
             mobility_score[0] += tmp_sc[0];
@@ -798,9 +797,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             
             var b1 = mobility & black_pawns;
             if (b1 != 0) {
-                var pt = PieceType.Pawn;
+                const pt = PieceType.Pawn;
                 tmp_sc = get_bishop_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
@@ -808,9 +807,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_knight;
             if (b1 != 0) {
-                var pt = PieceType.Knight;
+                const pt = PieceType.Knight;
                 tmp_sc = get_bishop_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
@@ -818,9 +817,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_rook;
             if (b1 != 0) {
-                var pt = PieceType.Rook;
+                const pt = PieceType.Rook;
                 tmp_sc = get_bishop_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
@@ -828,9 +827,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_queen;
             if (b1 != 0) {
-                var pt = PieceType.Queen;
+                const pt = PieceType.Queen;
                 tmp_sc = get_bishop_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
@@ -839,11 +838,11 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
         pc_bb = black_bishop;
         while (pc_bb != 0) {
-            var sq = bb.pop_lsb(&pc_bb);
-            var att = attacks.get_bishop_attacks(sq, occ);
-            var mobility = att & ~black_pieces;
+            const sq = bb.pop_lsb(&pc_bb);
+            const att = attacks.get_bishop_attacks(sq, occ);
+            const mobility = att & ~black_pieces;
             black_att |= mobility;
-            var index = bb.pop_count(mobility & ~white_pawn_attacks);
+            const index = bb.pop_count(mobility & ~white_pawn_attacks);
             var tmp_sc = get_bishop_mobility_score(index);
             //tnr.bishop_mobility[1][index] += 1;
             mobility_score[0] -= tmp_sc[0];
@@ -855,9 +854,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             
             var b1 = mobility & white_pawns;
             if (b1 != 0) {
-                var pt = PieceType.Pawn;
+                const pt = PieceType.Pawn;
                 tmp_sc = get_bishop_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
@@ -865,9 +864,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & white_knight;
             if (b1 != 0) {
-                var pt = PieceType.Knight;
+                const pt = PieceType.Knight;
                 tmp_sc = get_bishop_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
@@ -875,9 +874,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & white_rook;
             if (b1 != 0) {
-                var pt = PieceType.Rook;
+                const pt = PieceType.Rook;
                 tmp_sc = get_bishop_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
@@ -885,9 +884,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & white_queen;
             if (b1 != 0) {
-                var pt = PieceType.Queen;
+                const pt = PieceType.Queen;
                 tmp_sc = get_bishop_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
@@ -897,13 +896,13 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
         pc_bb = white_rook;
         while (pc_bb != 0) {
-            var sq = bb.pop_lsb(&pc_bb);
+            const sq = bb.pop_lsb(&pc_bb);
             // var file = position.file_of_u6(sq);
             // var mask_file = bb.MASK_FILE[file];            
-            var att = attacks.get_rook_attacks(sq, occ);
-            var mobility = att & ~white_pieces;
+            const att = attacks.get_rook_attacks(sq, occ);
+            const mobility = att & ~white_pieces;
             white_att |= mobility;
-            var index = bb.pop_count(mobility & ~black_pawn_attacks);
+            const index = bb.pop_count(mobility & ~black_pawn_attacks);
             var tmp_sc = get_rook_mobility_score(index);
             //tnr.rook_mobility[0][index] += 1;
             mobility_score[0] += tmp_sc[0];
@@ -916,9 +915,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             
             var b1 = mobility & black_pawns;
             if (b1 != 0) {
-                var pt = PieceType.Pawn;
+                const pt = PieceType.Pawn;
                 tmp_sc = get_rook_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
@@ -926,9 +925,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_knight;
             if (b1 != 0) {
-                var pt = PieceType.Knight;
+                const pt = PieceType.Knight;
                 tmp_sc = get_rook_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
@@ -936,9 +935,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_bishop;
             if (b1 != 0) {
-                var pt = PieceType.Bishop;
+                const pt = PieceType.Bishop;
                 tmp_sc = get_rook_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
@@ -946,9 +945,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_queen;
             if (b1 != 0) {
-                var pt = PieceType.Queen;
+                const pt = PieceType.Queen;
                 tmp_sc = get_rook_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
@@ -958,11 +957,13 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
         pc_bb = black_rook;
         while (pc_bb != 0) {
-            var sq = bb.pop_lsb(&pc_bb);
-            var att = attacks.get_rook_attacks(sq, occ);
-            var mobility = att & ~black_pieces;
+            const sq = bb.pop_lsb(&pc_bb);
+            // var file = position.file_of_u6(sq);
+            // var mask_file = bb.MASK_FILE[file];            
+            const att = attacks.get_rook_attacks(sq, occ);
+            const mobility = att & ~black_pieces;
             black_att |= mobility;
-            var index = bb.pop_count(mobility & ~white_pawn_attacks);
+            const index = bb.pop_count(mobility & ~white_pawn_attacks);
             var tmp_sc = get_rook_mobility_score(index);
             //tnr.rook_mobility[1][index] += 1;
             mobility_score[0] -= tmp_sc[0];
@@ -975,9 +976,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             
             var b1 = mobility & white_pawns;
             if (b1 != 0) {
-                var pt = PieceType.Pawn;
+                const pt = PieceType.Pawn;
                 tmp_sc = get_rook_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
@@ -985,9 +986,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & white_knight;
             if (b1 != 0) {
-                var pt = PieceType.Knight;
+                const pt = PieceType.Knight;
                 tmp_sc = get_rook_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
@@ -995,9 +996,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & white_bishop;
             if (b1 != 0) {
-                var pt = PieceType.Bishop;
+                const pt = PieceType.Bishop;
                 tmp_sc = get_rook_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
@@ -1005,9 +1006,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & white_queen;
             if (b1 != 0) {
-                var pt = PieceType.Queen;
+                const pt = PieceType.Queen;
                 tmp_sc = get_rook_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
                 //tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
@@ -1017,11 +1018,11 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
         pc_bb = white_queen;
         while (pc_bb != 0) {
-            var sq = bb.pop_lsb(&pc_bb);
-            var att = attacks.get_bishop_attacks(sq, occ) | attacks.get_rook_attacks(sq, occ);
-            var mobility = att & ~white_pieces;
+            const sq = bb.pop_lsb(&pc_bb);
+            const att = attacks.get_bishop_attacks(sq, occ) | attacks.get_rook_attacks(sq, occ);
+            const mobility = att & ~white_pieces;
             white_att |= mobility;
-            var index = bb.pop_count(mobility & ~black_pawn_attacks);
+            const index = bb.pop_count(mobility & ~black_pawn_attacks);
             var tmp_sc = get_queen_mobility_score(index);
             //tnr.queen_mobility[0][index] += 1;
             mobility_score[0] += tmp_sc[0];
@@ -1033,9 +1034,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             var b1 = mobility & black_pawns;
             if (b1 != 0) {
-                var pt = PieceType.Pawn;
+                const pt = PieceType.Pawn;
                 tmp_sc = get_queen_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
@@ -1043,9 +1044,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_knight;
             if (b1 != 0) {
-                var pt = PieceType.Knight;
+                const pt = PieceType.Knight;
                 tmp_sc = get_queen_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
@@ -1053,9 +1054,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_bishop;
             if (b1 != 0) {
-                var pt = PieceType.Bishop;
+                const pt = PieceType.Bishop;
                 tmp_sc = get_queen_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
@@ -1063,9 +1064,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_rook;
             if (b1 != 0) {
-                var pt = PieceType.Rook;
+                const pt = PieceType.Rook;
                 tmp_sc = get_queen_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
@@ -1075,11 +1076,11 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
         pc_bb = black_queen;
         while (pc_bb != 0) {
-            var sq = bb.pop_lsb(&pc_bb);
-            var att = attacks.get_bishop_attacks(sq, occ) | attacks.get_rook_attacks(sq, occ);
-            var mobility = att & ~black_pieces;
+            const sq = bb.pop_lsb(&pc_bb);
+            const att = attacks.get_bishop_attacks(sq, occ) | attacks.get_rook_attacks(sq, occ);
+            const mobility = att & ~black_pieces;
             black_att |= mobility;
-            var index = bb.pop_count(mobility & ~white_pawn_attacks);
+            const index = bb.pop_count(mobility & ~white_pawn_attacks);
             var tmp_sc = get_queen_mobility_score(index);
             //tnr.queen_mobility[1][index] += 1;
             mobility_score[0] -= tmp_sc[0];
@@ -1091,9 +1092,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             var b1 = mobility & black_pawns;
             if (b1 != 0) {
-                var pt = PieceType.Pawn;
+                const pt = PieceType.Pawn;
                 tmp_sc = get_queen_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
@@ -1101,9 +1102,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_knight;
             if (b1 != 0) {
-                var pt = PieceType.Knight;
+                const pt = PieceType.Knight;
                 tmp_sc = get_queen_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
@@ -1111,9 +1112,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_bishop;
             if (b1 != 0) {
-                var pt = PieceType.Bishop;
+                const pt = PieceType.Bishop;
                 tmp_sc = get_queen_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
@@ -1121,9 +1122,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
 
             b1 = mobility & black_rook;
             if (b1 != 0) {
-                var pt = PieceType.Rook;
+                const pt = PieceType.Rook;
                 tmp_sc = get_queen_threat(pt);
-                var tmp_count = bb.pop_count(b1);
+                const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
                 //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
@@ -1135,12 +1136,12 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
         const white_king_safety_final = @divTrunc(white_danger_score * DangerMultipliers[@min(white_danger_pieces, 7)], 100);
         const black_king_safety_final = @divTrunc(black_danger_score * DangerMultipliers[@min(black_danger_pieces, 7)], 100);
         if (white_king_safety_final != 0 ) {
-            var tmp_sc = king_safety[@min(@as(usize, @intCast(white_king_safety_final)), 24)];
+            const tmp_sc = king_safety[@min(@as(usize, @intCast(white_king_safety_final)), 24)];
             king_score[0] += tmp_sc;
             king_score[1] += tmp_sc;
         }
         if (black_king_safety_final != 0 ) {
-            var tmp_sc = king_safety[@min(@as(usize, @intCast(black_king_safety_final)), 24)];
+            const tmp_sc = king_safety[@min(@as(usize, @intCast(black_king_safety_final)), 24)];
             king_score[0] -= tmp_sc;
             king_score[1] -= tmp_sc;
         }
@@ -1285,6 +1286,13 @@ pub inline fn get_passed_pawn_score(sq: u6) [2]i32 {
     return score;
 }
 
+// pub inline fn get_passed_pawn_score_f(file: u6) [2]i32 {
+//     var score = [_]i32{ 0, 0 };
+//     score[0] = mg_passed_score[file];
+//     score[1] = eg_passed_score[file];
+//     return score;
+// }
+
 pub inline fn get_isolated_pawn_score(file: u6) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] += mg_isolated_pawn_score[file];
@@ -1301,7 +1309,7 @@ pub inline fn get_blocked_passer_score(rank: u6) [2]i32 {
 
 pub inline fn get_pawn_threat(piece_type: PieceType) [2]i32 {
     var score = [_]i32{ 0, 0 };
-    var pt = piece_type.toU3();
+    const pt = piece_type.toU3();
     score[0] = mg_pawn_attacking[pt];
     score[1] = eg_pawn_attacking[pt];
     return score;
@@ -1309,7 +1317,7 @@ pub inline fn get_pawn_threat(piece_type: PieceType) [2]i32 {
 
 pub inline fn get_knight_threat(piece_type: PieceType) [2]i32 {
     var score = [_]i32{ 0, 0 };
-    var pt = piece_type.toU3();
+    const pt = piece_type.toU3();
     score[0] = mg_knight_attacking[pt];
     score[1] = eg_knight_attacking[pt];
     return score;
@@ -1317,7 +1325,7 @@ pub inline fn get_knight_threat(piece_type: PieceType) [2]i32 {
 
 pub inline fn get_bishop_threat(piece_type: PieceType) [2]i32 {
     var score = [_]i32{ 0, 0 };
-    var pt = piece_type.toU3();
+    const pt = piece_type.toU3();
     score[0] = mg_bishop_attacking[pt];
     score[1] = eg_bishop_attacking[pt];
     return score;
@@ -1325,7 +1333,7 @@ pub inline fn get_bishop_threat(piece_type: PieceType) [2]i32 {
 
 pub inline fn get_rook_threat(piece_type: PieceType) [2]i32 {
     var score = [_]i32{ 0, 0 };
-    var pt = piece_type.toU3();
+    const pt = piece_type.toU3();
     score[0] = mg_rook_attacking[pt];
     score[1] = eg_rook_attacking[pt];
     return score;
@@ -1333,7 +1341,7 @@ pub inline fn get_rook_threat(piece_type: PieceType) [2]i32 {
 
 pub inline fn get_queen_threat(piece_type: PieceType) [2]i32 {
     var score = [_]i32{ 0, 0 };
-    var pt = piece_type.toU3();
+    const pt = piece_type.toU3();
     score[0] = mg_queen_attacking[pt];
     score[1] = eg_queen_attacking[pt];
     return score;

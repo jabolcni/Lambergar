@@ -60,7 +60,7 @@ pub const BLACK_FIELDS: u64 = 0x55aa55aa55aa55aa;
 
 pub inline fn get_bit(bitboard: u64, square: Square) bool {
     //var one64: u64 = 1;
-    var mask = @as(u64, 1) << square.toU6();
+    const mask = @as(u64, 1) << square.toU6();
     return (bitboard & mask) != 0;
 }
 
@@ -70,8 +70,8 @@ pub fn print_bitboard(bitboard: u64) void {
     for (0..8) |rank_index| {
         std.debug.print("  {} ", .{8 - rank_index});
         for (0..8) |file_index| {
-            var square = (7 - rank_index) * 8 + file_index;
-            var bitState: u1 = if (get_bit(bitboard, Square.fromInt(square))) 1 else 0;
+            const square = (7 - rank_index) * 8 + file_index;
+            const bitState: u1 = if (get_bit(bitboard, Square.fromInt(square))) 1 else 0;
             std.debug.print(" {}", .{bitState});
         }
         std.debug.print("\n", .{});
@@ -99,13 +99,13 @@ pub inline fn get_ls1b_index(bitboard: u64) u6 {
 }
 
 pub inline fn pop_lsb_Sq(bitboard: *u64) Square {
-    var lsb = get_ls1b_index(bitboard.*);
+    const lsb = get_ls1b_index(bitboard.*);
     bitboard.* &= bitboard.* - 1;
     return @as(Square, @enumFromInt(lsb));
 }
 
 pub inline fn pop_lsb(bitboard: *u64) u6 {
-    var lsb = get_ls1b_index(bitboard.*);
+    const lsb = get_ls1b_index(bitboard.*);
     bitboard.* &= bitboard.* - 1;
     return lsb;
 }

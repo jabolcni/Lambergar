@@ -10,22 +10,23 @@ const PieceType = position.PieceType;
 const Position = position.Position;
 
 pub const max_histroy = 400;
+const histry_multiplier = 32;
 const history_divider = 16384;
 
 pub inline fn histoy_bonus(_entry: i32, bonus: i32) i32 {
-    return _entry + bonus - @as(i32, @intCast(@divTrunc(@abs(_entry * bonus), history_divider)));
+    return bonus - @divTrunc(_entry * @as(i32, @intCast(@abs(bonus))), history_divider);
 }
 
 pub fn update_all_history(search: *Search, move: Move, quet_moves: std.ArrayList(Move), quet_mv_pieces: std.ArrayList(Piece), depth: i8, comptime color: Color) void {
     std.debug.assert(search.ply < searcher.MAX_PLY);
 
-    comptime var side = if (color == Color.White) Color.White.toU4() else Color.Black.toU4();
+    const side: u4 = if (color == Color.White) Color.White.toU4() else Color.Black.toU4();
 
     const depth_i32: i32 = @as(i32, @intCast(depth));
     const bonus: i32 = @min(depth_i32 * depth_i32, max_histroy);
 
     if (!move.equal(search.mv_killer[search.ply][0])) {
-        var tmp0 = search.mv_killer[search.ply][0];
+        const tmp0 = search.mv_killer[search.ply][0];
         search.mv_killer[search.ply][0] = move;
         search.mv_killer[search.ply][1] = tmp0;
     }
@@ -69,29 +70,29 @@ pub fn update_all_history(search: *Search, move: Move, quet_moves: std.ArrayList
         const to = mv.to;
         const pc = quet_mv_pieces.items[i];
 
-        search.sc_history[side][from][to] = histoy_bonus(search.sc_history[side][from][to], -bonus);
+        search.sc_history[side][from][to] += histoy_bonus(search.sc_history[side][from][to], -bonus);
 
         if (!parent.is_empty()) {
-            search.sc_counter_table[p_piece.toU4()][parent.to][pc.toU4()][to] = histoy_bonus(search.sc_counter_table[p_piece.toU4()][parent.to][pc.toU4()][to], -bonus);
+            search.sc_counter_table[p_piece.toU4()][parent.to][pc.toU4()][to] += histoy_bonus(search.sc_counter_table[p_piece.toU4()][parent.to][pc.toU4()][to], -bonus);
         }
 
         if (!gparent.is_empty()) {
-            search.sc_follow_table[gp_piece.toU4()][gparent.to][pc.toU4()][to] = histoy_bonus(search.sc_follow_table[gp_piece.toU4()][gparent.to][pc.toU4()][to], -bonus);
+            search.sc_follow_table[gp_piece.toU4()][gparent.to][pc.toU4()][to] += histoy_bonus(search.sc_follow_table[gp_piece.toU4()][gparent.to][pc.toU4()][to], -bonus);
         }
     }
 
-    search.sc_history[side][move.from][move.to] = histoy_bonus(search.sc_history[side][move.from][move.to], bonus);
+    search.sc_history[side][move.from][move.to] += histoy_bonus(search.sc_history[side][move.from][move.to], bonus);
 
     if (!parent.is_empty()) {
-        search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to] = histoy_bonus(search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to], bonus);
+        search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to] += histoy_bonus(search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to], bonus);
     }
 
     if (!gparent.is_empty()) {
-        search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to] = histoy_bonus(search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to], bonus);
+        search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to] += histoy_bonus(search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to], bonus);
     }
 }
 
-pub inline fn get_counter_move(search: *Search) Move { //, comptime color: Color) Move {
+pub inline fn get_counter_move(search: *Search) Move {
     if (search.ply >= 1 and !search.ns_stack[search.ply - 1].is_null) {
         const parent = search.ns_stack[search.ply - 1].move;
         const pc = search.ns_stack[search.ply - 1].piece.toU4();

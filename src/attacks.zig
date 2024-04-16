@@ -117,7 +117,7 @@ pub inline fn sliding_attacks(sq_idx: u6, occ: u64, mask: u64) u64 {
 }
 
 pub inline fn get_rook_attacks_for_init(square: Square, occ: u64) u64 {
-    var sq_idx = square.toU6();
+    const sq_idx = square.toU6();
     return sliding_attacks(sq_idx, occ, MASK_FILE[square.file_of().toU3()]) | sliding_attacks(sq_idx, occ, MASK_RANK[square.rank_of().toU3()]);
 }
 
@@ -183,8 +183,8 @@ pub inline fn get_rook_attacks(square: u6, occ: u64) u64 {
 //accessible by the rook, but become available when the immediate blockers are removed from the board
 pub inline fn get_xray_rook_attacks(square: Square, occ: u64, _blockers: u64) u64 {
     var blockers = _blockers;
-    var sq_idx = square.toU6();
-    var attcks = get_rook_attacks(sq_idx, occ);
+    const sq_idx = square.toU6();
+    const attcks = get_rook_attacks(sq_idx, occ);
     blockers &= attcks;
     return attcks ^ get_rook_attacks(sq_idx, occ ^ blockers);
 }
@@ -192,7 +192,7 @@ pub inline fn get_xray_rook_attacks(square: Square, occ: u64, _blockers: u64) u6
 //Returns bishop attacks from a given square, using the Hyperbola Quintessence Algorithm. Only used to initialize
 //the magic lookup table
 pub inline fn get_bishop_attacks_for_init(square: Square, occ: u64) u64 {
-    var sq_idx = square.toU6();
+    const sq_idx = square.toU6();
     return sliding_attacks(sq_idx, occ, MASK_DIAGONAL[square.diagonal_of()]) |
         sliding_attacks(sq_idx, occ, MASK_ANTI_DIAGONAL[square.anti_diagonal_of()]);
 }
@@ -262,8 +262,8 @@ pub inline fn get_bishop_attacks(square: u6, occ: u64) u64 {
 //accessible by the rook, but become available when the immediate blockers are removed from the board
 pub inline fn get_xray_bishop_attacks(square: Square, occ: u64, _blockers: u64) u64 {
     var blockers = _blockers;
-    var sq_idx = square.toU6();
-    var attcks = get_bishop_attacks(sq_idx, occ);
+    const sq_idx = square.toU6();
+    const attcks = get_bishop_attacks(sq_idx, occ);
     blockers &= attcks;
     return attcks ^ get_bishop_attacks(sq_idx, occ ^ blockers);
 }
@@ -313,10 +313,10 @@ pub var PSEUDO_LEGAL_ATTACKS: [position.NPIECE_TYPES][64]u64 = std.mem.zeroes([p
 //Initializes the table containg pseudolegal attacks of each piece for each square. This does not include blockers
 //for sliding pieces
 pub inline fn initialise_pseudo_legal() void {
-    std.mem.copy(u64, PAWN_ATTACKS[0][0..64], WHITE_PAWN_ATTACKS[0..64]);
-    std.mem.copy(u64, PAWN_ATTACKS[1][0..64], BLACK_PAWN_ATTACKS[0..64]);
-    std.mem.copy(u64, PSEUDO_LEGAL_ATTACKS[PieceType.Knight.toU3()][0..64], KNIGHT_ATTACKS[0..64]);
-    std.mem.copy(u64, PSEUDO_LEGAL_ATTACKS[PieceType.King.toU3()][0..64], KING_ATTACKS[0..64]);
+    std.mem.copyBackwards(u64, PAWN_ATTACKS[0][0..64], WHITE_PAWN_ATTACKS[0..64]);
+    std.mem.copyBackwards(u64, PAWN_ATTACKS[1][0..64], BLACK_PAWN_ATTACKS[0..64]);
+    std.mem.copyBackwards(u64, PSEUDO_LEGAL_ATTACKS[PieceType.Knight.toU3()][0..64], KNIGHT_ATTACKS[0..64]);
+    std.mem.copyBackwards(u64, PSEUDO_LEGAL_ATTACKS[PieceType.King.toU3()][0..64], KING_ATTACKS[0..64]);
     for (sq_iter) |s| {
         PSEUDO_LEGAL_ATTACKS[PieceType.Rook.toU3()][s] = get_rook_attacks_for_init(Square.fromInt(s), 0);
         PSEUDO_LEGAL_ATTACKS[PieceType.Bishop.toU3()][s] = get_bishop_attacks_for_init(Square.fromInt(s), 0);
@@ -347,7 +347,7 @@ pub inline fn piece_attacks(sq_idx: u6, occ: u64, P: PieceType) u64 {
 
 pub inline fn piece_attacks_Sq(s: Square, occ: u64, comptime P: PieceType) u64 {
     std.debug.assert(P != PieceType.Pawn);
-    var sq_idx = s.toU6();
+    const sq_idx = s.toU6();
 
     return switch (P) {
         PieceType.Rook => get_rook_attacks(sq_idx, occ),

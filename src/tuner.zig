@@ -37,7 +37,7 @@ pub const Tuner = struct {
     bishop_pair: [2]u8 = undefined,
 
     pub fn init(self: *Tuner) void {
-        var tuner = Tuner{
+        const tuner = Tuner{
             .pos_count = 0,
         };
 
