@@ -43,7 +43,7 @@ def extract_version(filename):
             if '"id name Lambergar v' in line:
                 start = line.find('Lambergar v') + len('Lambergar v')
                 end = line.find('"', start)
-                version = line[start:end-2]
+                version = line[start:end]
                 return version
             
 def build_ver(command, bin_dir):
