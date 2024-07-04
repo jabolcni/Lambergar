@@ -10,11 +10,11 @@ const PieceType = position.PieceType;
 const Position = position.Position;
 
 pub const max_histroy = 400;
-const histry_multiplier = 32;
+//const histry_multiplier = 32;
 const history_divider = 16384;
 
-pub inline fn histoy_bonus(_entry: i32, bonus: i32) i32 {
-    return bonus - @divTrunc(_entry * @as(i32, @intCast(@abs(bonus))), history_divider);
+pub inline fn histoy_bonus(_entry: *i32, bonus: i32) void {
+    _entry.* += bonus - @divTrunc(_entry.* * @as(i32, @intCast(@abs(bonus))), history_divider);
 }
 
 pub fn update_all_history(search: *Search, move: Move, quet_moves: std.ArrayList(Move), quet_mv_pieces: std.ArrayList(Piece), depth: i8, comptime color: Color) void {
@@ -70,25 +70,25 @@ pub fn update_all_history(search: *Search, move: Move, quet_moves: std.ArrayList
         const to = mv.to;
         const pc = quet_mv_pieces.items[i];
 
-        search.sc_history[side][from][to] += histoy_bonus(search.sc_history[side][from][to], -bonus);
+        histoy_bonus(&search.sc_history[side][from][to], -bonus);
 
         if (!parent.is_empty()) {
-            search.sc_counter_table[p_piece.toU4()][parent.to][pc.toU4()][to] += histoy_bonus(search.sc_counter_table[p_piece.toU4()][parent.to][pc.toU4()][to], -bonus);
+            histoy_bonus(&search.sc_counter_table[p_piece.toU4()][parent.to][pc.toU4()][to], -bonus);
         }
 
         if (!gparent.is_empty()) {
-            search.sc_follow_table[gp_piece.toU4()][gparent.to][pc.toU4()][to] += histoy_bonus(search.sc_follow_table[gp_piece.toU4()][gparent.to][pc.toU4()][to], -bonus);
+            histoy_bonus(&search.sc_follow_table[gp_piece.toU4()][gparent.to][pc.toU4()][to], -bonus);
         }
     }
 
-    search.sc_history[side][move.from][move.to] += histoy_bonus(search.sc_history[side][move.from][move.to], bonus);
+    histoy_bonus(&search.sc_history[side][move.from][move.to], bonus);
 
     if (!parent.is_empty()) {
-        search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to] += histoy_bonus(search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to], bonus);
+        histoy_bonus(&search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to], bonus);
     }
 
     if (!gparent.is_empty()) {
-        search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to] += histoy_bonus(search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to], bonus);
+        histoy_bonus(&search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to], bonus);
     }
 }
 

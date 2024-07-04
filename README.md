@@ -31,9 +31,9 @@ The name "Lambergar" is a nod to the Slovenian folk romance, Pegam and Lambergar
 
 ## Compilation 
 
-If you want to complile code yourself, code needs to be compiled with zig compiler version 0.11.0 (https://ziglang.org/download/0.11.0/zig-windows-x86_64-0.11.0.zip). 
+If you want to complile code yourself, code can be compiled with zig compiler version 0.13.0 (latest zig version at the date of last release of the engine) (https://ziglang.org/download/). 
 
-Compile with command `zig build`. You can run python script `build_versions.py` which will compile different versions for windows and linux. Currently there are two basic build: *vintage* and *popcnt*. Vintage version is for really old computers, popcnt is for modern computers. I am not using any AVX2 commands, so there is relly no need to copile AVX2 or AVX-512 versions. 
+Compile with command `zig build`. You can run python script `build_versions.py` which will compile different versions for windows and linux. Currently there are three basic build: *vintage*, *popcnt* and *AVX2*. Vintage version is for really old computers, popcnt is for modern computers, but for best performance use AVX2 release. 
 
 ## Features and implemented algorithms
 
@@ -83,7 +83,9 @@ In February 2024 version v0.4.1 was proposed for testing on CCRL Blitz list, whe
 
 In March 2024 version v0.5.0 was tested on CCRL Blitz list, where it currently stands at 2908 &plusmn; 20 ELO.
 
-Latest version which is v0.5.2 has not been proposed for testing, but I estimate that it is around 2950 &plusmn; 20 ELO.
+Version v0.5.2 has not been proposed for testing, but I estimate that it is around 2950 &plusmn; 20 ELO. In June 2024 version v0.5.2 was listed on CCRL 40/15 list with score 2946 &plusmn; 35 ELO.
+
+Latest version v0.6.0 has not been proposed for testing, but I estimate that it is around 3050 &plusmn; 20 ELO.
 
 ## Credits
 
@@ -98,6 +100,8 @@ Latest version which is v0.5.2 has not been proposed for testing, but I estimate
 - [Koala Chess Engine](https://github.com/Wuelle/Kaola/tree/main) by [Wuelle](https://github.com/Wuelle). The UCI protocol implementation and FEN string parsing are directly derived from the Koala chess engine and slightly updated.
 
 - [Avalanche Chess Engine](https://github.com/SnowballSH/Avalanche/tree/master) by [SnowballSH](https://github.com/SnowballSH). Usefull examples hot to programm chess engine in Zig langugae.
+
+- [Delilah Chess Engine](https://git.sr.ht/~voroskoi/delilah) by [VÖRÖSKŐI András](https://git.sr.ht/~voroskoi/). Usefull example how to implement NNUE in zig.
 
 ## License
 

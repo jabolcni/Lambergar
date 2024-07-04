@@ -7,6 +7,8 @@ const attacks = @import("attacks.zig");
 const zobrist = @import("zobrist.zig");
 const search = @import("search.zig");
 const ms = @import("movescorer.zig");
+const nnue = @import("nnue.zig");
+const bb = @import("bitboard.zig");
 
 const Position = position.Position;
 const Color = position.Color;
@@ -24,6 +26,19 @@ const HASH_SIZE_MAX = 4096;
 
 pub const empty_board = "8/8/8/8/8/8/8/8 w - - ";
 pub const start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 ";
+
+pub var debug = false;
+
+const Chunk = struct {
+    occupancy: u64,
+    //pieces: [32]u4,
+    pieces: u128,
+    score: i16,
+    result: u8,
+    stm_king: u8,
+    nstm_king: u8,
+    extra_info: [3]u8,
+};
 
 pub fn u32_from_str(str: []const u8) u32 {
     var x: u32 = 0;
@@ -65,21 +80,29 @@ pub fn init_all() void {
 }
 
 pub fn uci_loop(allocator: std.mem.Allocator) !void {
-
-    var debug = false;
-
     init_all();
-    tt.TT.init(128 + 1);
+
+    if (nnue.engine_using_nnue) {
+        //try nnue.init(allocator);
+        try nnue.embed_and_init();
+        nnue.engine_loaded_net = true;
+        if (debug) {
+            std.debug.print("NNUE loaded = {}\n", .{nnue.engine_loaded_net});
+        }
+    }
+
+    try tt.TT.init(128 + 1);
     defer tt.tt_allocator.free(tt.TT.ttArray);
 
     var pos = Position.new();
     try pos.set(start_position);
+
     var thinker = Search.new();
     thinker.clear_for_new_game();
     var main_search_thread: std.Thread = undefined;
 
     var buffer = [1]u8{0} ** UCI_COMMAND_MAX_LENGTH;
-    const stdin = std.io.getStdIn().reader();        
+    const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
 
     mainloop: while (true) {
@@ -88,17 +111,21 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
         const input_full = (try stdin.readUntilDelimiter(&buffer, '\n'));
         if (input_full.len == 0) continue :mainloop;
         const input = std.mem.trimRight(u8, input_full, "\r");
-        if (input.len == 0) continue :mainloop;        
+        if (input.len == 0) continue :mainloop;
 
         var words = std.mem.split(u8, input, " ");
         const command = words.next().?;
 
         if (std.mem.eql(u8, command, "uci")) {
-            _ = try std.fmt.format(stdout, "id name Lambergar v0.5.2\n", .{});
+            _ = try std.fmt.format(stdout, "id name Lambergar v0.6.0\n", .{});
             _ = try std.fmt.format(stdout, "id author Janez Podobnik\n", .{});
-            _ = try std.fmt.format(stdout, "option name Hash type spin default {d} min {d} max {d}\n", .{ HASH_SIZE_DEFAULT, HASH_SIZE_MIN, HASH_SIZE_MAX});  
-            _ = try std.fmt.format(stdout, "uciok\n", .{});       
-        } else if (std.mem.eql(u8, command, "go")) {            
+            _ = try std.fmt.format(stdout, "option name Hash type spin default {d} min {d} max {d}\n", .{ HASH_SIZE_DEFAULT, HASH_SIZE_MIN, HASH_SIZE_MAX });
+            //_ = try std.fmt.format(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, 1 });
+            _ = try std.fmt.format(stdout, "option name UseNNUE type check default {s}\n", .{"false"});
+            //_ = try std.fmt.format(stdout, "option name EvalFile type string default \n", .{});
+            _ = try std.fmt.format(stdout, "option name Debug type check default {}\n", .{debug});
+            _ = try std.fmt.format(stdout, "uciok\n", .{});
+        } else if (std.mem.eql(u8, command, "go")) {
             var ponder = false;
             var btime: ?u64 = null;
             var wtime: ?u64 = null;
@@ -137,7 +164,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                 } else if (std.mem.eql(u8, arg, "infinite")) {
                     infinite = true;
                 }
-            }   
+            }
 
             var rem_time: ?u64 = null;
             var rem_enemy_time: ?u64 = null;
@@ -188,13 +215,16 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             tt.TT.increase_age();
 
             main_search_thread = try std.Thread.spawn(std.Thread.SpawnConfig{}, search.start_search, .{ &thinker, &pos });
-            main_search_thread.detach();               
+            main_search_thread.detach();
         } else if (std.mem.eql(u8, command, "quit")) {
-            @atomicStore(bool, &thinker.stop, true, std.builtin.AtomicOrder.Unordered);
+            @atomicStore(bool, &thinker.stop, true, std.builtin.AtomicOrder.unordered);
             break :mainloop;
         } else if (std.mem.eql(u8, command, "exit")) {
-            @atomicStore(bool, &thinker.stop, true, std.builtin.AtomicOrder.Unordered);
-            break :mainloop;            
+            @atomicStore(bool, &thinker.stop, true, std.builtin.AtomicOrder.unordered);
+            break :mainloop;
+        } else if (std.mem.eql(u8, command, "stop")) {
+            //thinker.stop = true;
+            @atomicStore(bool, &thinker.stop, true, std.builtin.AtomicOrder.unordered);
         } else if (std.mem.eql(u8, command, "isready")) {
             _ = try std.fmt.format(stdout, "readyok\n", .{});
         } else if (std.mem.eql(u8, command, "debug")) {
@@ -212,11 +242,35 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     arg = words.next().?;
                     if (std.mem.eql(u8, arg, "value")) {
                         const hash_size = u64_from_str(words.next() orelse continue);
-                        tt.TT.init(hash_size);
+                        try tt.TT.init(hash_size);
                     } else continue;
                 } else if ((std.mem.eql(u8, arg, "Clear")) and (std.mem.eql(u8, words.next().?, "Hash"))) {
                     tt.TT.clear();
-                } else if (std.mem.eql(u8, arg, "Threads")) {} else continue;
+                } else if (std.mem.eql(u8, arg, "Threads")) {
+                    if (debug) {
+                        std.debug.print("Lambergar has only one thread for evaluation, so nothing changes. This option is just for compatibility.\n", .{});
+                    }
+                } else if (std.mem.eql(u8, arg, "UseNNUE")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "true")) {
+                        nnue.engine_using_nnue = nnue.engine_loaded_net;
+                    } else if (std.mem.eql(u8, arg, "false")) {
+                        nnue.engine_using_nnue = false;
+                    } else {
+                        nnue.engine_using_nnue = true;
+                    }
+                    if (debug) {
+                        std.debug.print("UseNNue = {}\n", .{nnue.engine_using_nnue});
+                    }
+                } else if (std.mem.eql(u8, arg, "EvalFile")) {
+                    nnue.engine_loaded_net = false;
+                    const nnue_file_name = words.next() orelse continue :mainloop;
+                    try nnue.init_specific_net(allocator, nnue_file_name);
+                    nnue.engine_loaded_net = true;
+                    if (debug) {
+                        std.debug.print("NNUE loaded = {}\n", .{nnue.engine_loaded_net});
+                    }
+                } else continue;
             } else continue;
         } else if (std.mem.eql(u8, command, "ucinewgame")) {
             thinker.clear_for_new_game();
@@ -256,9 +310,6 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     }
                 }
             }
-        } else if (std.mem.eql(u8, command, "stop")) {
-            //thinker.stop = true;
-            @atomicStore(bool, &thinker.stop, true, std.builtin.AtomicOrder.Unordered);
         } else if (std.mem.eql(u8, command, "board")) {
             pos.print_unicode();
         } else if (std.mem.eql(u8, command, "moves")) {
@@ -308,21 +359,20 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             std.debug.print("SEE thresholds\n", .{});
 
             for (list.items, 1..) |move, i| {
-
                 const thr = ms.see_value(&pos, move, false);
                 std.debug.print("{}. ", .{i});
                 move.print();
                 std.debug.print(" SEE result: {}\n", .{thr});
 
-                    // for (0..2400) |j| {
-                    //     const thr = @as(i32, 1200) - @as(i32, @intCast(j));
-                    //     if (ms.see(&pos, move, thr)) {
-                    //         std.debug.print("{}. ", .{i});
-                    //         move.print();
-                    //         std.debug.print(" SEE result: {}\n", .{thr});
-                    //         break;
-                    //     }
-                    // }
+                // for (0..2400) |j| {
+                //     const thr = @as(i32, 1200) - @as(i32, @intCast(j));
+                //     if (ms.see(&pos, move, thr)) {
+                //         std.debug.print("{}. ", .{i});
+                //         move.print();
+                //         std.debug.print(" SEE result: {}\n", .{thr});
+                //         break;
+                //     }
+                // }
             }
         }
     }

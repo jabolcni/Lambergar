@@ -3,6 +3,7 @@ const position = @import("position.zig");
 const bb = @import("bitboard.zig");
 const attacks = @import("attacks.zig");
 const tuner = @import("tuner.zig");
+const nnue = @import("nnue.zig");
 
 const Position = position.Position;
 const Square = position.Square;
@@ -36,6 +37,8 @@ const eg_queen_table = [64]i32{ -30, -36, -34, -24, -45, -58, -73, -43, -30, -18
 
 const mg_king_table = [64]i32{ -4, 36, 11, -53, -13, -50, 17, 19, 16, 3, -18, -41, -39, -28, 3, 12, 11, -7, -34, -22, -32, -36, -15, -22, 27, -8, -17, -32, -23, -34, -49, -62, -14, -37, -32, -24, -56, -36, -59, -68, -33, -44, 13, -41, -20, -4, -98, -105, -54, -5, 73, 63, 19, -12, -75, -93, 351, 162, 211, 147, 150, 199, 118, 313 };
 const eg_king_table = [64]i32{ -30, -22, -15, -11, -32, -8, -28, -55, -18, -10, 1, 4, 6, 3, -8, -24, -15, 1, 15, 15, 17, 14, 0, -4, -10, 15, 23, 32, 29, 25, 19, 9, 11, 41, 43, 46, 50, 44, 48, 20, 27, 54, 34, 49, 42, 49, 69, 39, 16, 26, 9, 0, 19, 33, 53, 30, -195, -79, -67, -60, -65, -58, -31, -156 };
+//const mg_king_table = [64]i32{ 16, 45, 28, -70, -11, -45, 18, 24, 34, 3, -19, -43, -49, -29, 3, 9, -55, -27, -50, -58, -59, -42, -30, -61, -134, -81, -38, -85, -53, -54, -67, -160, -156, -33, -72, -69, -37, -32, -50, -158, -178, -20, -43, -69, -36, -10, -52, -131, -107, -11, -23, -103, -108, -38, -6, -141, -116, 22, -13, -84, -171, -115, -23, -99 };
+//const eg_king_table = [64]i32{ -73, -54, -23, 2, -16, 1, -31, -67, -43, -9, 13, 17, 20, 15, -4, -28, -23, 1, 25, 41, 44, 24, 4, -7, 6, 27, 46, 63, 54, 43, 22, 2, 13, 31, 59, 75, 71, 55, 41, 22, 28, 51, 67, 85, 81, 64, 61, 33, 24, 61, 93, 87, 92, 78, 73, 24, -112, -21, 20, 45, 79, 85, -7, -75 };
 
 const mg_passed_score = [64]i32{ 0, 0, 0, 0, 0, 0, 0, 0, 0, -6, -11, -13, 3, -10, 4, 12, 5, -9, -14, -23, -3, -22, -17, 21, 10, 0, -13, -3, -15, -34, -49, 0, 30, 26, 17, 10, 5, -3, -16, -4, 77, 62, 49, 31, 0, 2, -25, -9, 67, 71, 64, 73, 57, 38, -23, 4, 0, 0, 0, 0, 0, 0, 0, 0 };
 const eg_passed_score = [64]i32{ 0, 0, 0, 0, 0, 0, 0, 0, 12, 22, 14, 18, 12, 13, 25, 11, 16, 28, 17, 18, 17, 24, 40, 11, 43, 50, 39, 30, 36, 48, 71, 43, 73, 73, 59, 56, 54, 66, 77, 63, 126, 121, 105, 95, 87, 104, 106, 120, 96, 87, 82, 66, 65, 75, 97, 95, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -192,10 +195,10 @@ pub fn init_eval() void {
 pub fn init_pesto_tables() void {
     for (PieceType.Pawn.toU3() ..(PieceType.King.toU3()+1)) |piece| {
         for (Square.a1.toU7()..(Square.h8.toU7()+1)) |s_idx| {
-            midgame_table[Color.White.toU4()][piece][s_idx] = mg_pesto_table[piece][s_idx];
-            endgame_table[Color.White.toU4()][piece][s_idx] = eg_pesto_table[piece][s_idx];
-            midgame_table[Color.Black.toU4()][piece][s_idx] = mg_pesto_table[piece][s_idx^56];
-            endgame_table[Color.Black.toU4()][piece][s_idx] = eg_pesto_table[piece][s_idx^56];         
+           (&midgame_table)[Color.White.toU4()][piece][s_idx] = (&mg_pesto_table)[piece][s_idx];
+           (&endgame_table)[Color.White.toU4()][piece][s_idx] = (&eg_pesto_table)[piece][s_idx];
+           (&midgame_table)[Color.Black.toU4()][piece][s_idx] = (&mg_pesto_table)[piece][s_idx^56];
+           (&endgame_table)[Color.Black.toU4()][piece][s_idx] = (&eg_pesto_table)[piece][s_idx^56];         
         }
     }
 }
@@ -210,21 +213,21 @@ pub const Evaluation = struct {
         const pc_type_idx = pc.type_of().toU3();
 
         if (pc.color() == Color.White) {
-            self.eval_mg += material_mg[pc_type_idx];
-            self.eval_eg += material_eg[pc_type_idx];
+            self.eval_mg += (&material_mg)[pc_type_idx];
+            self.eval_eg += (&material_eg)[pc_type_idx];
             
-            self.eval_mg += midgame_table[Color.White.toU4()][pc_type_idx][s_idx];
-            self.eval_eg += endgame_table[Color.White.toU4()][pc_type_idx][s_idx];            
+            self.eval_mg += (&midgame_table)[Color.White.toU4()][pc_type_idx][s_idx];
+            self.eval_eg += (&endgame_table)[Color.White.toU4()][pc_type_idx][s_idx];            
 
-            self.phase[Color.White.toU4()] += phaseValues[pc_type_idx];
+            self.phase[Color.White.toU4()] += (&phaseValues)[pc_type_idx];
         } else {
-            self.eval_mg -= material_mg[pc_type_idx];
-            self.eval_eg -= material_eg[pc_type_idx];
+            self.eval_mg -= (&material_mg)[pc_type_idx];
+            self.eval_eg -= (&material_eg)[pc_type_idx];
 
-            self.eval_mg -= midgame_table[Color.Black.toU4()][pc_type_idx][s_idx];
-            self.eval_eg -= endgame_table[Color.Black.toU4()][pc_type_idx][s_idx];            
+            self.eval_mg -= (&midgame_table)[Color.Black.toU4()][pc_type_idx][s_idx];
+            self.eval_eg -= (&endgame_table)[Color.Black.toU4()][pc_type_idx][s_idx];            
 
-            self.phase[Color.Black.toU4()] += phaseValues[pc_type_idx];
+            (&self.phase)[Color.Black.toU4()] += (&phaseValues)[pc_type_idx];
         }
     }
 
@@ -237,16 +240,16 @@ pub const Evaluation = struct {
                 self.eval_mg -= material_mg[pc_type_idx];
                 self.eval_eg -= material_eg[pc_type_idx];
                 
-                self.eval_mg -= midgame_table[Color.White.toU4()][pc_type_idx][s_idx];
-                self.eval_eg -= endgame_table[Color.White.toU4()][pc_type_idx][s_idx];            
+                self.eval_mg -= (&midgame_table)[Color.White.toU4()][pc_type_idx][s_idx];
+                self.eval_eg -= (&endgame_table)[Color.White.toU4()][pc_type_idx][s_idx];            
 
                 self.phase[Color.White.toU4()] -= phaseValues[pc_type_idx];
             } else {
                 self.eval_mg += material_mg[pc_type_idx];
                 self.eval_eg += material_eg[pc_type_idx];
 
-                self.eval_mg += midgame_table[Color.Black.toU4()][pc_type_idx][s_idx];
-                self.eval_eg += endgame_table[Color.Black.toU4()][pc_type_idx][s_idx];            
+                self.eval_mg += (&midgame_table)[Color.Black.toU4()][pc_type_idx][s_idx];
+                self.eval_eg += (&endgame_table)[Color.Black.toU4()][pc_type_idx][s_idx];            
 
                 self.phase[Color.Black.toU4()] -= phaseValues[pc_type_idx];
             }   
@@ -258,17 +261,17 @@ pub const Evaluation = struct {
 
         if (pc != Piece.NO_PIECE) {
             if (pc.color() == Color.White) {
-                self.eval_mg -= midgame_table[Color.White.toU4()][pc_type_idx][from];
-                self.eval_eg -= endgame_table[Color.White.toU4()][pc_type_idx][from];            
+                self.eval_mg -= (&midgame_table)[Color.White.toU4()][pc_type_idx][from];
+                self.eval_eg -= (&endgame_table)[Color.White.toU4()][pc_type_idx][from];            
  
-                self.eval_mg += midgame_table[Color.White.toU4()][pc_type_idx][to];
-                self.eval_eg += endgame_table[Color.White.toU4()][pc_type_idx][to];            
+                self.eval_mg += (&midgame_table)[Color.White.toU4()][pc_type_idx][to];
+                self.eval_eg += (&endgame_table)[Color.White.toU4()][pc_type_idx][to];            
             } else {
-                self.eval_mg += midgame_table[Color.Black.toU4()][pc_type_idx][from];
-                self.eval_eg += endgame_table[Color.Black.toU4()][pc_type_idx][from];            
+                self.eval_mg += (&midgame_table)[Color.Black.toU4()][pc_type_idx][from];
+                self.eval_eg += (&endgame_table)[Color.Black.toU4()][pc_type_idx][from];            
 
-                self.eval_mg -= midgame_table[Color.Black.toU4()][pc_type_idx][to];
-                self.eval_eg -= endgame_table[Color.Black.toU4()][pc_type_idx][to];            
+                self.eval_mg -= (&midgame_table)[Color.Black.toU4()][pc_type_idx][to];
+                self.eval_eg -= (&endgame_table)[Color.Black.toU4()][pc_type_idx][to];            
             }   
         } 
 
@@ -306,8 +309,8 @@ pub const Evaluation = struct {
 
             while (b1 != 0) {
                 const s_idx = bb.pop_lsb(&b1);
-                pos_white_mg += midgame_table[Color.White.toU4()][pc_type_idx][s_idx];
-                pos_white_eg += endgame_table[Color.White.toU4()][pc_type_idx][s_idx];
+                pos_white_mg += (&midgame_table)[Color.White.toU4()][pc_type_idx][s_idx];
+                pos_white_eg += (&endgame_table)[Color.White.toU4()][pc_type_idx][s_idx];
                 //tnr.psqt[0][pc_type_idx][s_idx] += 1;
             }
 
@@ -325,8 +328,8 @@ pub const Evaluation = struct {
 
             while (b1 != 0) {
                 const s_idx = bb.pop_lsb(&b1);
-                pos_black_mg += midgame_table[Color.Black.toU4()][pc_type_idx][s_idx];
-                pos_black_eg += endgame_table[Color.Black.toU4()][pc_type_idx][s_idx];
+                pos_black_mg += (&midgame_table)[Color.Black.toU4()][pc_type_idx][s_idx];
+                pos_black_eg += (&endgame_table)[Color.Black.toU4()][pc_type_idx][s_idx];
                 //tnr.psqt[1][pc_type_idx][s_idx^56] += 1;
             }
 
@@ -389,6 +392,18 @@ pub const Evaluation = struct {
     }    
 
     pub fn eval(self: *Evaluation, pos: *Position, comptime perspective_color: Color) i32 {
+
+        if (nnue.engine_using_nnue) {
+            const nnue_pos = nnue.NNUEPosition.calculate(pos.*);
+            const curr_accu = nnue.refreshAccumulator(nnue_pos);
+            return nnue.evaluate(curr_accu, perspective_color);
+        } else {
+            return self.evalHCE(pos, perspective_color);
+        }
+
+    }
+
+    pub fn evalHCE(self: *Evaluation, pos: *Position, comptime perspective_color: Color) i32 {
 
         const phase_bounded: i32 = @intCast(@min(self.phase[Color.White.toU4()]+self.phase[Color.Black.toU4()], 64));
         const perspective = if (perspective_color == Color.White) @as(i32, 1) else @as(i32, -1);

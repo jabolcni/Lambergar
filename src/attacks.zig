@@ -313,8 +313,8 @@ pub var PSEUDO_LEGAL_ATTACKS: [position.NPIECE_TYPES][64]u64 = std.mem.zeroes([p
 //Initializes the table containg pseudolegal attacks of each piece for each square. This does not include blockers
 //for sliding pieces
 pub inline fn initialise_pseudo_legal() void {
-    std.mem.copyBackwards(u64, PAWN_ATTACKS[0][0..64], WHITE_PAWN_ATTACKS[0..64]);
-    std.mem.copyBackwards(u64, PAWN_ATTACKS[1][0..64], BLACK_PAWN_ATTACKS[0..64]);
+    std.mem.copyBackwards(u64, (&PAWN_ATTACKS)[0][0..64], WHITE_PAWN_ATTACKS[0..64]);
+    std.mem.copyBackwards(u64, (&PAWN_ATTACKS)[1][0..64], BLACK_PAWN_ATTACKS[0..64]);
     std.mem.copyBackwards(u64, PSEUDO_LEGAL_ATTACKS[PieceType.Knight.toU3()][0..64], KNIGHT_ATTACKS[0..64]);
     std.mem.copyBackwards(u64, PSEUDO_LEGAL_ATTACKS[PieceType.King.toU3()][0..64], KING_ATTACKS[0..64]);
     for (sq_iter) |s| {
@@ -341,7 +341,7 @@ pub inline fn piece_attacks(sq_idx: u6, occ: u64, P: PieceType) u64 {
         PieceType.Rook => get_rook_attacks(sq_idx, occ),
         PieceType.Bishop => get_bishop_attacks(sq_idx, occ),
         PieceType.Queen => get_rook_attacks(sq_idx, occ) | get_bishop_attacks(sq_idx, occ),
-        else => PSEUDO_LEGAL_ATTACKS[P.toU3()][sq_idx],
+        else => (&PSEUDO_LEGAL_ATTACKS)[P.toU3()][sq_idx],
     };
 }
 
@@ -365,9 +365,9 @@ pub inline fn pawn_attacks_from_bitboard(p: u64, comptime c: Color) u64 {
 }
 
 pub inline fn pawn_attacks_from_square_Sq(s: Square, comptime c: Color) u64 {
-    return PAWN_ATTACKS[c.toU4()][s.toU6()];
+    return (&PAWN_ATTACKS)[c.toU4()][s.toU6()];
 }
 
 pub inline fn pawn_attacks_from_square(s: u6, comptime c: Color) u64 {
-    return PAWN_ATTACKS[c.toU4()][s];
+    return (&PAWN_ATTACKS)[c.toU4()][s];
 }

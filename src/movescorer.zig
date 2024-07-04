@@ -63,19 +63,22 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayL
             } else {
                 const side: u4 = if (color == Color.White) Color.White.toU4() else Color.Black.toU4();
                 var piece = pos.board[move.from];
-                score = search.sc_history[side][move.from][move.to];
+                //score = search.sc_history[side][move.from][move.to];
+                score = search.get_sh(side, move.from, move.to);
                 if (search.ply >= 1) {
                     var parent = search.ns_stack[search.ply - 1].move;
                     var p_piece = search.ns_stack[search.ply - 1].piece;
                     if (!parent.is_empty()) {
-                        score += search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to];
+                        //score += search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to];
+                        score += search.get_ch(p_piece.toU4(), parent.to, piece.toU4(), move.to);
                     }
                 }
                 if (search.ply >= 2) {
                     var gparent = search.ns_stack[search.ply - 2].move;
                     var gp_piece = search.ns_stack[search.ply - 2].piece;
                     if (!gparent.is_empty()) {
-                        score += search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to];
+                        //score += search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to];
+                        score += search.get_fh(gp_piece.toU4(), gparent.to, piece.toU4(), move.to);
                     }
                 }
             }
@@ -85,10 +88,32 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayL
     }
 }
 
+// pub inline fn get_next_best(move_list: *std.ArrayList(Move), score_list: *std.ArrayList(i32), i: usize) Move {
+//     var best_j = i;
+//     var max_score = score_list.items[i];
+
+//     for (score_list.items[i + 1 ..], i + 1..) |score, j| {
+//         if (score > max_score) {
+//             best_j = j;
+//             max_score = score;
+//         }
+//     }
+
+//     if (best_j != i) {
+//         std.mem.swap(Move, &move_list.items[i], &move_list.items[best_j]);
+//         std.mem.swap(i32, &score_list.items[i], &score_list.items[best_j]);
+//     }
+//     return move_list.items[i];
+// }
+
 pub inline fn get_next_best(move_list: *std.ArrayList(Move), score_list: *std.ArrayList(i32), i: usize) Move {
     var best_j = i;
     var max_score = score_list.items[i];
 
+    const move_list_items = move_list.items;
+    const score_list_items = score_list.items;
+
+    // Start from i+1 and iterate over the remaining elements
     for (score_list.items[i + 1 ..], i + 1..) |score, j| {
         if (score > max_score) {
             best_j = j;
@@ -96,11 +121,17 @@ pub inline fn get_next_best(move_list: *std.ArrayList(Move), score_list: *std.Ar
         }
     }
 
+    // Swap if a better move is found
     if (best_j != i) {
-        std.mem.swap(Move, &move_list.items[i], &move_list.items[best_j]);
-        std.mem.swap(i32, &score_list.items[i], &score_list.items[best_j]);
+        const best_move = move_list_items[best_j];
+        const best_score = score_list_items[best_j];
+        move_list_items[best_j] = move_list_items[i];
+        score_list_items[best_j] = score_list_items[i];
+        move_list_items[i] = best_move;
+        score_list_items[i] = best_score;
     }
-    return move_list.items[i];
+
+    return move_list_items[i];
 }
 
 pub inline fn see(pos: *Position, move: Move, thr: i32) bool {

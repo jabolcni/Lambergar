@@ -260,7 +260,6 @@ pub const Piece = enum(u4) {
     pub inline fn toU4(self: Piece) u4 {
         return @as(u4, @intFromEnum(self));
     }
-
 };
 
 pub const File = enum(u3) {
@@ -833,11 +832,7 @@ pub const Position = struct {
 
     pub inline fn is_draw(self: *Position) bool {
 
-        if (self.is_fifty() or self.is_insufficient_material()) {
-            return true;
-        }
-
-        if (self.is_repetition()) {
+        if (self.is_fifty() or self.is_insufficient_material() or self.is_repetition()) {
             return true;
         }
 

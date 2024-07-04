@@ -1,6 +1,7 @@
 const std = @import("std");
 const position = @import("position.zig");
 const search = @import("search.zig");
+const uci = @import("uci.zig");
 
 const Move = position.Move;
 
@@ -36,10 +37,10 @@ pub const scoreEntry = packed struct {
     move: Move, // 16-bits
     score: i32,
     bound: Bound, // 2-bits
-    depth: u8,
+    depth: i8,
     age: u6,
 
-    pub fn new(k: u64, m: Move, s: i32, b: Bound, d: u8, a: u6) scoreEntry {
+    pub fn new(k: u64, m: Move, s: i32, b: Bound, d: i8, a: u6) scoreEntry {
         return scoreEntry{
             .hash_key = k,
             .move = m,
@@ -59,23 +60,30 @@ pub const TranspositionTable = struct {
     mask: u64,
     age: u6,
 
-    pub fn init(self: *TranspositionTable, size_mb: u64) void {
+    pub fn init(self: *TranspositionTable, size_mb: u64) !void {
         tt_allocator.free(self.ttArray);
 
         const size: usize = @as(usize, 1) << (std.math.log2_int(usize, size_mb * MB / @sizeOf(scoreEntry)));
 
-        std.debug.print("Hash size in item numbers: {}\n", .{size});
-        std.debug.print("Hash size in MB: {}\n", .{size * @sizeOf(scoreEntry) / MB});
-        std.debug.print("Hash size in bytes: {}\n", .{size * @sizeOf(scoreEntry)});
+        if (uci.debug) {
+            std.debug.print("Hash size in item numbers: {}\n", .{size});
+            std.debug.print("Hash size in MB: {}\n", .{size * @sizeOf(scoreEntry) / MB});
+            std.debug.print("Hash size in bytes: {}\n", .{size * @sizeOf(scoreEntry)});
+        }
 
-        const tt = TranspositionTable{
-            .ttArray = tt_allocator.alloc(u128, size) catch unreachable,
-            .size = size,
-            .mask = size - 1,
-            .age = 0,
-        };
+        // const tt = TranspositionTable{
+        //     .ttArray = tt_allocator.alloc(u128, size) catch unreachable,
+        //     .size = size,
+        //     .mask = size - 1,
+        //     .age = 0,
+        // };
 
-        self.* = tt;
+        // self.* = tt;
+        self.ttArray = try tt_allocator.alloc(u128, size);
+        self.size = size;
+        self.mask = size - 1;
+        self.age = 0;
+
         self.clear();
     }
 
@@ -118,11 +126,11 @@ pub const TranspositionTable = struct {
 
     inline fn set(self: *TranspositionTable, entry: scoreEntry) void {
         // For modern win arhitectures
-        //_ = @atomicRmw(u128, &self.ttArray.items[self.index(entry.hash_key)], .Xchg, @as(*const u128, @ptrCast(&entry)).*, .AcqRel);
+        //_ = @atomicRmw(u128, &self.ttArray[self.index(entry.hash_key)], .Xchg, @as(*const u128, @ptrCast(&entry)).*, .acquire);
         // For Linux binaries
         const p = &self.ttArray[self.index(entry.hash_key)];
-        _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p))), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry))).*, .Acquire);
-        _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p) + 8)), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry) + 8)).*, .Acquire);
+        _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p))), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry))).*, .acquire);
+        _ = @atomicRmw(u64, @as(*u64, @ptrFromInt(@intFromPtr(p) + 8)), .Xchg, @as(*u64, @ptrFromInt(@intFromPtr(&entry) + 8)).*, .acquire);
     }
 
     pub inline fn store(self: *TranspositionTable, entry: scoreEntry) void {
@@ -150,7 +158,7 @@ pub const TranspositionTable = struct {
 
     inline fn get(self: *TranspositionTable, hash: u64) scoreEntry {
         // For modern win arhitectures
-        //var raw = @atomicLoad(u128, &self.ttArray.items[self.index(hash)], .Acquire);
+        //var raw = @atomicLoad(u128, &self.ttArray[self.index(hash)], .acquire);
         //return @as(*scoreEntry, @ptrCast(&raw)).*;
         // For Linux binaries
         return @as(*scoreEntry, @as(*scoreEntry, @ptrCast(&self.ttArray[self.index(hash)]))).*;

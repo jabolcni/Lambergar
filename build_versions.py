@@ -43,7 +43,7 @@ def extract_version(filename):
             if '"id name Lambergar v' in line:
                 start = line.find('Lambergar v') + len('Lambergar v')
                 end = line.find('"', start)
-                version = line[start:end]
+                version = line[start:end-2]
                 return version
             
 def build_ver(command, bin_dir):
@@ -68,8 +68,8 @@ build_ver(command, bin_dir)
 command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64_v2 --prefix "lambergar-v{version}-x86_64-win-POPCNT"'
 build_ver(command, bin_dir)
 
-#command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-v{version}-x86_64-win-AVX2"'
-#build_ver(command, bin_dir)
+command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-v{version}-x86_64-win-AVX2"'
+build_ver(command, bin_dir)
 
 #command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64_v4 --prefix "lambergar-v{version}-x86_64-win-AVX-512"'
 #build_ver(command, bin_dir)
@@ -81,8 +81,8 @@ build_ver(command, bin_dir)
 command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v2 --prefix "lambergar-v{version}-x86_64-linux-POPCNT"'
 build_ver(command, bin_dir)
 
-#command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-v{version}-x86_64-linux-AVX2"'
-#build_ver(command, bin_dir)
+command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-v{version}-x86_64-linux-AVX2"'
+build_ver(command, bin_dir)
 
 #command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v4 --prefix "lambergar-v{version}-x86_64-linux-AVX-512"'
 #build_ver(command, bin_dir)
