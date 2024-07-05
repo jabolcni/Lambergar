@@ -12,7 +12,7 @@
 
 ## Introduction
 
-Lambergar is a chess engine developed in the Zig programming language. It uses UCI protocol and HCE (human crafted evaluation) for evaluting the chess positions to find the best mobve. I set out on this project with a defined set of specific objectives in mind:
+Lambergar is a chess engine developed in the Zig programming language. It uses UCI protocol and neural network or HCE (human crafted evaluation) for evaluting the chess positions to find the best mobve. I set out on this project with a defined set of specific objectives in mind:
 
 - *Chess Engine Creation*: the desire to construct a chess engine from the ground up. 
 - *Resourceful Development*: while I aimed to build it independently, I also sought to leverage existing resources and learn from the codebase of other engines. I found that, at least in my case, resources from [Chess Programming Wiki](https://www.chessprogramming.org/) are great to understand the concepts, however the code from open-source engines actually tells you how to practically implement the concept, especially the more complex ones.
