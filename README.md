@@ -12,28 +12,28 @@
 
 ## Introduction
 
-Lambergar is a chess engine developed in the Zig programming language. It uses UCI protocol and neural network or HCE (human crafted evaluation) for evaluting the chess positions to find the best mobve. I set out on this project with a defined set of specific objectives in mind:
+Lambergar is a chess engine developed in the Zig programming language. It uses UCI protocol and HCE (human crafted evaluation) for evaluting the chess positions to find the best mobve. I set out on this project with a defined set of specific objectives in mind:
 
-- *Chess Engine Creation*: the desire to construct a chess engine from the ground up. 
+- *Chess Engine Creation*: the desire to construct a chess engine from the ground up.
 - *Resourceful Development*: while I aimed to build it independently, I also sought to leverage existing resources and learn from the codebase of other engines. I found that, at least in my case, resources from [Chess Programming Wiki](https://www.chessprogramming.org/) are great to understand the concepts, however the code from open-source engines actually tells you how to practically implement the concept, especially the more complex ones.
 - *Learning Zig*: I saw this as an opportunity not only to build a chess engine but also to learn a new programming language, which will also be usefull for my job as an engineer.
 
 Inspiration was drawn from:
 
-- YouTube tutorial series, "Bitboard CHESS ENGINE in C" by Code Monkey King (https://www.youtube.com/playlist?list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs),
-- YouTube tutorial series, "Programming A Chess Engine in C " by Bluefever Software (https://www.youtube.com/watch?v=bGAfaepBco4&list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg&index=2&ab_channel=BluefeverSoftware),
-- Koala Chess Engine by Wuelle (https://github.com/Wuelle/Kaola/tree/main),
-- Avalanche Chess Engine by SnowballSH (https://github.com/SnowballSH/Avalanche/tree/master),
-- surge, fast bitboard-based legal chess move generator written in C++ (https://github.com/nkarve/surge)
+- YouTube tutorial series, "Bitboard CHESS ENGINE in C" by Code Monkey King (<https://www.youtube.com/playlist?list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs>),
+- YouTube tutorial series, "Programming A Chess Engine in C " by Bluefever Software (<https://www.youtube.com/watch?v=bGAfaepBco4&list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg&index=2&ab_channel=BluefeverSoftware>),
+- Koala Chess Engine by Wuelle (<https://github.com/Wuelle/Kaola/tree/main>),
+- Avalanche Chess Engine by SnowballSH (<https://github.com/SnowballSH/Avalanche/tree/master>),
+- surge, fast bitboard-based legal chess move generator written in C++ (<https://github.com/nkarve/surge>)
 - Several opensource chess engines written in C and C++ (igel, xipos, ...).
 
 The name "Lambergar" is a nod to the Slovenian folk romance, Pegam and Lambergar, which recounts the epic struggle between Jan Vitovec and Krištof Lambergar (Lamberg). This narrative of fortitude and rivalry provided a fitting namesake for this chess engine.
 
-## Compilation 
+## Compilation
 
-If you want to complile code yourself, code can be compiled with zig compiler version 0.13.0 (latest zig version at the date of last release of the engine) (https://ziglang.org/download/). 
+If you want to complile code yourself, code can be compiled with zig compiler version 0.13.0 (latest zig version at the date of last release of the engine) (<https://ziglang.org/download/>).
 
-Compile with command `zig build`. You can run python script `build_versions.py` which will compile different versions for windows and linux. Currently there are three basic build: *vintage*, *popcnt* and *AVX2*. Vintage version is for really old computers, popcnt is for modern computers, but for best performance use AVX2 release. 
+Compile with command `zig build`. You can run python script `build_versions.py` which will compile different versions for windows and linux. Currently there are three basic build: *vintage*, *popcnt* and *AVX2*. Vintage version is for really old computers, popcnt is for modern computers, but for best performance use AVX2 release.
 
 ## Features and implemented algorithms
 
@@ -57,15 +57,16 @@ Compile with command `zig build`. You can run python script `build_versions.py` 
 - Collecting PV line
 - Null move pruning
 - Basic time controls
-- Typical pruning algorithms, reductions and extensions 
+- Typical pruning algorithms, reductions and extensions
 
 ## Tuning
 
 This version comes with option to tune evaluation parameters (material values and PSQT values).
 
-Go into directory `tuner`. Run python script `python tuner.py --mode on` which will change the mode of the zig code of the Lamberger engine for tuning. Compile the engine with `zig build` command. In `tuner.zig` line `var file = try std.fs.cwd().openFile("quiet-labeled.epd", .{});` write the name of the file with position and results of the game. File with positions should have fen position followed with either `[1.0]` for white won, `[0.5]` draw or `[0.0]` for black won. 
+Go into directory `tuner`. Run python script `python tuner.py --mode on` which will change the mode of the zig code of the Lamberger engine for tuning. Compile the engine with `zig build` command. In `tuner.zig` line `var file = try std.fs.cwd().openFile("quiet-labeled.epd", .{});` write the name of the file with position and results of the game. File with positions should have fen position followed with either `[1.0]` for white won, `[0.5]` draw or `[0.0]` for black won.
 Example:
-```
+
+```bash
 2r2rk1/ppN1nppp/5q2/8/3p4/3B4/PPPQ1PPP/3R2K1 w - - [0.0]
 8/5R2/5K2/8/4r3/5k2/8/8 w - - [0.5]
 rnb1k2r/2p1bppp/1p2pn2/pP6/3NP3/P1NB4/5PPP/R1BQK2R b KQkq - [1.0]
@@ -77,23 +78,25 @@ Now run python script `convert_to_pickle.py` which will convert `data.csv` into 
 
 ## Strenght
 
-In November 2023 version v0.3.1 was proposed for testing on CCRL Blitz list, where it current stands at 2368 &plusmn; 20 ELO. 
+In November 2023 version v0.3.1 was proposed for testing on CCRL Blitz list, where it current stands at 2368 &plusmn; 20 ELO.
 
-In February 2024 version v0.4.1 was proposed for testing on CCRL Blitz list, where it current stands at 2687 &plusmn; 20 ELO. 
+In February 2024 version v0.4.1 was proposed for testing on CCRL Blitz list, where it current stands at 2687 &plusmn; 20 ELO.
 
 In March 2024 version v0.5.0 was tested on CCRL Blitz list, where it currently stands at 2908 &plusmn; 20 ELO.
 
-Version v0.5.2 has not been proposed for testing, but I estimate that it is around 2950 &plusmn; 20 ELO. In June 2024 version v0.5.2 was listed on CCRL 40/15 list with score 2946 &plusmn; 35 ELO.
+In June 2024 version v0.5.2 was listed on CCRL 40/15 list with score 2946 &plusmn; 35 ELO.
 
-Latest version v0.6.0 has not been proposed for testing, but I estimate that it is around 3050 &plusmn; 20 ELO.
+In late 2024 version v0.6.0 was listed on CCRL 40/15 list and CCRL Blitz list with score 3098 &plusmn; 17 ELO.
+
+I estimate that strenght of the version 1.0 is around 3180-3200 ELO. 
 
 ## Credits
 
 - [Chess Programming Wiki](https://www.chessprogramming.org/)
 
--  [BitBoard Chess Engine in C YouTube playlist](https://www.youtube.com/playlist?list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs) by [@maksimKorzh](https://github.com/maksimKorzh) in which the authors explains the developement of [BBC](https://github.com/maksimKorzh/bbc) engine
+- [BitBoard Chess Engine in C YouTube playlist](https://www.youtube.com/playlist?list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs) by [@maksimKorzh](https://github.com/maksimKorzh) in which the authors explains the developement of [BBC](https://github.com/maksimKorzh/bbc) engine
 
--  [Programming A Chess Engine in C](https://www.youtube.com/watch?v=bGAfaepBco4&list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg&index=2&ab_channel=BluefeverSoftware) by Bluefever Software in which the authors explains the developement of Vice engine
+- [Programming A Chess Engine in C](https://www.youtube.com/watch?v=bGAfaepBco4&list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg&index=2&ab_channel=BluefeverSoftware) by Bluefever Software in which the authors explains the developement of Vice engine
 
 - [surge](https://github.com/nkarve/surge) by [nkarve](https://github.com/nkarve). Move generator is a translation of surge move generator in zig with several bug fixes.
 

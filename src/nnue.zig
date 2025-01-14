@@ -1,5 +1,3 @@
-/// This NNUE code is based on https://github.com/dshawul/nnue-probe
-/// which is a modified version of the CFish nnue code.
 const std = @import("std");
 
 const position = @import("position.zig");
@@ -9,99 +7,82 @@ const Position = position.Position;
 const Move = position.Move;
 const Color = position.Color;
 const Piece = position.Piece;
+const PieceType = position.PieceType;
 const Square = position.Square;
 
 const L1 = 128;
 const L2 = 16;
 const L3 = 16;
 
-const NNUE_FILE = "debevec.nnue";
+const NNUE_FILE = "zolnir.nnue";
 const fileNNUE = @embedFile(NNUE_FILE);
 
 pub var engine_loaded_net: bool = true;
 pub var engine_using_nnue: bool = true;
 
-// 2*(pawns(8), knights(2), bishops(2), rooks(2), queen, king)
-// +1 for the ending empty piece that Stockfish nnue expects
-pub const PIECE_COUNT = 2 * (8 + 2 + 2 + 2 + 1 + 1) + 1;
-comptime {
-    std.debug.assert(PIECE_COUNT == 33);
-}
-
 pub const Accumulator = struct {
     accumulation: [2][L1]i16 = undefined,
-    computedAccumulation: bool = false,
+    eval: i32 = undefined,
+    computed_accumulation: bool = false,
+    computed_score: bool = false,
 };
 
-pub const NNUEData = struct {
-    accumulator: Accumulator = Accumulator{},
-};
+pub const DeltaPieces = struct {
+    count: usize = 0,
+    pieces: [3]u4 = undefined,
+    from: [3]?u6 = undefined,
+    to: [3]?u6 = undefined,
 
-const IndexList = std.BoundedArray(usize, 30);
+    pub fn reset(self: *DeltaPieces) void {
+        self.count = 0;
+    }
 
-pub fn evaluate(curr_accu: Accumulator, player: Color) i32 {
-    const FV_SCALE = 16;
-    const NetData = struct {
-        input: [FT_OUT_DIM]u8,
-        l1_out: [L2]u8,
-        l2_out: [L2]u8,
-    };
-    var buf: NetData = undefined;
+    pub inline fn move_piece_quiet(self: *DeltaPieces, pc: Piece, from: u6, to: u6) void {
+        // if (pc == Piece.NO_PIECE) {
+        //     @panic("DeltaPieces is Piece.NO_PIECE.");
+        // }
+        self.pieces[self.count] = pc.toU4();
+        self.from[self.count] = from;
+        self.to[self.count] = to;
+        self.count += 1;
+    }
 
-    transform(curr_accu, player, &buf.input);
+    pub inline fn remove_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
+        // if (pc == Piece.NO_PIECE) {
+        //     @panic("remove_piece: DeltaPieces is Piece.NO_PIECE.");
+        // }
+        // if (self.count >= 3) {
+        //     @panic("DeltaPieces can track only up to 3 changes.");
+        // }
+        self.pieces[self.count] = pc.toU4();
+        self.from[self.count] = sq;
+        self.to[self.count] = null;
+        self.count += 1;
+    }
 
-    affineTxfm(&buf.input, &buf.l1_out, &l1_biases, &l1_weights);
+    pub inline fn put_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
+        // if (pc == Piece.NO_PIECE) {
+        //     @panic("put_piece: DeltaPieces is Piece.NO_PIECE.");
+        // }
+        // if (self.count >= 3) {
+        //     @panic("DeltaPieces can track only up to 3 changes.");
+        // }
+        self.pieces[self.count] = pc.toU4();
+        self.from[self.count] = null;
+        self.to[self.count] = sq;
+        self.count += 1;
+    }
 
-    affineTxfm(&buf.l1_out, &buf.l2_out, &l2_biases, &l2_weights);
+    pub inline fn move_piece(self: *DeltaPieces, from_pc: Piece, to_pc: Piece, from: u6, to: u6) void {
+        self.move_piece_quiet(from_pc, from, to);
+        self.remove_piece(to_pc, to);
+    }
 
-    const out_value = affinePropagate(&buf.l2_out, &out_biases, &out_weights);
-
-    const ret = @divTrunc(out_value, FV_SCALE);
-
-    return @as(i32, @intCast(ret));
-}
-
-pub const NNUEPosition = struct {
-    player: Color = undefined,
-    pieces: [PIECE_COUNT]u4 = undefined, // NNUE_PIECES
-    squares: [PIECE_COUNT]u6 = undefined, // NNUE_SQUARES
-
-    pub fn calculate(bns: Position) NNUEPosition {
-        var ret: NNUEPosition = undefined;
-
-        var index: usize = 2; // 0 and 1 are reserved for the two kings
-
-        for (Piece.WHITE_PAWN.toU4()..Piece.BLACK_KING.toU4() + 1) |pc| {
-            var bitboard = bns.piece_bb[pc];
-
-            while (bitboard != 0) {
-                const square = bb.pop_lsb(&bitboard);
-
-                switch (pc) {
-                    5 => {
-                        ret.pieces[0] = @as(u4, @intCast(pc));
-                        ret.squares[0] = square;
-                    },
-                    13 => {
-                        ret.pieces[1] = @as(u4, @intCast(pc));
-                        ret.squares[1] = square;
-                    },
-                    6, 7, 14 => {},
-                    else => {
-                        ret.pieces[index] = @as(u4, @intCast(pc));
-                        ret.squares[index] = square;
-                        index += 1;
-                    },
-                }
-            }
+    pub fn debug_print(self: *DeltaPieces) void {
+        std.debug.print("DeltaPieces (count = {}):\n", .{self.count});
+        for (0..self.count) |i| {
+            std.debug.print("  Piece: {}, From: {}, To: {}\n", .{ self.pieces[i], self.from[i], self.to[i] });
         }
-
-        ret.pieces[index] = 14;
-        ret.squares[index] = 0;
-
-        ret.player = bns.side_to_play;
-
-        return ret;
     }
 };
 
@@ -190,7 +171,7 @@ comptime {
     std.debug.assert(FT_OUT_DIM % (L2 * 2) == 0);
 }
 
-fn readU32(data: []const u8, offset: usize) u32 {
+fn read_U32(data: []const u8, offset: usize) u32 {
     return std.mem.readInt(u32, @ptrCast(data[offset .. offset + @sizeOf(u32)]), .little);
 }
 
@@ -216,13 +197,13 @@ pub fn verify_integrity(nnue_data: []u8) !void {
 
     const version = std.mem.readInt(u32, nnue_data[0..4], .little);
     try std.testing.expectEqual(NNUE_VERSION, version);
-    const hash = readU32(nnue_data, 4);
+    const hash = read_U32(nnue_data, 4);
     try std.testing.expectEqual(HASH, hash);
-    const desc_len = readU32(nnue_data, 8);
+    const desc_len = read_U32(nnue_data, 8);
     try std.testing.expectEqual(DESCRIPTION_LENGTH, desc_len);
-    const tf_hash = readU32(nnue_data, TR_START);
+    const tf_hash = read_U32(nnue_data, TR_START);
     try std.testing.expectEqual(TRANSFORMER_HASH, tf_hash);
-    const net_hash = readU32(nnue_data, NN_START);
+    const net_hash = read_U32(nnue_data, NN_START);
     try std.testing.expectEqual(NETWORK_HASH, net_hash);
 }
 
@@ -347,23 +328,14 @@ inline fn orient(sq: u6, c: Color) u6 {
     return if (c == Color.White) sq else sq ^ 0x3F;
 }
 
-inline fn makeIndex(sq: u6, pc: u4, ksq: u6, color: Color) usize {
+inline fn make_index(sq: u6, pc: u4, ksq: u6, color: Color) usize {
     const ret = orient(sq, color) +
         PieceToIndex[color.toU4()][@as(usize, @intCast(pc))] +
         @intFromEnum(PS.END) * @as(usize, @intCast(ksq));
     return @as(usize, @intCast(ret));
 }
 
-fn halfkpAppendActiveIndices(pos: NNUEPosition, color: Color, active: *IndexList) void {
-    const ksq = orient(pos.squares[color.toU4()], color);
-
-    var i: usize = 2;
-    while (pos.pieces[i] != 14) : (i += 1) {
-        active.appendAssumeCapacity(makeIndex(pos.squares[i], pos.pieces[i], ksq, color));
-    }
-}
-
-fn affineTxfm(
+fn affine(
     input: []u8,
     output: []u8,
     biases: []i32,
@@ -391,7 +363,7 @@ fn affineTxfm(
     }
 }
 
-fn affinePropagate(
+fn propagate(
     input: []u8,
     biases: []i32,
     weights: []i8,
@@ -406,36 +378,6 @@ fn affinePropagate(
     return sum;
 }
 
-/// Enumerates all the active pieces with `halfkpAppendActiveIndices` for both colors
-/// and fills in the accumulator. This is an expensive function.
-pub fn refreshAccumulator(pos: NNUEPosition) Accumulator {
-    var accumulator = Accumulator{};
-
-    var activeIndices: [2]IndexList = undefined;
-    activeIndices[0] = IndexList.init(0) catch unreachable;
-    activeIndices[1] = IndexList.init(0) catch unreachable;
-
-    for (std.enums.values(Color)) |c| {
-        halfkpAppendActiveIndices(pos, c, &activeIndices[c.toU4()]);
-
-        for (&accumulator.accumulation[c.toU4()], 0..) |*item, idx| {
-            item.* = ft_bs[idx];
-        }
-
-        for (activeIndices[c.toU4()].constSlice()) |index| {
-            const offset = FT_HALF_DIM * index;
-            for (0..FT_HALF_DIM) |j| {
-                accumulator.accumulation[c.toU4()][j] += ft_ws[offset + j];
-            }
-        }
-    }
-
-    accumulator.computedAccumulation = true;
-
-    return accumulator;
-}
-
-// Convert input features
 fn transform(
     curr_accu: Accumulator,
     player: Color,
@@ -455,4 +397,144 @@ fn transform(
             output[offset + i] = tmp;
         }
     }
+}
+
+pub fn refresh_accumulator_side(pos: Position, accumulator: *Accumulator, comptime c: Color) void {
+    var bitboard = pos.piece_bb[position.Piece.make_piece(c, PieceType.King).toU4()];
+    const kingSquare = bb.pop_lsb(&bitboard);
+    const orientedKingSquare = orient(kingSquare, c);
+
+    std.mem.copyForwards(i16, accumulator.accumulation[c.toU4()][0..], &ft_bs);
+
+    // Iterate over all pieces of the given color
+    for (Piece.WHITE_PAWN.toU4()..Piece.BLACK_KING.toU4()) |pc| {
+        //if (pc >= Piece.WHITE_KING.toU4() and pc < Piece.BLACK_PAWN.toU4()) continue;
+        if (pc == Piece.WHITE_KING.toU4()) continue;
+
+        bitboard = pos.piece_bb[pc];
+        const ppc = @as(u4, @intCast(pc));
+
+        while (bitboard != 0) {
+            const square = bb.pop_lsb(&bitboard);
+
+            // Compute index for the piece
+            const index = make_index(square, ppc, orientedKingSquare, c);
+
+            // Update accumulator with weights
+            const offset = FT_HALF_DIM * index;
+            for (0..FT_HALF_DIM) |j| {
+                accumulator.accumulation[c.toU4()][j] += ft_ws[offset + j];
+            }
+        }
+    }
+}
+
+pub fn refresh_accumulator(pos: Position) Accumulator {
+    var accumulator = Accumulator{
+        .computed_accumulation = false,
+        .computed_score = false,
+    };
+
+    refresh_accumulator_side(pos, &accumulator, Color.White);
+    refresh_accumulator_side(pos, &accumulator, Color.Black);
+
+    accumulator.computed_accumulation = true;
+
+    return accumulator;
+}
+
+pub fn incremental_update(pos: *Position) void {
+    const accumulator: *Accumulator = &pos.history[pos.game_ply].accumulator;
+    if (accumulator.computed_accumulation == true) {
+        return;
+    }
+
+    var prev_accu: Accumulator = undefined;
+    if (pos.game_ply > 0)
+        prev_accu = pos.history[pos.game_ply - 1].accumulator;
+    if (prev_accu.computed_accumulation == false) { // or dp.pieces[0] == king_index[0] or dp.pieces[0] == king_index[1]
+        accumulator.* = refresh_accumulator(pos.*);
+        return;
+    }
+
+    const dp: *DeltaPieces = &pos.delta;
+    if (dp.count == 0) { // we have null move, so we can just copy the accumulator
+        std.mem.copyForwards(i16, accumulator.accumulation[0][0..], prev_accu.accumulation[0][0..]);
+        std.mem.copyForwards(i16, accumulator.accumulation[1][0..], prev_accu.accumulation[1][0..]);
+        accumulator.computed_accumulation = true;
+        return;
+    }
+
+    const king_index: [2]u4 = .{ Piece.WHITE_KING.toU4(), Piece.BLACK_KING.toU4() };
+
+    for (std.enums.values(Color)) |c| {
+        const c_index = c.toU4();
+
+        if (dp.pieces[0] == king_index[c_index]) {
+            if (c == Color.White) {
+                refresh_accumulator_side(pos.*, accumulator, Color.White);
+            } else {
+                refresh_accumulator_side(pos.*, accumulator, Color.Black);
+            }
+        } else {
+            std.mem.copyForwards(i16, accumulator.accumulation[c_index][0..], prev_accu.accumulation[c_index][0..]);
+
+            var bitboard = pos.piece_bb[position.Piece.make_piece(c, PieceType.King).toU4()];
+            const kingSquare = bb.pop_lsb(&bitboard);
+            const orientedKingSquare = orient(kingSquare, c);
+
+            for (0..dp.count) |i| {
+                const pc = dp.pieces[i];
+
+                // Skip king pieces
+                if (pc == king_index[0] or pc == king_index[1]) {
+                    continue;
+                }
+
+                if (dp.from[i] != null) {
+                    // This piece needs to be removed
+                    const index = make_index(dp.from[i].?, pc, orientedKingSquare, c);
+
+                    // Update accumulator with weights
+                    const offset = FT_HALF_DIM * index;
+                    for (0..FT_HALF_DIM) |j| {
+                        accumulator.accumulation[c_index][j] -= ft_ws[offset + j];
+                    }
+                }
+
+                if (dp.to[i] != null) {
+                    // This piece needs to be added
+                    const index = make_index(dp.to[i].?, pc, orientedKingSquare, c);
+
+                    // Update accumulator with weights
+                    const offset = FT_HALF_DIM * index;
+                    for (0..FT_HALF_DIM) |j| {
+                        accumulator.accumulation[c_index][j] += ft_ws[offset + j];
+                    }
+                }
+            }
+        }
+    }
+
+    accumulator.computed_accumulation = true;
+}
+
+pub fn evaluate(curr_accu: Accumulator, player: Color) i32 {
+    const FV_SCALE = 16;
+
+    var input: [FT_OUT_DIM]u8 = undefined;
+    var l1_out: [L2]u8 = undefined;
+    var l2_out: [L2]u8 = undefined;
+
+    transform(curr_accu, player, &input);
+
+    affine(&input, &l1_out, &l1_biases, &l1_weights);
+
+    affine(&l1_out, &l2_out, &l2_biases, &l2_weights);
+
+    const out_value = propagate(&l2_out, &out_biases, &out_weights);
+
+    const ret = @divTrunc(out_value, FV_SCALE);
+
+    return @as(i32, @intCast(ret));
 }

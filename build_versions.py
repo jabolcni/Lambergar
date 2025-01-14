@@ -40,8 +40,8 @@ def rename_and_move_file(command, bin_dir):
 def extract_version(filename):
     with open(filename, 'r') as file:
         for line in file:
-            if '"id name Lambergar v' in line:
-                start = line.find('Lambergar v') + len('Lambergar v')
+            if '"id name Lambergar ' in line:
+                start = line.find('Lambergar ') + len('Lambergar ')
                 end = line.find('"', start)
                 version = line[start:end-2]
                 return version
@@ -61,30 +61,33 @@ print(f"Version: {version}")
 bin_dir = f'..\\..\\binaries'
 
 # Windows versions
-command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64 --prefix "lambergar-v{version}-x86_64-win-VINTAGE"'
+command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64 --prefix "lambergar-{version}-x86_64-win-VINTAGE"'
 build_ver(command, bin_dir)
 
-
-command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64_v2 --prefix "lambergar-v{version}-x86_64-win-POPCNT"'
+command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64_v2 --prefix "lambergar-{version}-x86_64-win-POPCNT"'
 build_ver(command, bin_dir)
 
-command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-v{version}-x86_64-win-AVX2"'
+command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-{version}-x86_64-win-AVX2"'
 build_ver(command, bin_dir)
 
-#command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64_v4 --prefix "lambergar-v{version}-x86_64-win-AVX-512"'
+#command = f'zig build -Dtarget=x86_64-windows -Doptimize=ReleaseFast -Dcpu=x86_64_v4 --prefix "lambergar-{version}-x86_64-win-AVX-512"'
 #build_ver(command, bin_dir)
 
 # Linux versions
-command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64 --prefix "lambergar-v{version}-x86_64-linux-VINTAGE"'
+command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64 --prefix "lambergar-{version}-x86_64-linux-VINTAGE"'
 build_ver(command, bin_dir)
 
-command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v2 --prefix "lambergar-v{version}-x86_64-linux-POPCNT"'
+command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v2 --prefix "lambergar-{version}-x86_64-linux-POPCNT"'
 build_ver(command, bin_dir)
 
-command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-v{version}-x86_64-linux-AVX2"'
+command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-{version}-x86_64-linux-AVX2"'
 build_ver(command, bin_dir)
 
-#command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v4 --prefix "lambergar-v{version}-x86_64-linux-AVX-512"'
+# Raspberry Pi version 
+command = f'zig build -Dtarget=aarch64-linux -Doptimize=ReleaseFast --prefix "lambergar-{version}-aarch64-linux"'
+build_ver(command, bin_dir)
+
+#command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v4 --prefix "lambergar-{version}-x86_64-linux-AVX-512"'
 #build_ver(command, bin_dir)
 
 """

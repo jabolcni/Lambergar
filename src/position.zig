@@ -3,6 +3,7 @@ const bb = @import("bitboard.zig");
 const zobrist = @import("zobrist.zig");
 const attacks = @import("attacks.zig");
 const evaluation = @import("evaluation.zig");
+const nnue = @import("nnue.zig");
 
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
@@ -520,13 +521,15 @@ pub inline fn ignore_ooo_danger(comptime c: Color) u64 {
 }
 
 //Stores position information which cannot be recovered on undo-ing a move
-pub const UndoInfo = packed struct {
+//pub const UndoInfo = packed struct {
+pub const UndoInfo = struct {
     entry: u64,
     captured: Piece,
     epsq: Square,
     fifty: u16,
     castling: u4,
     hash_key: u64,
+    accumulator: nnue.Accumulator,
 
     pub fn new() UndoInfo {
         return UndoInfo{
@@ -536,6 +539,7 @@ pub const UndoInfo = packed struct {
             .fifty = 0,
             .castling = 0,
             .hash_key = 0,
+            .accumulator = nnue.Accumulator{.computed_accumulation = false, .computed_score = false,},
         };
     }
 
@@ -547,6 +551,7 @@ pub const UndoInfo = packed struct {
             .fifty = prev.fifty + 1,
             .castling = prev.castling,
             .hash_key = prev.hash_key,
+            .accumulator = nnue.Accumulator{.computed_accumulation = false, .computed_score = false,},
         };
     }
 };
@@ -563,6 +568,7 @@ pub const Position = struct {
     pinned: u64 = undefined,
 
     eval: Evaluation = undefined,
+    delta: nnue.DeltaPieces = nnue.DeltaPieces{},
 
     pub fn new() Position {
         var pos = Position{};
@@ -578,6 +584,7 @@ pub const Position = struct {
         pos.eval.eval_mg = 0;
         pos.eval.eval_eg = 0;
         pos.eval.phase = [1]u8{0} ** 2;
+        pos.delta = nnue.DeltaPieces{};
 
         return pos;
     }
@@ -593,19 +600,19 @@ pub const Position = struct {
             .checkers = from.checkers,
             .pinned = from.pinned,
             .eval = from.eval,
+            .delta = nnue.DeltaPieces{},
         };
     }
 
-    pub inline fn put_piece_Sq(self: *Position, pc: Piece, s: Square) void {
+    pub inline fn add_piece_to_board(self: *Position, pc: Piece, s_idx: u6) void {
         const pc_idx = pc.toU4();
-        const s_idx = s.toU6();
 
         self.board[s_idx] = pc;
         self.piece_bb[pc_idx] |= SQUARE_BB[s_idx];
-        
+
         self.hash ^= zobrist.zobrist_table[pc_idx][s_idx];
         self.eval.put_piece(pc, s_idx);
-    }
+    } 
 
     pub inline fn put_piece(self: *Position, pc: Piece, s_idx: u6) void {
         const pc_idx = pc.toU4();
@@ -614,19 +621,12 @@ pub const Position = struct {
         self.piece_bb[pc_idx] |= SQUARE_BB[s_idx];
 
         self.hash ^= zobrist.zobrist_table[pc_idx][s_idx];
-        self.eval.put_piece(pc, s_idx);
-    }
 
-    pub inline fn remove_piece_Sq(self: *Position, s: Square) void {
-        const s_idx = s.toU6();
-        const pc = self.board[s_idx];
-        const pc_idx = pc.toU4();
-
-        self.piece_bb[pc_idx] &= ~SQUARE_BB[s_idx];
-        self.board[s_idx] = Piece.NO_PIECE;
-
-        self.hash ^= zobrist.zobrist_table[pc_idx][s_idx];
-        self.eval.remove_piece(pc, s_idx);
+        if (nnue.engine_using_nnue) {        
+            self.eval.put_piece_update_phase(pc);
+        } else {
+            self.eval.put_piece(pc, s_idx);
+        } 
     }
 
     pub inline fn remove_piece(self: *Position, s_idx: u6) void {
@@ -637,7 +637,12 @@ pub const Position = struct {
         self.board[s_idx] = Piece.NO_PIECE;
 
         self.hash ^= zobrist.zobrist_table[pc_idx][s_idx];
-        self.eval.remove_piece(pc, s_idx);
+
+        if (nnue.engine_using_nnue) {        
+            self.eval.remove_piece_update_phase(pc);
+        } else {
+            self.eval.remove_piece(pc, s_idx);
+        }    
     }
 
     pub inline fn move_piece(self: *Position, from: u6, to: u6) void {
@@ -648,12 +653,17 @@ pub const Position = struct {
         const to_idx = to_pc.toU4();
 
         self.hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to] ^ zobrist.zobrist_table[to_idx][to];
-        self.eval.move_piece(from_pc, to_pc, from, to);
         const mask = SQUARE_BB[from] | SQUARE_BB[to];
         self.piece_bb[from_idx] ^= mask;
         self.piece_bb[to_idx] &= ~mask;
         self.board[to] = self.board[from];
         self.board[from] = Piece.NO_PIECE;
+
+        if (nnue.engine_using_nnue) {        
+            self.eval.move_piece_update_phase(to_pc);
+        } else {
+            self.eval.move_piece(from_pc, to_pc, from, to);
+        }           
     }
 
     pub inline fn move_piece_quiet(self: *Position, from: u6, to: u6) void {
@@ -661,13 +671,38 @@ pub const Position = struct {
         const from_idx = from_pc.toU4();
         
         self.hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
-        self.eval.move_piece_quiet(from_pc, from, to);
 
         self.piece_bb[from_idx] ^= (SQUARE_BB[from] | SQUARE_BB[to]);
         self.board[to] = self.board[from];
         self.board[from] = Piece.NO_PIECE;
 
+        if (nnue.engine_using_nnue) {        
+             //self.delta.move_piece_quiet(from_pc, from, to);
+        } else {
+            self.eval.move_piece_quiet(from_pc, from, to);
+        } 
+
     }
+
+    pub inline fn move_promote_capture(self: *Position, from: u6, to: u6, prom_pc: Piece) void {
+
+        const captured = self.board[to];
+        const capturer = self.board[from];
+        self.remove_piece(from);
+        self.history[self.game_ply].captured = captured;
+        self.remove_piece(to);
+
+        //self.put_piece(Piece.new(C, PieceType.Queen), m.to);
+                
+        self.put_piece(prom_pc, to);
+
+        if (nnue.engine_using_nnue) {
+            self.delta.remove_piece(capturer, from);
+            self.delta.remove_piece(captured, to);
+            self.delta.put_piece(prom_pc, to);
+        }         
+
+    } 
 
     pub inline fn bitboard_of_pc(self: *Position, pc: Piece) u64 {
         return self.piece_bb[pc.toU4()];
@@ -850,6 +885,10 @@ pub const Position = struct {
         const update_entry = SQUARE_BB[m.to] | SQUARE_BB[m.from];
         self.history[self.game_ply].entry |= update_entry;
 
+        self.delta.reset();
+        self.history[self.game_ply].accumulator.computed_accumulation = false;
+        self.history[self.game_ply].accumulator.computed_score = false;
+
         if ((self.history[self.game_ply].castling > 0) ){
             if (update_entry & 0x10 != 0) { // King move
                 self.history[self.game_ply].castling &= ~Castling.WK.toU4() & ~Castling.WQ.toU4();
@@ -885,10 +924,20 @@ pub const Position = struct {
 
         switch (m.flags) {
             MoveFlags.QUIET => {
+                const pc = self.board[m.from];
                 self.move_piece_quiet(m.from, m.to);
+
+                if (nnue.engine_using_nnue) {
+                    self.delta.move_piece_quiet(pc, m.from, m.to);
+                }                
             },
             MoveFlags.DOUBLE_PUSH => {
+                const pc = self.board[m.from];
                 self.move_piece_quiet(m.from, m.to);
+
+                if (nnue.engine_using_nnue) {
+                    self.delta.move_piece_quiet(pc, m.from, m.to);
+                }
 
                 self.history[self.game_ply].epsq = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(m.from)) + Direction.NORTH.relative_dir(C).toI8())));
                 self.hash ^= zobrist.enpassant_keys[self.history[self.game_ply].epsq.file_of().toU3()];
@@ -897,72 +946,121 @@ pub const Position = struct {
                 if (C == Color.White) {
                     self.move_piece_quiet(Square.e1.toU6(), Square.g1.toU6());
                     self.move_piece_quiet(Square.h1.toU6(), Square.f1.toU6());
+
+                    if (nnue.engine_using_nnue) {
+                        self.delta.move_piece_quiet(Piece.WHITE_KING, Square.e1.toU6(), Square.g1.toU6());
+                        self.delta.move_piece_quiet(Piece.WHITE_ROOK, Square.h1.toU6(), Square.f1.toU6());
+                    }
                 } else {
                     self.move_piece_quiet(Square.e8.toU6(), Square.g8.toU6());
                     self.move_piece_quiet(Square.h8.toU6(), Square.f8.toU6());
+
+                    if (nnue.engine_using_nnue) {
+                        self.delta.move_piece_quiet(Piece.BLACK_KING, Square.e8.toU6(), Square.g8.toU6());
+                        self.delta.move_piece_quiet(Piece.BLACK_ROOK, Square.h8.toU6(), Square.f8.toU6());
+                    }                    
                  }
             },
             MoveFlags.OOO => {
                 if (C == Color.White) {
                     self.move_piece_quiet(Square.e1.toU6(), Square.c1.toU6());
                     self.move_piece_quiet(Square.a1.toU6(), Square.d1.toU6());
+
+                    if (nnue.engine_using_nnue) {
+                        self.delta.move_piece_quiet(Piece.WHITE_KING, Square.e1.toU6(), Square.c1.toU6());
+                        self.delta.move_piece_quiet(Piece.WHITE_ROOK, Square.a1.toU6(), Square.d1.toU6());
+                    }                    
                  } else {
                     self.move_piece_quiet(Square.e8.toU6(), Square.c8.toU6());
                     self.move_piece_quiet(Square.a8.toU6(), Square.d8.toU6());
+
+                    if (nnue.engine_using_nnue) {
+                        self.delta.move_piece_quiet(Piece.BLACK_KING, Square.e8.toU6(), Square.c8.toU6());
+                        self.delta.move_piece_quiet(Piece.BLACK_ROOK, Square.a8.toU6(), Square.d8.toU6());
+                    }                     
                 }                
             },
             MoveFlags.EN_PASSANT => {
+                const pc = self.board[m.from];
                 self.move_piece_quiet(m.from, m.to);
-                self.remove_piece_Sq(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(m.to)) + Direction.SOUTH.relative_dir(C).toI8()))));
-                
+                const s_idx = @as(u6, @intCast(@as(i8, @intCast(m.to)) + Direction.SOUTH.relative_dir(C).toI8()));
+                const removed_pc = self.board[s_idx];
+                self.remove_piece(s_idx);
+
+                if (nnue.engine_using_nnue) {
+                    self.delta.move_piece_quiet(pc, m.from, m.to);
+                    self.delta.remove_piece(removed_pc, s_idx);
+                }                
             },
             MoveFlags.PR_KNIGHT => {
+                const removed_pc = self.board[m.from];
                 self.remove_piece(m.from);
-                self.put_piece(Piece.new(C, PieceType.Knight), m.to);
+                const pc = Piece.new(C, PieceType.Knight);
+                self.put_piece(pc, m.to);
+
+                if (nnue.engine_using_nnue) {
+                    self.delta.remove_piece(removed_pc, m.from);
+                    self.delta.put_piece(pc, m.to);
+                }                 
             },
             MoveFlags.PR_BISHOP => {
+                const removed_pc = self.board[m.from];
                 self.remove_piece(m.from);
-                self.put_piece(Piece.new(C, PieceType.Bishop), m.to);
+                const pc = Piece.new(C, PieceType.Bishop);
+                self.put_piece(pc, m.to);
+
+                if (nnue.engine_using_nnue) {
+                    self.delta.remove_piece(removed_pc, m.from);
+                    self.delta.put_piece(pc, m.to);
+                }                 
             },
             MoveFlags.PR_ROOK => {
+                const removed_pc = self.board[m.from];
                 self.remove_piece(m.from);
-                self.put_piece(Piece.new(C, PieceType.Rook), m.to);
+                const pc = Piece.new(C, PieceType.Rook);
+                self.put_piece(pc, m.to);
+
+                if (nnue.engine_using_nnue) {
+                    self.delta.remove_piece(removed_pc, m.from);
+                    self.delta.put_piece(pc, m.to);
+                }                 
             },
             MoveFlags.PR_QUEEN => {
+                const pc = Piece.new(C, PieceType.Queen);
+                const removed_pc = self.board[m.from];
                 self.remove_piece(m.from);
-                self.put_piece(Piece.new(C, PieceType.Queen), m.to);
+                self.put_piece(pc, m.to);
+
+                if (nnue.engine_using_nnue) {
+                    self.delta.remove_piece(removed_pc, m.from);
+                    self.delta.put_piece(pc, m.to);
+                } 
             },
             MoveFlags.PC_KNIGHT => {
-                self.remove_piece(m.from);
-                self.history[self.game_ply].captured = self.board[m.to];
-                self.remove_piece(m.to);
-
-                self.put_piece(Piece.new(C, PieceType.Knight), m.to);
+                const pc = Piece.new(C, PieceType.Knight);
+                self.move_promote_capture(m.from, m.to, pc);
             },
             MoveFlags.PC_BISHOP => {
-                self.remove_piece(m.from);
-                self.history[self.game_ply].captured = self.board[m.to];
-                self.remove_piece(m.to);
-
-                self.put_piece(Piece.new(C, PieceType.Bishop), m.to);
+                const pc = Piece.new(C, PieceType.Bishop);
+                self.move_promote_capture(m.from, m.to, pc);
             },
             MoveFlags.PC_ROOK => {
-                self.remove_piece(m.from);
-                self.history[self.game_ply].captured = self.board[m.to];
-                self.remove_piece(m.to);
-
-                self.put_piece(Piece.new(C, PieceType.Rook), m.to);
+                const pc = Piece.new(C, PieceType.Rook);
+                self.move_promote_capture(m.from, m.to, pc);
             },
             MoveFlags.PC_QUEEN => {
-                self.remove_piece(m.from);
-                self.history[self.game_ply].captured = self.board[m.to];
-                self.remove_piece(m.to);
-
-                self.put_piece(Piece.new(C, PieceType.Queen), m.to);
+                const pc = Piece.new(C, PieceType.Queen);
+                self.move_promote_capture(m.from, m.to, pc);
             }, 
             MoveFlags.CAPTURE => {
-                self.history[self.game_ply].captured = self.board[m.to];
+                const captured = self.board[m.to];
+                const capturer = self.board[m.from];
+                self.history[self.game_ply].captured = captured;
                 self.move_piece(m.from, m.to);
+
+                if (nnue.engine_using_nnue) {
+                    self.delta.move_piece(capturer, captured, m.from, m.to);
+                } 
             },
             else => {},
         }
@@ -984,6 +1082,11 @@ pub const Position = struct {
         }
 
         self.history[self.game_ply].hash_key = self.hash;
+
+        self.delta.reset();
+        self.history[self.game_ply].accumulator.computed_accumulation = false;
+        self.history[self.game_ply].accumulator.computed_score = false;
+
     }
 
     pub fn undo(self: *Position, m: Move, comptime C: Color) void {
@@ -1016,7 +1119,7 @@ pub const Position = struct {
             },          
             MoveFlags.EN_PASSANT => {
                 self.move_piece_quiet(m.to, m.from);
-                self.put_piece_Sq(Piece.new(C.change_side(),PieceType.Pawn), Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(m.to)) + Direction.SOUTH.relative_dir(C).toI8()))));
+                self.put_piece(Piece.new(C.change_side(),PieceType.Pawn), @as(u6, @intCast(@as(i8, @intCast(m.to)) + Direction.SOUTH.relative_dir(C).toI8())));
             },      
             MoveFlags.PR_KNIGHT, MoveFlags.PR_BISHOP, MoveFlags.PR_ROOK, MoveFlags.PR_QUEEN => {
                 self.remove_piece(m.to);
@@ -1762,9 +1865,7 @@ pub const Position = struct {
             std.debug.print(" {} |", .{ @divTrunc(i, 8) + 1 });
             var j: usize = 0;
             while (j < 8) : (j += 1) {
-                //std.debug.print("| {c} ", .{PIECE_STR[self.board[(@as(usize, @intCast(i)) + j)].toU4()]});
                 std.debug.print(" {s}", .{unicodePIECE_STR[self.board[(@as(usize, @intCast(i)) + j)].toU4()]});
-
             }
             std.debug.print(" | {}\n", .{@divTrunc(i, 8) + 1});
         }
@@ -1826,7 +1927,7 @@ pub const Position = struct {
                         return FenParseError.InvalidPosition;
                     },
                 };
-                self.put_piece(piece, square.toU6());
+                self.add_piece_to_board(piece, square.toU6());
                 file += 1;
             }
             if (file != 8) return FenParseError.InvalidPosition;
@@ -1883,6 +1984,4 @@ pub const Position = struct {
 
     }
 
-    //Returns the FEN (Forsyth-Edwards Notation) representation of the position
-    //ToDo implement
 };

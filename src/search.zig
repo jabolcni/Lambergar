@@ -4,6 +4,7 @@ const ms = @import("movescorer.zig");
 const tt = @import("tt.zig");
 const history = @import("history.zig");
 const evaluation = @import("evaluation.zig");
+const nnue = @import("nnue.zig");
 
 const Instant = std.time.Instant;
 
@@ -30,7 +31,6 @@ const histroy_depth = [_]i32{ 3, 2 };
 const history_limit = [_]i32{ -1000, -2000 };
 const cm_history_limit = [_]i32{ 0, -1000 };
 const fm_history_limit = [_]i32{ -2000, -4000 };
-//const full_history_limit = [_]i32{ 12000, 6000 };
 const futility_histroy_limit = [_]i32{ -500, -1000 };
 const lmp_depth = 8;
 
@@ -116,16 +116,10 @@ pub const SearchManager = struct {
                     const scale_div: u64 = 50;
                     self.early_ms = @min(@divTrunc(rem_time.?, scale_div), @divTrunc(_rem_time.?, 5));
                     self.max_ms = @min(5 * self.early_ms, @divTrunc(4 * _rem_time.?, 5)); //inc + (rem_time.? - overhead) / 20;
-                    //self.max_ms = inc + (rem_time.? - overhead) / 20;
-                    //self.early_ms = 3 * self.max_ms / 4;
                 } else {
                     self.early_ms = @min(@divTrunc(7 * rem_time.?, 10 * mtg), @divTrunc(4 * _rem_time.?, 5));
                     self.max_ms = @min(5 * self.early_ms, @divTrunc(4 * _rem_time.?, 5)); //inc + (rem_time.? - overhead) / 20;
-                    //self.max_ms = inc + ((2 * (rem_time.? - overhead)) / (2 * mtg + 1));
-                    //self.early_ms = @divTrunc(self.max_ms, 4);
                 }
-                //self.max_ms = @min(self.max_ms, rem_time.? - overhead);
-                //self.early_ms = @min(self.early_ms, rem_time.? - overhead);
                 return;
             } else {
                 self.max_ms = 1 << 63;
@@ -350,6 +344,9 @@ pub const Search = struct {
         const allocator = std.heap.c_allocator;
 
         self.clear_for_new_search();
+        pos.history[pos.game_ply].accumulator = nnue.refresh_accumulator(pos.*);
+        pos.history[pos.game_ply].accumulator.eval = nnue.evaluate(pos.history[pos.game_ply].accumulator, color);
+        pos.history[pos.game_ply].accumulator.computed_score = true;
 
         var alpha: i32 = -MAX_SCORE;
         var beta: i32 = MAX_SCORE;
@@ -366,10 +363,13 @@ pub const Search = struct {
 
         self.timer = std.time.Timer.start() catch unreachable;
 
+        const start = Instant.now() catch unreachable;
+        self.nodes = 0;
+
         mainloop: while (it_depth <= self.max_depth) {
             self.ply = 0;
             self.seldepth = 0;
-            self.nodes = 0;
+            //self.nodes = 0;
             depth = it_depth;
 
             if (depth >= 4) {
@@ -381,7 +381,7 @@ pub const Search = struct {
             alpha = @max(-MAX_SCORE, score - delta);
             beta = @min(score + delta, MAX_SCORE);
 
-            const start = Instant.now() catch unreachable;
+            //const start = Instant.now() catch unreachable;
 
             aspirationloop: while (delta <= MAX_SCORE) {
                 score = self.pvs(depth, alpha, beta, pos, false, color);
@@ -670,62 +670,6 @@ pub const Search = struct {
                     }
                 }
             }
-
-            // // probcut
-            // // does not make engine any better, it seems that it actually makes is slightly worse
-            // const beta_cut = @min(beta + 100, MATE_VALUE - MAX_PLY - 1);
-            // if ((depth >= 5) and (@abs(beta) < MATE_VALUE) and !(tt_hit and (tt_depth >= depth - 3) and (tt_score < beta_cut))) {
-            //     var cap_move_list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-            //     defer cap_move_list.deinit();
-
-            //     pos.generate_captures(color, &cap_move_list);
-
-            //     var score_list = std.ArrayList(i32).initCapacity(std.heap.c_allocator, cap_move_list.items.len) catch unreachable;
-            //     defer score_list.deinit();
-            //     ms.score_move(pos, self, &cap_move_list, &score_list, tt_move, color);
-
-            //     for (0..cap_move_list.items.len) |mv_idx| {
-            //         const move = ms.get_next_best(&cap_move_list, &score_list, mv_idx);
-            //         const piece = pos.board[move.from];
-
-            //         if (move.equal(self.excluded[self.ply])) {
-            //             continue;
-            //         }
-
-            //         if (ms.see_value(pos, move, false) < -(beta_cut - static_eval)) {
-            //             continue;
-            //         }
-
-            //         // make move
-            //         self.ns_stack[self.ply].is_null = false;
-            //         self.ns_stack[self.ply].is_tactical = true;
-            //         self.ns_stack[self.ply].move = move;
-            //         self.ns_stack[self.ply].piece = piece;
-            //         self.ply += 1;
-            //         pos.play(move, color);
-            //         tt.TT.prefetch(pos.hash);
-            //         // make move
-
-            //         // if (depth >= 10) {
-            //         score = -self.quiescence(-beta_cut, -beta_cut + 1, pos, opp);
-            //         // }
-
-            //         // if (depth < 10 or score >= beta_cut) {
-            //         if (score >= beta_cut) {
-            //             score = -self.pvs(depth - 4, -beta_cut, -beta_cut + 1, pos, false, opp);
-            //         }
-
-            //         // unmake move
-            //         self.ply -= 1;
-            //         pos.undo(move, color);
-            //         //tt.TT.prefetch_write(pos.hash);
-            //         // unmake move
-
-            //         if (score >= beta_cut) {
-            //             return score;
-            //         }
-            //     }
-            // }
         }
 
         best_score = -MATE_VALUE + @as(i32, self.ply);
@@ -773,7 +717,6 @@ pub const Search = struct {
             const mv_quiet = move.is_quiet();
             const piece = pos.board[move.from];
 
-            //const sc_hist = self.sc_history[me.toU4()][move.from][move.to];
             const sc_hist: i32 = self.get_sh(me.toU4(), move.from, move.to);
             var cm_hist: i32 = 0;
             var fm_hist: i32 = 0;
@@ -781,14 +724,12 @@ pub const Search = struct {
             if (self.ply >= 1) {
                 const parent = self.ns_stack[self.ply - 1].move;
                 const p_piece = self.ns_stack[self.ply - 1].piece;
-                //cm_hist = self.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to];
                 cm_hist = self.get_ch(p_piece.toU4(), parent.to, piece.toU4(), move.to);
             }
 
             if (self.ply >= 2) {
                 const gparent = self.ns_stack[self.ply - 2].move;
                 const gp_piece = self.ns_stack[self.ply - 2].piece;
-                //fm_hist = self.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to];
                 fm_hist = self.get_fh(gp_piece.toU4(), gparent.to, piece.toU4(), move.to);
             }
             const full_hist = sc_hist + cm_hist + fm_hist;
@@ -988,8 +929,7 @@ pub const Search = struct {
 
         if (alpha >= beta) return alpha;
 
-        //const random_eval: i32 = 7 - (@as(i32, @intCast(self.nodes & 13)));
-        if (self.ply >= MAX_PLY) return pos.eval.eval(pos, me); // + random_eval;
+        if (self.ply >= MAX_PLY) return pos.eval.eval(pos, me);
 
         if (self.check_stop_conditions()) {
             self.stop_on_time = true;
@@ -1023,7 +963,7 @@ pub const Search = struct {
         if (in_check) {
             best_score = -MATE_VALUE + @as(i32, self.ply);
         } else {
-            best_score = pos.eval.eval(pos, me); // + random_eval;
+            best_score = pos.eval.eval(pos, me);
 
             if (tt_hit) {
                 if ((tt_bound == tt.Bound.BOUND_LOWER and tt_score > best_score) or
@@ -1052,11 +992,9 @@ pub const Search = struct {
         var score_list = std.ArrayList(i32).initCapacity(std.heap.c_allocator, move_list.items.len) catch unreachable;
         defer score_list.deinit();
         ms.score_move(pos, self, &move_list, &score_list, tt_move, me);
-        //ms.simdInsertionSortWithBatches(&move_list, &score_list, 4);
 
         for (0..move_list.items.len) |mv_idx| {
             const move = ms.get_next_best(&move_list, &score_list, mv_idx);
-            //const move = move_list.items[mv_idx];
 
             const see_val = ms.see_value(pos, move, false);
 

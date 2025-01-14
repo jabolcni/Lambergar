@@ -1,3 +1,24 @@
+# Lambergar 1.0
+
+## Builds
+
+Currently there are four builds:
+
+- x86-64-v3: AVX2 support, best for using with NN evaluation and should be a preffered choice for best performance.
+- x86-64-v2: popcount support, suitable for moder computers.
+- x86-64-v1: vintage version is for really old computers.
+- aarch64-linux: version for Raspberry Pi 5.
+
+## Release Notes
+
+This is a major release. I believe the Lambergar chess engine has matured enough to warrant the release of version 1.0. I am also introducing slight changes to the naming convention by dropping the patch version and removing the letter "v" in front of the version number. While I am sure there are still some significant bugs in the engine, I believe the code has reached a level of maturity where these bugs are no longer critical to its core functionality.
+
+- Added efficient updates (UE) to NN evaluation of positions. I expected a significant improvement in ELO, but the gain was only 20 ELO points.
+- Introduced a new network, `zolnir.nnue`, which contributes the majority of the ELO improvement.
+- Estimated engine strength is around 3180–3200 ELO.
+- Fixed bug: `UseNNUE` was not working because the implementation for switching NNUE on/off did not follow the correct format. This has been fixed to comply with the UCI format: `setoption name UseNNUE value [value]`, where `[value]` is either `true` or `false`.
+- Fixed bug: When the UCI command was issued, the line reporting the option name `UseNNUE type check default` always displayed `false`, because it was hardcoded. I had overlooked updating this line to reflect the actual value. This issue is now resolved.
+
 # Lambergar v0.6.0
 
 ## Builds

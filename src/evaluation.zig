@@ -37,8 +37,6 @@ const eg_queen_table = [64]i32{ -30, -36, -34, -24, -45, -58, -73, -43, -30, -18
 
 const mg_king_table = [64]i32{ -4, 36, 11, -53, -13, -50, 17, 19, 16, 3, -18, -41, -39, -28, 3, 12, 11, -7, -34, -22, -32, -36, -15, -22, 27, -8, -17, -32, -23, -34, -49, -62, -14, -37, -32, -24, -56, -36, -59, -68, -33, -44, 13, -41, -20, -4, -98, -105, -54, -5, 73, 63, 19, -12, -75, -93, 351, 162, 211, 147, 150, 199, 118, 313 };
 const eg_king_table = [64]i32{ -30, -22, -15, -11, -32, -8, -28, -55, -18, -10, 1, 4, 6, 3, -8, -24, -15, 1, 15, 15, 17, 14, 0, -4, -10, 15, 23, 32, 29, 25, 19, 9, 11, 41, 43, 46, 50, 44, 48, 20, 27, 54, 34, 49, 42, 49, 69, 39, 16, 26, 9, 0, 19, 33, 53, 30, -195, -79, -67, -60, -65, -58, -31, -156 };
-//const mg_king_table = [64]i32{ 16, 45, 28, -70, -11, -45, 18, 24, 34, 3, -19, -43, -49, -29, 3, 9, -55, -27, -50, -58, -59, -42, -30, -61, -134, -81, -38, -85, -53, -54, -67, -160, -156, -33, -72, -69, -37, -32, -50, -158, -178, -20, -43, -69, -36, -10, -52, -131, -107, -11, -23, -103, -108, -38, -6, -141, -116, 22, -13, -84, -171, -115, -23, -99 };
-//const eg_king_table = [64]i32{ -73, -54, -23, 2, -16, 1, -31, -67, -43, -9, 13, 17, 20, 15, -4, -28, -23, 1, 25, 41, 44, 24, 4, -7, 6, 27, 46, 63, 54, 43, 22, 2, 13, 31, 59, 75, 71, 55, 41, 22, 28, 51, 67, 85, 81, 64, 61, 33, 24, 61, 93, 87, 92, 78, 73, 24, -112, -21, 20, 45, 79, 85, -7, -75 };
 
 const mg_passed_score = [64]i32{ 0, 0, 0, 0, 0, 0, 0, 0, 0, -6, -11, -13, 3, -10, 4, 12, 5, -9, -14, -23, -3, -22, -17, 21, 10, 0, -13, -3, -15, -34, -49, 0, 30, 26, 17, 10, 5, -3, -16, -4, 77, 62, 49, 31, 0, 2, -25, -9, 67, 71, 64, 73, 57, 38, -23, 4, 0, 0, 0, 0, 0, 0, 0, 0 };
 const eg_passed_score = [64]i32{ 0, 0, 0, 0, 0, 0, 0, 0, 12, 22, 14, 18, 12, 13, 25, 11, 16, 28, 17, 18, 17, 24, 40, 11, 43, 50, 39, 30, 36, 48, 71, 43, 73, 73, 59, 56, 54, 66, 77, 63, 126, 121, 105, 95, 87, 104, 106, 120, 96, 87, 82, 66, 65, 75, 97, 95, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -219,7 +217,7 @@ pub const Evaluation = struct {
             self.eval_mg += (&midgame_table)[Color.White.toU4()][pc_type_idx][s_idx];
             self.eval_eg += (&endgame_table)[Color.White.toU4()][pc_type_idx][s_idx];            
 
-            self.phase[Color.White.toU4()] += (&phaseValues)[pc_type_idx];
+            self.phase[Color.White.toU4()] += phaseValues[pc_type_idx];
         } else {
             self.eval_mg -= (&material_mg)[pc_type_idx];
             self.eval_eg -= (&material_eg)[pc_type_idx];
@@ -227,7 +225,7 @@ pub const Evaluation = struct {
             self.eval_mg -= (&midgame_table)[Color.Black.toU4()][pc_type_idx][s_idx];
             self.eval_eg -= (&endgame_table)[Color.Black.toU4()][pc_type_idx][s_idx];            
 
-            (&self.phase)[Color.Black.toU4()] += (&phaseValues)[pc_type_idx];
+            self.phase[Color.Black.toU4()] += phaseValues[pc_type_idx];
         }
     }
 
@@ -283,6 +281,34 @@ pub const Evaluation = struct {
         self.move_piece_quiet(from_pc, from, to);
 
     }
+
+    pub inline fn put_piece_update_phase(self: *Evaluation, pc: Piece) void {
+
+        const pc_type_idx = pc.type_of().toU3();
+
+        if (pc.color() == Color.White) {
+            self.phase[Color.White.toU4()] += phaseValues[pc_type_idx];
+        } else {
+            self.phase[Color.Black.toU4()] += phaseValues[pc_type_idx];
+        }
+    }
+
+    pub inline fn remove_piece_update_phase(self: *Evaluation, pc: Piece) void {
+
+        const pc_type_idx = pc.type_of().toU3();
+
+        if (pc != Piece.NO_PIECE) {
+            if (pc.color() == Color.White) {
+                self.phase[Color.White.toU4()] -= phaseValues[pc_type_idx];
+            } else {
+                self.phase[Color.Black.toU4()] -= phaseValues[pc_type_idx];
+            }   
+        }     
+    }
+
+    pub inline fn move_piece_update_phase(self: *Evaluation, to_pc: Piece) void {
+        self.remove_piece_update_phase(to_pc);
+    }    
 
     pub fn clean_eval(self: *Evaluation, pos: *Position) i32 { // TUNER OFF    
 //    pub fn clean_eval(self: *Evaluation, pos: *Position, tnr: *tuner.Tuner) i32 { // TUNER ON
@@ -391,12 +417,67 @@ pub const Evaluation = struct {
 
     }    
 
+    fn end_game_eval(self: *Evaluation, pos: *Position, comptime perspective_color: Color) i32 {
+
+        var e: i32 = 0;
+        const perspective = if (perspective_color == Color.White) @as(i32, 1) else @as(i32, -1);
+
+            if (self.phase[Color.White.toU4()] > 3 and self.phase[Color.Black.toU4()] == 0 and pos.piece_count(Piece.BLACK_PAWN) == 0) {
+
+                // White is stronger
+                const white_king = bb.get_ls1b_index(pos.piece_bb[Piece.WHITE_KING.toU4()]);
+                const black_king = bb.get_ls1b_index(pos.piece_bb[Piece.BLACK_KING.toU4()]);
+                if(self.phase[Color.White.toU4()] == 6 and pos.piece_count(Piece.WHITE_BISHOP) == 1 and pos.piece_count(Piece.WHITE_KNIGHT) == 1) {
+                    if ((pos.piece_bb[Piece.WHITE_BISHOP.toU4()] & bb.WHITE_FIELDS) != 0) {
+                        e += MATE_ON_A8_H1[black_king];
+                    } else {
+                        e += MATE_ON_A1_H8[black_king];
+                    }
+                } else {
+                    e -= CENTER[black_king];
+                }
+                e -= distance(white_king, black_king);
+
+            } else if (self.phase[Color.Black.toU4()] > 3 and self.phase[Color.White.toU4()] == 0 and pos.piece_count(Piece.WHITE_PAWN) == 0) {
+
+                // Black is stronger
+                const white_king = bb.get_ls1b_index(pos.piece_bb[Piece.WHITE_KING.toU4()]);
+                const black_king = bb.get_ls1b_index(pos.piece_bb[Piece.BLACK_KING.toU4()]);
+                if(self.phase[Color.Black.toU4()] == 6 and pos.piece_count(Piece.BLACK_BISHOP) == 1 and pos.piece_count(Piece.BLACK_KNIGHT) == 1) {
+                    if ((pos.piece_bb[Piece.BLACK_BISHOP.toU4()] & bb.WHITE_FIELDS) != 0) {
+                        e -= MATE_ON_A8_H1[white_king];
+                    } else {
+                        e -= MATE_ON_A1_H8[white_king];
+                    }
+                } else {
+                    e += CENTER[white_king];
+
+                }
+                e += distance(white_king, black_king);      
+            }
+
+        return e * perspective;
+    }
+
     pub fn eval(self: *Evaluation, pos: *Position, comptime perspective_color: Color) i32 {
 
         if (nnue.engine_using_nnue) {
-            const nnue_pos = nnue.NNUEPosition.calculate(pos.*);
-            const curr_accu = nnue.refreshAccumulator(nnue_pos);
-            return nnue.evaluate(curr_accu, perspective_color);
+
+            //const curr_accu = nnue.refresh_accumulator(pos.*);
+
+            const curr_accu: *nnue.Accumulator = &pos.history[pos.game_ply].accumulator;
+            if (curr_accu.computed_score) {
+                return curr_accu.eval;
+            }
+
+            nnue.incremental_update(pos);
+            curr_accu.eval = nnue.evaluate(curr_accu.*, perspective_color);
+            curr_accu.computed_score = true;
+            return curr_accu.eval;
+
+            //var e =  nnue.evaluate(curr_accu, perspective_color);
+            //e = @min(@max(e, -2000), 2000);
+            //return e;// + self.end_game_eval(pos, perspective_color);
         } else {
             return self.evalHCE(pos, perspective_color);
         }
@@ -1300,13 +1381,6 @@ pub inline fn get_passed_pawn_score(sq: u6) [2]i32 {
     score[1] = eg_passed_score[sq];
     return score;
 }
-
-// pub inline fn get_passed_pawn_score_f(file: u6) [2]i32 {
-//     var score = [_]i32{ 0, 0 };
-//     score[0] = mg_passed_score[file];
-//     score[1] = eg_passed_score[file];
-//     return score;
-// }
 
 pub inline fn get_isolated_pawn_score(file: u6) [2]i32 {
     var score = [_]i32{ 0, 0 };

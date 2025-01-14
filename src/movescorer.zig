@@ -63,13 +63,11 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayL
             } else {
                 const side: u4 = if (color == Color.White) Color.White.toU4() else Color.Black.toU4();
                 var piece = pos.board[move.from];
-                //score = search.sc_history[side][move.from][move.to];
                 score = search.get_sh(side, move.from, move.to);
                 if (search.ply >= 1) {
                     var parent = search.ns_stack[search.ply - 1].move;
                     var p_piece = search.ns_stack[search.ply - 1].piece;
                     if (!parent.is_empty()) {
-                        //score += search.sc_counter_table[p_piece.toU4()][parent.to][piece.toU4()][move.to];
                         score += search.get_ch(p_piece.toU4(), parent.to, piece.toU4(), move.to);
                     }
                 }
@@ -77,7 +75,6 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayL
                     var gparent = search.ns_stack[search.ply - 2].move;
                     var gp_piece = search.ns_stack[search.ply - 2].piece;
                     if (!gparent.is_empty()) {
-                        //score += search.sc_follow_table[gp_piece.toU4()][gparent.to][piece.toU4()][move.to];
                         score += search.get_fh(gp_piece.toU4(), gparent.to, piece.toU4(), move.to);
                     }
                 }
@@ -87,24 +84,6 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayL
         score_list.append(score) catch unreachable;
     }
 }
-
-// pub inline fn get_next_best(move_list: *std.ArrayList(Move), score_list: *std.ArrayList(i32), i: usize) Move {
-//     var best_j = i;
-//     var max_score = score_list.items[i];
-
-//     for (score_list.items[i + 1 ..], i + 1..) |score, j| {
-//         if (score > max_score) {
-//             best_j = j;
-//             max_score = score;
-//         }
-//     }
-
-//     if (best_j != i) {
-//         std.mem.swap(Move, &move_list.items[i], &move_list.items[best_j]);
-//         std.mem.swap(i32, &score_list.items[i], &score_list.items[best_j]);
-//     }
-//     return move_list.items[i];
-// }
 
 pub inline fn get_next_best(move_list: *std.ArrayList(Move), score_list: *std.ArrayList(i32), i: usize) Move {
     var best_j = i;
@@ -157,13 +136,10 @@ pub inline fn see(pos: *Position, move: Move, thr: i32) bool {
         return true;
     }
 
-    //var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ (@as(u64, 1) << from) ^ (@as(u64, 1) << to);
     var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ bb.SQUARE_BB[from] ^ bb.SQUARE_BB[to];
     var attackers: u64 = pos.all_attackers(to, occupied);
 
-    //var bishops: u6 = pos.piece_bb[Piece.WHITE_BISHOP.toU4()] | pos.piece_bb[Piece.WHITE_QUEEN.toU4()] | pos.piece_bb[Piece.BLACK_BISHOP.toU4()] | pos.piece_bb[Piece.BLACK_QUEEN.toU4()];
     const bishops: u64 = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
-    //var rooks: u6 = pos.piece_bb[Piece.WHITE_ROOK.toU4()] | pos.piece_bb[Piece.WHITE_QUEEN.toU4()] | pos.piece_bb[Piece.BLACK_ROOK.toU4()] | pos.piece_bb[Piece.BLACK_QUEEN.toU4()];
     const rooks: u64 = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
 
     var side = attacker.color().change_side();
@@ -181,7 +157,6 @@ pub inline fn see(pos: *Position, move: Move, thr: i32) bool {
         var pt: u4 = undefined;
         for (PieceType.Pawn.toU3()..(PieceType.King.toU3() + 1)) |pc| {
             pt = @as(u4, @intCast(pc));
-            //if ((my_attackers & (pos.bitboard_of_pt(Color.White, PieceType.make(pt)) | pos.bitboard_of_pt(Color.Black, PieceType.make(pt)))) != 0) {
             if ((my_attackers & (pos.piece_bb[pt] | pos.piece_bb[pt + 8])) != 0) {
                 break;
             }
@@ -199,8 +174,6 @@ pub inline fn see(pos: *Position, move: Move, thr: i32) bool {
             break;
         }
 
-        //occupied ^= @as(u64, 1) << bb.get_ls1b_index(my_attackers & pos.piece_bb[Piece.make_piece(side.change_side(), PieceType.make(pt)).toU4()]);
-        //occupied ^= bb.SQUARE_BB[bb.get_ls1b_index(my_attackers & (pos.bitboard_of_pc(Piece.make_piece(Color.White, PieceType.make(pt))) | pos.bitboard_of_pc(Piece.make_piece(Color.Black, PieceType.make(pt)))))];
         occupied ^= bb.SQUARE_BB[bb.get_ls1b_index(my_attackers & (pos.piece_bb[pt] | pos.piece_bb[pt + 8]))];
 
         if (pt == PieceType.Pawn.toU3() or pt == PieceType.Bishop.toU3() or pt == PieceType.Queen.toU3()) {
@@ -237,7 +210,6 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
         }
     }
 
-    //var is_promotion = move.is_promotion();
     const pqv = piece_val[move.flags.promote_type().toU3()] - piece_val[0];
     var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ bb.SQUARE_BB[from];
 
@@ -269,10 +241,6 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
             break;
         }
 
-        // if (((pos.checkers) & ~occupied) == 0) {
-        //     side_att &= ~pos.pinned;
-        // }
-
         if (side_att == 0) {
             break;
         }
@@ -289,10 +257,7 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
             pb = side_att;
         }
 
-        //pb = pb & -pb;
-        //occ ^= pb;
         occupied ^= bb.SQUARE_BB[bb.get_ls1b_index(pb)];
-        //occupied ^= bb.SQUARE_BB[bb.get_ls1b_index(side_att & (pos.piece_bb[pt] | pos.piece_bb[pt + 8]))];
 
         if (pt == PieceType.Pawn.toU3() or pt == PieceType.Bishop.toU3() or pt == PieceType.Queen.toU3()) {
             attackers |= (attacks.piece_attacks(to, occupied, PieceType.Bishop) & bq);

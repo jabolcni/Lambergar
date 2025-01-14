@@ -29,17 +29,6 @@ pub const start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -
 
 pub var debug = false;
 
-const Chunk = struct {
-    occupancy: u64,
-    //pieces: [32]u4,
-    pieces: u128,
-    score: i16,
-    result: u8,
-    stm_king: u8,
-    nstm_king: u8,
-    extra_info: [3]u8,
-};
-
 pub fn u32_from_str(str: []const u8) u32 {
     var x: u32 = 0;
 
@@ -117,11 +106,11 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
         const command = words.next().?;
 
         if (std.mem.eql(u8, command, "uci")) {
-            _ = try std.fmt.format(stdout, "id name Lambergar v0.6.0\n", .{});
+            _ = try std.fmt.format(stdout, "id name Lambergar 1.0\n", .{});
             _ = try std.fmt.format(stdout, "id author Janez Podobnik\n", .{});
             _ = try std.fmt.format(stdout, "option name Hash type spin default {d} min {d} max {d}\n", .{ HASH_SIZE_DEFAULT, HASH_SIZE_MIN, HASH_SIZE_MAX });
             //_ = try std.fmt.format(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, 1 });
-            _ = try std.fmt.format(stdout, "option name UseNNUE type check default {s}\n", .{"false"});
+            _ = try std.fmt.format(stdout, "option name UseNNUE type check default {}\n", .{nnue.engine_using_nnue});
             //_ = try std.fmt.format(stdout, "option name EvalFile type string default \n", .{});
             _ = try std.fmt.format(stdout, "option name Debug type check default {}\n", .{debug});
             _ = try std.fmt.format(stdout, "uciok\n", .{});
@@ -252,16 +241,19 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     }
                 } else if (std.mem.eql(u8, arg, "UseNNUE")) {
                     arg = words.next().?;
-                    if (std.mem.eql(u8, arg, "true")) {
-                        nnue.engine_using_nnue = nnue.engine_loaded_net;
-                    } else if (std.mem.eql(u8, arg, "false")) {
-                        nnue.engine_using_nnue = false;
-                    } else {
-                        nnue.engine_using_nnue = true;
-                    }
-                    if (debug) {
-                        std.debug.print("UseNNue = {}\n", .{nnue.engine_using_nnue});
-                    }
+                    if (std.mem.eql(u8, arg, "value")) {
+                        arg = words.next().?;
+                        if (std.mem.eql(u8, arg, "true")) {
+                            nnue.engine_using_nnue = nnue.engine_loaded_net;
+                        } else if (std.mem.eql(u8, arg, "false")) {
+                            nnue.engine_using_nnue = false;
+                        } else {
+                            nnue.engine_using_nnue = true;
+                        }
+                        if (debug) {
+                            std.debug.print("UseNNue = {}\n", .{nnue.engine_using_nnue});
+                        }
+                    } else continue;
                 } else if (std.mem.eql(u8, arg, "EvalFile")) {
                     nnue.engine_loaded_net = false;
                     const nnue_file_name = words.next() orelse continue :mainloop;
@@ -281,7 +273,6 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             pos = Position.new();
             var maybe_moves_str: ?[]const u8 = null;
             if (std.mem.eql(u8, pos_variant, "fen")) {
-                // this part gets a bit messy - we concatenate the rest of the uci line, then split it on "moves"
                 var parts = std.mem.split(u8, words.rest(), "moves");
                 const fen = std.mem.trim(u8, parts.next().?, " ");
                 try pos.set(fen);
@@ -363,16 +354,6 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                 std.debug.print("{}. ", .{i});
                 move.print();
                 std.debug.print(" SEE result: {}\n", .{thr});
-
-                // for (0..2400) |j| {
-                //     const thr = @as(i32, 1200) - @as(i32, @intCast(j));
-                //     if (ms.see(&pos, move, thr)) {
-                //         std.debug.print("{}. ", .{i});
-                //         move.print();
-                //         std.debug.print(" SEE result: {}\n", .{thr});
-                //         break;
-                //     }
-                // }
             }
         }
     }
