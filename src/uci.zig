@@ -102,7 +102,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
         const input = std.mem.trimRight(u8, input_full, "\r");
         if (input.len == 0) continue :mainloop;
 
-        var words = std.mem.split(u8, input, " ");
+        var words = std.mem.splitScalar(u8, input, ' ');
         const command = words.next().?;
 
         if (std.mem.eql(u8, command, "uci")) {
@@ -273,7 +273,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             pos = Position.new();
             var maybe_moves_str: ?[]const u8 = null;
             if (std.mem.eql(u8, pos_variant, "fen")) {
-                var parts = std.mem.split(u8, words.rest(), "moves");
+                var parts = std.mem.splitSequence(u8, words.rest(), "moves");
                 const fen = std.mem.trim(u8, parts.next().?, " ");
                 try pos.set(fen);
 
@@ -291,7 +291,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             } else continue;
 
             if (maybe_moves_str) |moves_str| {
-                var moves = std.mem.split(u8, std.mem.trim(u8, moves_str, " "), " ");
+                var moves = std.mem.splitScalar(u8, std.mem.trim(u8, moves_str, " "), ' ');
                 while (moves.next()) |move_str| {
                     const move = Move.parse_move(move_str, &pos) catch continue;
                     if (pos.side_to_play == Color.White) {

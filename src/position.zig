@@ -1897,10 +1897,10 @@ pub const Position = struct {
     pub fn set(self: *Position, fen: []const u8) !void {
         self.* = Position.new();
 
-        var parts = std.mem.split(u8, fen, " ");
+        var parts = std.mem.splitScalar(u8, fen, ' ');
         const fen_position = parts.next().?;
 
-        var ranks = std.mem.split(u8, fen_position, "/");
+        var ranks = std.mem.splitScalar(u8, fen_position, '/');
         var rank: u6 = 0;
         while (ranks.next()) |entry| {
             var file: u6 = 0;
