@@ -2,6 +2,7 @@ const std = @import("std");
 const position = @import("position.zig");
 const tt = @import("tt.zig");
 const zobrist = @import("zobrist.zig");
+const lists = @import("lists.zig");
 
 const DefaultPrng = std.rand.DefaultPrng;
 const Random = std.rand.Random;
@@ -10,6 +11,7 @@ const Color = position.Color;
 const Position = position.Position;
 const Move = position.Move;
 const MoveFlags = position.MoveFlags;
+const MoveList = lists.MoveList;
 
 pub const PerftResult = struct {
     time_elapsed: u64,
@@ -74,12 +76,14 @@ pub fn perft_with_stats(comptime color: Color, pos: *Position, depth: u4) perft_
 
     const opp = if (color == Color.White) Color.Black else Color.White;
 
-    var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-    defer list.deinit();
+    //var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
+    //defer list.deinit();
+    var list: MoveList = .{};
 
     pos.generate_legals(color, &list);
     if (depth == 1) {
-        for (list.items) |m| {
+        for (0..list.count) |i| {
+            const m = list.moves[i];
             ps.nodes += 1;
             switch (m.flags) {
                 MoveFlags.QUIET => {},
@@ -132,15 +136,17 @@ pub fn perft_with_stats(comptime color: Color, pos: *Position, depth: u4) perft_
             if (pos.in_check(color.change_side())) {
                 ps.checks += 1;
 
-                var list2 = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-                defer list2.deinit();
+                //var list2 = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
+                //defer list2.deinit();
+                var list2: MoveList = .{};
                 pos.generate_legals(color.change_side(), &list2);
-                if (list2.items.len == 0) ps.checkmate += 1;
+                if (list2.count == 0) ps.checkmate += 1;
             }
             pos.undo(m, color);
         }
     } else {
-        for (list.items) |move| {
+        for (0..list.count) |i| {
+            const move = list.moves[i];
             pos.play(move, color);
             const ps_ret = perft_with_stats(opp, pos, depth - 1);
             ps.add(ps_ret);
@@ -157,16 +163,18 @@ pub fn perft(comptime color: Color, pos: *Position, depth: u4) u64 {
 
     const opp = if (color == Color.White) Color.Black else Color.White;
 
-    var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-    defer list.deinit();
+    //var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
+    //defer list.deinit();
+    var move_list: MoveList = .{};
 
-    pos.generate_legals(color, &list);
+    pos.generate_legals(color, &move_list);
 
     if (depth == 1) {
-        return @as(u64, @intCast(list.items.len));
+        return @as(u64, @intCast(move_list.count));
     }
 
-    for (list.items) |move| {
+    for (0..move_list.count) |i| {
+        const move = move_list.moves[i];
         pos.play(move, color);
         nodes += perft(opp, pos, depth - 1);
         pos.undo(move, color);
@@ -192,12 +200,14 @@ pub fn perft_div(comptime color: Color, pos: *Position, depth: u4) void {
     var branch: u64 = 0;
     const opp = if (color == Color.White) Color.Black else Color.White;
 
-    var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-    defer list.deinit();
+    //var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
+    //defer list.deinit();
+    var list: MoveList = .{};
 
     pos.generate_legals(color, &list);
 
-    for (list.items) |move| {
+    for (0..list.count) |i| {
+        const move = list.moves[i];
         pos.play(move, color);
         branch = perft(opp, pos, depth - 1);
         nodes += branch;
@@ -207,7 +217,7 @@ pub fn perft_div(comptime color: Color, pos: *Position, depth: u4) void {
         std.debug.print(" {}\n", .{branch});
     }
 
-    std.debug.print("\nMoves: {}\n", .{list.items.len});
+    std.debug.print("\nMoves: {}\n", .{list.count});
     std.debug.print("Nodes: {}\n", .{nodes});
 }
 

@@ -9,11 +9,14 @@ const search = @import("search.zig");
 const ms = @import("movescorer.zig");
 const nnue = @import("nnue.zig");
 const bb = @import("bitboard.zig");
+const lists = @import("lists.zig");
 
 const Position = position.Position;
 const Color = position.Color;
 const Move = position.Move;
 const Search = search.Search;
+
+const MoveList = lists.MoveList;
 
 const fixedBufferStream = std.io.fixedBufferStream;
 const peekStream = std.io.peekStream;
@@ -106,7 +109,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
         const command = words.next().?;
 
         if (std.mem.eql(u8, command, "uci")) {
-            _ = try std.fmt.format(stdout, "id name Lambergar 1.0\n", .{});
+            _ = try std.fmt.format(stdout, "id name Lambergar 1.1\n", .{});
             _ = try std.fmt.format(stdout, "id author Janez Podobnik\n", .{});
             _ = try std.fmt.format(stdout, "option name Hash type spin default {d} min {d} max {d}\n", .{ HASH_SIZE_DEFAULT, HASH_SIZE_MIN, HASH_SIZE_MAX });
             //_ = try std.fmt.format(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, 1 });
@@ -131,7 +134,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                 if (std.mem.eql(u8, arg, "searchmoves")) {
                     continue :mainloop; // unimplemented
                 } else if (std.mem.eql(u8, arg, "ponder")) {
-                    ponder = true;
+                    ponder = false;
                 } else if (std.mem.eql(u8, arg, "wtime")) {
                     wtime = u64_from_str(words.next() orelse continue :mainloop);
                 } else if (std.mem.eql(u8, arg, "btime")) {
@@ -304,8 +307,9 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
         } else if (std.mem.eql(u8, command, "board")) {
             pos.print_unicode();
         } else if (std.mem.eql(u8, command, "moves")) {
-            var list = std.ArrayList(Move).initCapacity(allocator, 48) catch unreachable;
-            defer list.deinit();
+            //var list = std.ArrayList(Move).initCapacity(allocator, 48) catch unreachable;
+            //defer list.deinit();
+            var list: MoveList = .{};
 
             if (pos.side_to_play == Color.White) {
                 pos.generate_legals(Color.White, &list);
@@ -313,7 +317,8 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                 pos.generate_legals(Color.Black, &list);
             }
 
-            for (list.items, 1..) |move, i| {
+            for (0..list.count) |i| {
+                const move = list.moves[i];
                 std.debug.print("\n{}. ", .{i});
                 move.print();
             }
@@ -338,8 +343,9 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                 _ = try std.fmt.format(stdout, "{d:.3}MN/s\n", .{nps / 1_000_000});
             }
         } else if (std.mem.eql(u8, command, "see")) {
-            var list = std.ArrayList(Move).initCapacity(allocator, 48) catch unreachable;
-            defer list.deinit();
+            //var list = std.ArrayList(Move).initCapacity(allocator, 48) catch unreachable;
+            //defer list.deinit();
+            var list: MoveList = .{};
 
             if (pos.side_to_play == Color.White) {
                 pos.generate_legals(Color.White, &list);
@@ -349,7 +355,8 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
             std.debug.print("SEE thresholds\n", .{});
 
-            for (list.items, 1..) |move, i| {
+            for (0..list.count) |i| {
+                const move = list.moves[i];
                 const thr = ms.see_value(&pos, move, false);
                 std.debug.print("{}. ", .{i});
                 move.print();

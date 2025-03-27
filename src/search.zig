@@ -5,6 +5,7 @@ const tt = @import("tt.zig");
 const history = @import("history.zig");
 const evaluation = @import("evaluation.zig");
 const nnue = @import("nnue.zig");
+const lists = @import("lists.zig");
 
 const Instant = std.time.Instant;
 
@@ -16,6 +17,11 @@ const Move = position.Move;
 
 const DefaultPrng = std.rand.DefaultPrng;
 const Random = std.rand.Random;
+
+const MoveList = lists.MoveList;
+const ScoreList = lists.ScoreList;
+const PieceList = lists.PieceList;
+const PieceTypeList = lists.PieceTypeList;
 
 pub const MAX_DEPTH = 100;
 pub const MAX_PLY = 128;
@@ -30,7 +36,7 @@ const null_move_depth = 2;
 const histroy_depth = [_]i32{ 3, 2 };
 const history_limit = [_]i32{ -1000, -2000 };
 const cm_history_limit = [_]i32{ 0, -1000 };
-const fm_history_limit = [_]i32{ -2000, -4000 };
+const fm_history_limit = [_]i32{ -1000, -2000 }; //{ -2000, -4000 };
 const futility_histroy_limit = [_]i32{ -500, -1000 };
 const lmp_depth = 8;
 
@@ -272,7 +278,7 @@ pub const Search = struct {
         self.clear_mv_counter();
         self.clear_sc_history();
         self.clear_node_state_stack();
-        self.clear_sc_follow_table();
+        //self.clear_sc_follow_table();
 
         self.best_move = Move.empty();
         self.stop_on_time = false;
@@ -476,12 +482,10 @@ pub const Search = struct {
         }
 
         if (self.best_move.is_empty()) {
-            var move_list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-            defer move_list.deinit();
+            var move_list: MoveList = .{};
             const me = if (color == Color.White) Color.White else Color.Black;
             pos.generate_legals(me, &move_list);
-            var score_list = std.ArrayList(i32).initCapacity(std.heap.c_allocator, move_list.items.len) catch unreachable;
-            defer score_list.deinit();
+            var score_list: ScoreList = .{};
             ms.score_move(pos, self, &move_list, &score_list, Move.empty(), me);
             self.best_move = ms.get_next_best(&move_list, &score_list, 0);
         }
@@ -517,8 +521,6 @@ pub const Search = struct {
             is_null = true;
         }
 
-        self.seldepth = @max(self.ply, self.seldepth);
-
         if (qsearch) {
             if (in_check) {
                 depth = 1;
@@ -528,8 +530,8 @@ pub const Search = struct {
         }
 
         self.pv_length[self.ply] = 0;
-
-        self.nodes += 1;
+        self.seldepth = @max(self.ply, self.seldepth);
+        //self.nodes += 1;
 
         if (self.check_stop_conditions()) {
             self.stop_on_time = true;
@@ -596,8 +598,7 @@ pub const Search = struct {
             depth -= 1;
         }
 
-        // const random_eval: i32 = 7 - (@as(i32, @intCast(self.nodes & 13)));
-        const static_eval = pos.eval.eval(pos, me); // + random_eval;
+        const static_eval = pos.eval.eval(pos, me);
         best_score = static_eval;
 
         self.ns_stack[self.ply].eval = static_eval;
@@ -675,12 +676,11 @@ pub const Search = struct {
         best_score = -MATE_VALUE + @as(i32, self.ply);
         var best_move = Move.empty();
 
-        var move_list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-        defer move_list.deinit();
+        var move_list: MoveList = .{};
 
         pos.generate_legals(me, &move_list);
 
-        if (move_list.items.len == 0) {
+        if (move_list.count == 0) {
             if (in_check) {
                 // Checkmate
                 return -MATE_VALUE + @as(i32, self.ply);
@@ -690,8 +690,8 @@ pub const Search = struct {
             }
         }
 
-        var score_list = std.ArrayList(i32).initCapacity(std.heap.c_allocator, move_list.items.len) catch unreachable;
-        defer score_list.deinit();
+        var score_list: ScoreList = .{};
+
         ms.score_move(pos, self, &move_list, &score_list, tt_move, me);
 
         self.mv_killer[self.ply + 1][0] = Move.empty();
@@ -699,15 +699,13 @@ pub const Search = struct {
         self.excluded[self.ply + 1] = Move.empty();
         self.dextension[self.ply] = if (self.ply > 0) self.dextension[self.ply - 1] else 0;
 
-        var quiet_list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, move_list.items.len) catch unreachable;
-        defer quiet_list.deinit();
-        var quet_mv_pieces = std.ArrayList(Piece).initCapacity(std.heap.c_allocator, move_list.items.len) catch unreachable;
-        defer quet_mv_pieces.deinit();
+        var quiet_list: MoveList = .{};
+        var quet_mv_pieces: PieceList = .{};
         var quiets_tried: u8 = 0;
         var played: u8 = 0;
         var skip_quiets = false;
 
-        for (0..move_list.items.len) |mv_idx| {
+        for (0..move_list.count) |mv_idx| {
             const move = ms.get_next_best(&move_list, &score_list, mv_idx);
 
             if (move.equal(self.excluded[self.ply])) {
@@ -724,13 +722,13 @@ pub const Search = struct {
             if (self.ply >= 1) {
                 const parent = self.ns_stack[self.ply - 1].move;
                 const p_piece = self.ns_stack[self.ply - 1].piece;
-                cm_hist = self.get_ch(p_piece.toU4(), parent.to, piece.toU4(), move.to);
+                cm_hist += self.get_ch(p_piece.toU4(), parent.to, piece.toU4(), move.to);
             }
 
             if (self.ply >= 2) {
                 const gparent = self.ns_stack[self.ply - 2].move;
                 const gp_piece = self.ns_stack[self.ply - 2].piece;
-                fm_hist = self.get_fh(gp_piece.toU4(), gparent.to, piece.toU4(), move.to);
+                fm_hist += self.get_fh(gp_piece.toU4(), gparent.to, piece.toU4(), move.to);
             }
             const full_hist = sc_hist + cm_hist + fm_hist;
 
@@ -740,13 +738,13 @@ pub const Search = struct {
                         continue;
                     }
 
-                    if (depth <= histroy_depth[improving] and cm_hist < cm_history_limit[improving]) {
+                    if (depth <= histroy_depth[improving] and (cm_hist + fm_hist) < cm_history_limit[improving]) {
                         continue;
                     }
 
-                    if (depth <= histroy_depth[improving] and fm_hist < fm_history_limit[improving]) {
-                        continue;
-                    }
+                    // if (depth <= histroy_depth[improving] and fm_hist < fm_history_limit[improving]) {
+                    //     continue;
+                    // }
 
                     if (depth <= histroy_depth[improving] and sc_hist < (history_limit[improving] * depth)) {
                         continue;
@@ -773,8 +771,8 @@ pub const Search = struct {
 
             if (mv_quiet) {
                 quiets_tried += 1;
-                quiet_list.append(move) catch unreachable;
-                quet_mv_pieces.append(piece) catch unreachable;
+                quiet_list.append(move);
+                quet_mv_pieces.append(piece);
             }
 
             var new_depth = depth;
@@ -788,6 +786,7 @@ pub const Search = struct {
             self.ply += 1;
             pos.play(move, me);
             tt.TT.prefetch(pos.hash);
+            self.nodes += 1;
             // make move
 
             if (pos.in_check(me)) {
@@ -985,15 +984,12 @@ pub const Search = struct {
 
         var best_move = Move.empty();
 
-        var move_list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-        defer move_list.deinit();
-        pos.generate_captures(me, &move_list);
-
-        var score_list = std.ArrayList(i32).initCapacity(std.heap.c_allocator, move_list.items.len) catch unreachable;
-        defer score_list.deinit();
+        var move_list: MoveList = .{};
+        pos.generate_captures_list(me, &move_list);
+        var score_list: ScoreList = .{};
         ms.score_move(pos, self, &move_list, &score_list, tt_move, me);
 
-        for (0..move_list.items.len) |mv_idx| {
+        for (0..move_list.count) |mv_idx| {
             const move = ms.get_next_best(&move_list, &score_list, mv_idx);
 
             const see_val = ms.see_value(pos, move, false);
@@ -1006,9 +1002,8 @@ pub const Search = struct {
             self.ply += 1;
             pos.play(move, me);
             tt.TT.prefetch(pos.hash);
-            // make move
-
             self.nodes += 1;
+            // make move
 
             score = -self.quiescence(-beta, -alpha, pos, depth - 1, opp);
 

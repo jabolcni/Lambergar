@@ -1,6 +1,40 @@
-# Lambergar 1.0
+# Release notes
 
-## Builds
+## Lambergar 1.1
+
+### Builds
+
+Currently, there are five builds:
+
+- x86-64-v3: AVX2 support, best for using with NN evaluation and should be a preferred choice for best performance.
+- x86-64-v2: popcount support, suitable for modern computers.
+- x86-64-v1: vintage version is for really old computers.
+- aarch64-linux: version for Raspberry Pi 5,
+- x86-64-v4: AVX-512 support.
+
+### Release Notes
+
+- Changed some conditions for quiet move pruning based on history.
+- Updated the equation for calculating the bonus for history.
+- Implemented SIMD for the most computationally demanding functions in NNUE calculation, increasing NPS by **45%**.
+- Improved the speed of the move generator, increasing NPS by an additional **15%**.
+- Overall, this results in a **60% increase in NPS**. At implemented time controls, this translates to **50% more nodes searched per move** and **10% more depth per move**.
+- New net called `trstenjak.nnue`, same architecture as before, but stronger. Trained on 800M positions of self play.
+- Compatible with zig version 0.14.0.
+
+```sh
+Time controls 10s+0.1s
+
+Score of Lambergar-1.1 vs Lambergar_1.0: 575 - 91 - 462  [0.715] 1128
+...      Lambergar-1.1 playing White: 352 - 32 - 180  [0.784] 564
+...      Lambergar-1.1 playing Black: 223 - 59 - 282  [0.645] 564
+...      White vs Black: 411 - 255 - 462  [0.569] 1128
+Elo difference: 159.4 +/- 15.8, LOS: 100.0 %, DrawRatio: 41.0 %
+```
+
+## Lambergar 1.0
+
+### Builds
 
 Currently there are four builds:
 
@@ -9,7 +43,7 @@ Currently there are four builds:
 - x86-64-v1: vintage version is for really old computers.
 - aarch64-linux: version for Raspberry Pi 5.
 
-## Release Notes
+### Release Notes
 
 This is a major release. I believe the Lambergar chess engine has matured enough to warrant the release of version 1.0. I am also introducing slight changes to the naming convention by dropping the patch version and removing the letter "v" in front of the version number. While I am sure there are still some significant bugs in the engine, I believe the code has reached a level of maturity where these bugs are no longer critical to its core functionality.
 
@@ -19,29 +53,29 @@ This is a major release. I believe the Lambergar chess engine has matured enough
 - Fixed bug: `UseNNUE` was not working because the implementation for switching NNUE on/off did not follow the correct format. This has been fixed to comply with the UCI format: `setoption name UseNNUE value [value]`, where `[value]` is either `true` or `false`.
 - Fixed bug: When the UCI command was issued, the line reporting the option name `UseNNUE type check default` always displayed `false`, because it was hardcoded. I had overlooked updating this line to reflect the actual value. This issue is now resolved.
 
-# Lambergar v0.6.0
+## Lambergar v0.6.0
 
-## Builds
+### Builds
 
-Currently there are three builds:
+Currently, there are three builds:
 
 - x86-64-v3: AVX2 support, best for using with NN evaluation and should be a preffered choice for best performance.
 - x86-64-v2: popcount support, suitable for moder computers.
 - x86-64-v1: vintage version is for really old computers.
 
-## Release Notes
+### Release Notes
 
 This is quite a major release, if the testing of this release goes well, next release will be version v1.0.0. This release brings several important changes:
 
-- Introduction of NN for evaluation. It uses halfKP NNUE arhitecture, although half of the size typically used. While the arhitecture of NN is of NNUE type, the engine code for evaluation is actually mising the UE part. This is planned for next release.
-- Engine code can now be compiled with latest version of zig, which is version `0.13.0`. The major problem in the past was that the engine code was written in such a manner that newer releases of zig when compiled intorducede many calls of memcpy which significantly reduced the speed of the engine (see discussion on [Ziggit](https://ziggit.dev/t/slow-execution-of-the-program-with-newest-zig-version/3976)). By using profiler I was able to identify the problematic parts of code and refractor it.
-- Engine code can now be compiled into Debug mode. While this seems obvious and trivial requirement and good coding practice, zig compiler is pretty robust and produces in most cases normally working executables, so this was not my main priority at the start of the programming the engine. However, later it become obvious that I need to fix the bugs to be able to keep the code in "good shape".
-- Several bug fixes, the major one being related how the time for a single move is calculated in time format with "moves to go". This has now been fixed and all time controls should work correctly. The rest of the bugs were mainly related to integer overflows, etc.
-- Estimated engine strenght is around 3040-3060 ELO.
+- Introduction of NN for evaluation. It uses halfKP NNUE architecture, although half of the size typically used. While the architecture of NN is of NNUE type, the engine code for evaluation is actually missing the UE part. This is planned for next release.
+- Engine code can now be compiled with latest version of zig, which is version `0.13.0`. The major problem in the past was that the engine code was written in such a manner that newer releases of zig when compiled introduced many calls of memcpy which significantly reduced the speed of the engine (see discussion on [Ziggit](https://ziggit.dev/t/slow-execution-of-the-program-with-newest-zig-version/3976)). By using profiler I was able to identify the problematic parts of code and refractor it.
+- Engine code can now be compiled into Debug mode. While this seems obvious and trivial requirement and good coding practice, zig compiler is pretty robust and produces in most cases normally working executables, so this was not my main priority at the start of the programming the engine. However, later it becomes obvious that I need to fix the bugs to be able to keep the code in "good shape".
+- Several bug fixes, the major one being related how the time for a single move is calculated in time format with "moves to go". This has now been fixed, and all time controls should work correctly. The rest of the bugs were mainly related to integer overflows, etc.
+- Estimated engine strength is around 3040-3060 ELO.
   
-# Lambergar v0.5.2
+## Lambergar v0.5.2
 
-## Release Notes
+### Release Notes
 
 - This release brings some minor bug fixes.
 - UCI interface has been reorganized and is now smaller in terms of code size, but has same functionality.
@@ -49,19 +83,19 @@ This is quite a major release, if the testing of this release goes well, next re
 - Improved time controls.
 - Strength of the engine remains the same as in version v0.5.1.
 
-# Lambergar v0.5.1
+## Lambergar v0.5.1
 
-## Release Notes
+### Release Notes
 
 This release brings several bug fixes, with the major one addressing a flaw in the calculation formula for determining the new history value. The previous formula did not limit the history value, leading to an integer overflow issue at certain points, resulting in negative values. Consequently, during move sorting, the best quiet moves were erroneously placed last. This issue was more pronounced during longer time controls, where there were more opportunities to increase the history value. At lower time controls (up to 10 seconds per move), the new formula may actually reduce the engine's strength by 10-20 ELO points. However, at longer time controls, version v0.5.1 demonstrates improvement in engine strength over the previous version. At approximately 1 minute per move, the new version is approximately 50 ELO points stronger, with even more significant gains observed at longer time controls.
 
-# Lambergar v0.5.0
+## Lambergar v0.5.0
 
-## Builds
+### Builds
 
 Currently there are two basic builds: vintage and popcnt. The vintage version is for really old computers, while popcnt is for modern computers.
 
-## Release Notes
+### Release Notes
 
 Main Features:
 
@@ -80,9 +114,9 @@ Main Features:
 - Some minor improvements: Search function, history heuristics, and move sorting.
 - Time controls: improved time controls.
 
-# Lambergar v0.4.1
+## Lambergar v0.4.1
 
-## Release Notes
+### Release Notes
 
 This release includes two bug fixes:
 
@@ -92,21 +126,21 @@ This release includes two bug fixes:
 
 Please note that these changes do not improve the engine's strength.
 
-# Lambergar v0.4.0
+## Lambergar v0.4.0
 
-## Builds
+### Builds
 
 Currently there are two basic build: vintage and popcnt. Vintage version is for really old computers, popcnt is for modern computers.
 
-## Release Notes
+### Release Notes
 
 Main features
 
 - New evaluation parameters
 - Tuner for evaluation parameters
 - Changed history heuristics and move sorting
-- Improved apiration window algorithm
-- Changes in prunings and reductions
+- Improved aspiration window algorithm
+- Changes in pruning and reductions
 - I have been changing and massaging the code quite a bit, so I lost the track of all the changes, but the improvements are quite substantial
 
 ```sh
@@ -119,9 +153,9 @@ Score of Lambergar vs Lamb031: 706 - 67 - 207  [0.826] 980
 Elo difference: 270.6 +/- 22.9, LOS: 100.0 %, DrawRatio: 21.1 %
 ```
 
-# Lambergar v0.3.1c
+## Lambergar v0.3.1c
 
-## Release Notes
+### Release Notes
 
 - Release with different x86-64 microarchitecture levels:
   - x86-64 is baseline microarchitecture
@@ -131,15 +165,15 @@ Elo difference: 270.6 +/- 22.9, LOS: 100.0 %, DrawRatio: 21.1 %
 
 (source: [https://developers.redhat.com/blog/2021/01/05/building-red-hat-enterprise-linux-9-for-the-x86-64-v2-microarchitecture-level#background_of_the_x86_64_microarchitecture_levels](https://developers.redhat.com/blog/2021/01/05/building-red-hat-enterprise-linux-9-for-the-x86-64-v2-microarchitecture-level#background_of_the_x86_64_microarchitecture_levels))
 
-# Lambergar v0.3.1b
+## Lambergar v0.3.1b
 
-## Release Notes
+### Release Notes
 
 - Fixed issues with UCI commands requiring space after command to work on Windows.
 - Compiled for two Intel architectures
 
-# Lambergar v0.3.1
+## Lambergar v0.3.1
 
-## Release Notes
+### Release Notes
 
 This is the first public release of Lambergar chess engine.

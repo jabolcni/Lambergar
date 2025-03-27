@@ -293,7 +293,7 @@ pub const Tuner = struct {
         try writer.print("\n", .{});
 
         while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {
-            var it = std.mem.splitScalar(u8, line, '[');
+            var it = std.mem.splitScalar(u8, line, "[");
             const fen = it.first();
             const result_str = it.next();
 

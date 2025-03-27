@@ -4,6 +4,7 @@ const searcher = @import("search.zig");
 const attacks = @import("attacks.zig");
 const bb = @import("bitboard.zig");
 const history = @import("history.zig");
+const lists = @import("lists.zig");
 
 const Move = position.Move;
 const Position = position.Position;
@@ -12,6 +13,9 @@ const PieceType = position.PieceType;
 const Color = position.Color;
 const MoveFlags = position.MoveFlags;
 const Search = searcher.Search;
+
+const MoveList = lists.MoveList;
+const ScoreList = lists.ScoreList;
 
 pub const SortHash = 9000000;
 pub const QueenPromotionWithCapture = 1500000;
@@ -28,8 +32,9 @@ pub const Badpromotion = -QueenPromotionWithCapture;
 // pawns, knights, bishops, rooks, queens, kings
 const piece_val = [7]i32{ 100, 300, 300, 500, 900, 20000, 0 };
 
-pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayList(Move), score_list: *std.ArrayList(i32), hash_move: Move, comptime color: Color) void {
-    for (move_list.items) |move| {
+pub inline fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_list: *ScoreList, hash_move: Move, comptime color: Color) void {
+    for (0..move_list.count) |i| {
+        const move = move_list.moves[i];
         var score: i32 = 0;
         if (move.equal(hash_move)) {
             score = SortHash;
@@ -81,19 +86,17 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *std.ArrayL
             }
         }
 
-        score_list.append(score) catch unreachable;
+        score_list.append(score);
     }
 }
 
-pub inline fn get_next_best(move_list: *std.ArrayList(Move), score_list: *std.ArrayList(i32), i: usize) Move {
+pub inline fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usize) Move {
     var best_j = i;
-    var max_score = score_list.items[i];
-
-    const move_list_items = move_list.items;
-    const score_list_items = score_list.items;
+    var max_score = score_list.scores[i];
 
     // Start from i+1 and iterate over the remaining elements
-    for (score_list.items[i + 1 ..], i + 1..) |score, j| {
+    for ((i + 1)..score_list.count) |j| {
+        const score = score_list.scores[j];
         if (score > max_score) {
             best_j = j;
             max_score = score;
@@ -102,15 +105,15 @@ pub inline fn get_next_best(move_list: *std.ArrayList(Move), score_list: *std.Ar
 
     // Swap if a better move is found
     if (best_j != i) {
-        const best_move = move_list_items[best_j];
-        const best_score = score_list_items[best_j];
-        move_list_items[best_j] = move_list_items[i];
-        score_list_items[best_j] = score_list_items[i];
-        move_list_items[i] = best_move;
-        score_list_items[i] = best_score;
+        const best_move = move_list.moves[best_j];
+        const best_score = score_list.scores[best_j];
+        move_list.moves[best_j] = move_list.moves[i];
+        score_list.scores[best_j] = score_list.scores[i];
+        move_list.moves[i] = best_move;
+        score_list.scores[i] = best_score;
     }
 
-    return move_list_items[i];
+    return move_list.moves[i];
 }
 
 pub inline fn see(pos: *Position, move: Move, thr: i32) bool {

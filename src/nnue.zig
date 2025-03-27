@@ -14,7 +14,7 @@ const L1 = 128;
 const L2 = 16;
 const L3 = 16;
 
-const NNUE_FILE = "zolnir.nnue";
+const NNUE_FILE = "trstenjak.nnue";
 const fileNNUE = @embedFile(NNUE_FILE);
 
 pub var engine_loaded_net: bool = true;
@@ -341,27 +341,64 @@ fn affine(
     biases: []i32,
     weights: []i8,
 ) void {
-    const SHIFT = 6;
+    const Vec = @Vector(16, i32);
+    const SHIFT: @Vector(16, u5) = @splat(6);
+    const C0: Vec = @splat(0);
+    const C127: Vec = @splat(127);
     std.debug.assert(biases.len == L2);
     std.debug.assert(output.len == L2);
 
-    var tmp: [L2]i32 = undefined;
-    for (0..L2) |i| {
-        tmp[i] = biases[i];
-    }
+    var tmp0: Vec = biases[0..16].*;
 
     for (0..input.len) |idx| {
-        if (input[idx] == 0) continue; // performance boost
-        for (0..L2) |i| {
-            const t = @as(i32, @intCast(input[idx])) * weights[output.len * idx + i];
-            tmp[i] += t;
-        }
+        //if (input[idx] == 0) continue; // performance boost
+
+        const input_vec: Vec = @splat(@as(i32, @intCast(input[idx])));
+
+        const start = output.len * idx;
+        //const end = start + 16;
+
+        //const chunk: []const i8 = weights[start..end];
+        //const w_vec: @Vector(16, i8) = chunk[0..16].*;
+        const w_vec: @Vector(16, i8) = weights[start..][0..16].*;
+        tmp0 += input_vec * w_vec;
     }
 
-    for (0..output.len) |i| {
-        output[i] = @as(u8, @intCast(std.math.clamp(tmp[i] >> SHIFT, 0, 127)));
+    tmp0 = tmp0 >> SHIFT;
+    tmp0 = std.math.clamp(tmp0, C0, C127);
+
+    for (0..16) |i| {
+        output[i] = @as(u8, @intCast(tmp0[i]));
     }
 }
+
+// fn affine(
+//     input: []u8,
+//     output: []u8,
+//     biases: []i32,
+//     weights: []i8,
+// ) void {
+//     const SHIFT = 6;
+//     std.debug.assert(biases.len == L2);
+//     std.debug.assert(output.len == L2);
+
+//     var tmp: [L2]i32 = undefined;
+//     for (0..L2) |i| {
+//         tmp[i] = biases[i];
+//     }
+
+//     for (0..input.len) |idx| {
+//         if (input[idx] == 0) continue; // performance boost
+//         for (0..L2) |i| {
+//             const t = @as(i32, @intCast(input[idx])) * weights[output.len * idx + i];
+//             tmp[i] += t;
+//         }
+//     }
+
+//     for (0..output.len) |i| {
+//         output[i] = @as(u8, @intCast(std.math.clamp(tmp[i] >> SHIFT, 0, 127)));
+//     }
+// }
 
 fn propagate(
     input: []u8,
@@ -370,10 +407,14 @@ fn propagate(
 ) i32 {
     var sum: i32 = biases[0];
 
-    for (0..weights.len) |i| {
-        const tmp = @as(i32, @intCast(weights[i])) * input[i];
-        sum += tmp;
-    }
+    const inpVec: @Vector(16, i32) = input[0..16].*;
+    const weightsVec: @Vector(16, i8) = weights[0..16].*;
+    const tmp: @Vector(16, i32) = @as(@Vector(16, i32), inpVec) * @as(@Vector(16, i32), weightsVec);
+    sum += @reduce(.Add, tmp);
+    // for (0..weights.len) |i| {
+    //     const tmp = @as(i32, @intCast(weights[i])) * input[i];
+    //     sum += tmp;
+    // }
 
     return sum;
 }
