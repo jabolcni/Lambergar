@@ -1,5 +1,104 @@
 # Release notes
 
+## Lambergar 1.2
+
+### Builds
+
+Currently, there are five builds:
+
+- x86-64-v3: AVX2 support, best for using with NN evaluation and should be a preferred choice for best performance.
+- x86-64-v2: popcount support, suitable for modern computers.
+- x86-64-v1: vintage version is for really old computers.
+- aarch64-linux: version for Raspberry Pi 5,
+- x86-64-v4: AVX-512 support.
+
+### Release Notes
+
+- New neural network called `cop.nnue`, which is slightly stronger.
+-	Added support for multithreading (up to 32 threads).
+-	Improvements in Transposition Table storage, now better optimized for multithreading. It uses concurrent access with locks with fairly high level of granularity (<https://www.chessprogramming.org/Shared_Hash_Table#Concurrent_Access>). These changes do not affect single-threaded performance.
+
+```sh
+Time controls 10s+0.1s
+
+Score of Lambergar-1.2 vs Lambergar-1.1: 157 - 75 - 349  [0.571] 581
+...      Lambergar-1.2 playing White: 105 - 23 - 163  [0.641] 291
+...      Lambergar-1.2 playing Black: 52 - 52 - 186  [0.500] 290
+...      White vs Black: 157 - 75 - 349  [0.571] 581
+Elo difference: 49.4 +/- 17.7, LOS: 100.0 %, DrawRatio: 60.1 %
+```
+
+### Explanation of Additional Threads in Lambergar Chess Engine
+
+While testing the Lambergar chess engine (written in Zig, running on Windows), you may notice that Process Explorer occasionally shows more threads than expected based on the UCI "Threads" setting (e.g., 3 threads with `Threads = 1`, or 5-7 with `Threads = 4`). These extra threads are not a bug or a resource leak in the engine but are a normal part of how Windows manages processes. Here’s what’s happening:
+
+#### Key Findings
+
+1. **Baseline Threads**
+   - The engine always has:
+     - **1 UCI Loop Thread**: The main thread, running `uci_loop`, which waits for UCI commands on `stdin` (stack trace shows `ntdll.dll!NtReadFile` when idle).
+     - **N Search Threads**: One main search thread (`start_main_search`) plus `N-1` worker threads (`start_search`), where `N` is the UCI "Threads" setting (e.g., 1 for `Threads = 1`, 4 for `Threads = 4`). These show user-code addresses like `lambergar.exe+0x<offset>` during search.
+   - Example: With `Threads = 1`, expect 2 threads (UCI + 1 search); with `Threads = 4`, expect 5 threads (UCI + 4 search).
+
+2. **Additional Threads**
+- **Windows Thread Pool Workers**: Extra threads occasionally appear with this stack trace:
+
+    ```sh
+    ntdll.dll!ZwWaitForWorkViaWorkerFactory+0x14
+    ntdll.dll!TpReleaseCleanupGroupMembers+0x747
+    KERNEL32.DLL!BaseThreadInitThunk+0x14
+    ntdll.dll!RtlUserThreadStart+0x21
+    ```
+
+- These are not spawned by the engine but by the Windows operating system as part of its Thread Pool, a system-wide resource for handling I/O, timers, and other tasks.
+
+3. **Behavior Over Time**
+
+- **Startup**: Every Windows process, even a minimal one, starts with at least one Thread Pool worker. In Lambergar, this thread appears when the engine launches but disappears after ~10-30 seconds if unused (e.g., before "go" or in a minimal test with no I/O).
+- **During Search**: After issuing "go", the search thread(s) start. About ~1 minute into the search, 1-2 Thread Pool workers may appear due to:
+- **I/O**: Frequent `stdout` writes for "info" messages (e.g., depth, score, PV) in `iterative_deepening`.
+- **Timers**: Regular checks of `std.time.Timer` for time management (e.g., `self.timer.read()`).
+- **Long Run**: After ~8 minutes, these workers may disappear again if I/O or timer activity decreases (e.g., search stabilizes), only to reappear later if demand increases.
+- **Post-"stop"**: Search threads terminate cleanly, leaving just the UCI thread (and occasionally workers if I/O persists).
+
+4. **Examples**
+
+- **Threads = 1, Initial "go"**: 2 threads (UCI + 1 search). After ~1 minute, up to 4 (add 2 workers). After 8 minutes, back to 2 if workers time out.
+- **Threads = 4, "go depth 200"**: 5 threads (UCI + 4 search). Workers may appear later, raising it to 6-7 temporarily.
+- **Minimal Test (no UCI)**: 1 thread (main) + 1 worker at start, dropping to 1 after timeout.
+
+### Why These Threads Appear
+
+- **Windows Thread Pool**: Windows allocates worker threads to every process for system tasks. In Lambergar, they’re triggered by:
+- **Console I/O**: Writing search progress to `stdout` (UCI "info" messages) and reading from `stdin`.
+- **Timer Checks**: Using `std.time.Timer` for time-based stopping conditions.
+- **Dynamic Scaling**: The Thread Pool adds workers (1-2 typically) when it detects sustained activity (e.g., after a minute of searching) and removes them when idle (e.g., after 8 minutes of low demand).
+- **Not Engine-Controlled**: These threads are OS-managed, not spawned by Zig’s `std.Thread.spawn` or the engine’s logic. They’re invisible to the `Threads` setting.
+
+#### Why It’s Not a Concern
+
+- **Correctness**: The engine adheres to the UCI "Threads" setting:
+- `Threads = 1`: 1 search thread + UCI thread.
+- `Threads = 4`: 4 search threads + UCI thread.
+- Thread Pool workers don’t participate in the search or affect results; they’re just OS helpers.
+- **Resource Usage**: When idle (most of the time, as seen by `ZwWaitForWorkViaWorkerFactory`), these threads use negligible CPU/memory. They only activate briefly for I/O or timer tasks.
+- **Standard Behavior**: Many Windows console apps (e.g., C programs with `printf`) show similar Thread Pool threads. It’s a feature of the OS, not a flaw in Lambergar.
+- **Clean Termination**: The "stop" command correctly terminates search threads (via `join()`), leaving only the UCI thread (and occasional workers that time out naturally).
+
+#### Tester-Specific Notes
+
+- **Thread Count Variability**: You might see 2, 3, 4, or more threads depending on timing:
+- Right after startup: 2 (UCI + worker), then 1 (worker times out).
+- After "go": 2 (UCI + search), then 3-4 (workers appear), then 2 again (workers time out).
+- With `Threads = 4`: 5 (UCI + 4 search), then 6-7 (workers).
+- This fluctuation is normal and tied to Windows’ Thread Pool management, not engine instability.
+- **No Impact on Testing**: These extra threads don’t affect move generation, search accuracy, or UCI compliance. They’re benign OS artifacts.
+- **Verification**: If concerned, monitor after "stop" (1 thread) or run a minimal Zig program (`while (true) std.time.sleep(1);`)—you’ll still see a worker thread initially, proving it’s OS-driven.
+
+#### Conclusion
+
+The additional threads are **Windows Thread Pool workers**, appearing due to I/O (`stdout` writes) and timer usage during search. They’re a standard part of Windows process management, not under Lambergar’s control, and don’t impact functionality or performance. Expect 1 UCI thread + N search threads (per "Threads" setting), with 0-2 extra workers depending on runtime activity. This is expected, harmless, and consistent with Windows behavior across applications.
+
 ## Lambergar 1.1
 
 ### Builds
@@ -38,8 +137,8 @@ Elo difference: 159.4 +/- 15.8, LOS: 100.0 %, DrawRatio: 41.0 %
 
 Currently there are four builds:
 
-- x86-64-v3: AVX2 support, best for using with NN evaluation and should be a preffered choice for best performance.
-- x86-64-v2: popcount support, suitable for moder computers.
+- x86-64-v3: AVX2 support, best for using with NN evaluation and should be a preferred choice for best performance.
+- x86-64-v2: popcount support, suitable for modern computers.
 - x86-64-v1: vintage version is for really old computers.
 - aarch64-linux: version for Raspberry Pi 5.
 
@@ -59,8 +158,8 @@ This is a major release. I believe the Lambergar chess engine has matured enough
 
 Currently, there are three builds:
 
-- x86-64-v3: AVX2 support, best for using with NN evaluation and should be a preffered choice for best performance.
-- x86-64-v2: popcount support, suitable for moder computers.
+- x86-64-v3: AVX2 support, best for using with NN evaluation and should be a preferred choice for best performance.
+- x86-64-v2: popcount support, suitable for modern computers.
 - x86-64-v1: vintage version is for really old computers.
 
 ### Release Notes
@@ -93,7 +192,7 @@ This release brings several bug fixes, with the major one addressing a flaw in t
 
 ### Builds
 
-Currently there are two basic builds: vintage and popcnt. The vintage version is for really old computers, while popcnt is for modern computers.
+Currently, there are two basic builds: vintage and popcnt. The vintage version is for really old computers, while popcnt is for modern computers.
 
 ### Release Notes
 
@@ -130,7 +229,7 @@ Please note that these changes do not improve the engine's strength.
 
 ### Builds
 
-Currently there are two basic build: vintage and popcnt. Vintage version is for really old computers, popcnt is for modern computers.
+Currently, there are two basic build: vintage and popcnt. Vintage version is for really old computers, popcnt is for modern computers.
 
 ### Release Notes
 

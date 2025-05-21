@@ -30,7 +30,7 @@ pub const SortBadCapture = -900000;
 pub const Badpromotion = -QueenPromotionWithCapture;
 
 // pawns, knights, bishops, rooks, queens, kings
-const piece_val = [7]i32{ 100, 300, 300, 500, 900, 20000, 0 };
+pub const piece_val = [7]i32{ 100, 300, 300, 500, 900, 20000, 0 };
 
 pub inline fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_list: *ScoreList, hash_move: Move, comptime color: Color) void {
     for (0..move_list.count) |i| {

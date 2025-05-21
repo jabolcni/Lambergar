@@ -6,7 +6,7 @@ const tune: bool = false;
 
 pub fn main() !void {
     const allocator = std.heap.c_allocator;
-    
+
     if (tune) {
         var tuner_instance = tuner.Tuner.new();
         tuner_instance.init();
@@ -14,5 +14,4 @@ pub fn main() !void {
     } else {
         try uci.uci_loop(allocator);
     }
-
 }

@@ -14,7 +14,7 @@ const L1 = 128;
 const L2 = 16;
 const L3 = 16;
 
-const NNUE_FILE = "trstenjak.nnue";
+const NNUE_FILE = "cop.nnue";
 const fileNNUE = @embedFile(NNUE_FILE);
 
 pub var engine_loaded_net: bool = true;

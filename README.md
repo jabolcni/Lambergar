@@ -22,7 +22,7 @@ Inspiration was drawn from:
 
 - YouTube tutorial series, "Bitboard CHESS ENGINE in C" by Code Monkey King (<https://www.youtube.com/playlist?list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs>),
 - YouTube tutorial series, "Programming A Chess Engine in C " by Bluefever Software (<https://www.youtube.com/watch?v=bGAfaepBco4&list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg&index=2&ab_channel=BluefeverSoftware>),
-- Koala Chess Engine by Wuelle (<https://github.com/Wuelle/Kaola/tree/main>),
+- Kaola Chess Engine by Wuelle (<https://github.com/Wuelle/Kaola/tree/main>),
 - Avalanche Chess Engine by SnowballSH (<https://github.com/SnowballSH/Avalanche/tree/master>),
 - surge, fast bitboard-based legal chess move generator written in C++ (<https://github.com/nkarve/surge>)
 - Several open source chess engines written in C and C++ (igel, xipos, ...).

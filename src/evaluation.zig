@@ -471,7 +471,7 @@ pub const Evaluation = struct {
             }
 
             nnue.incremental_update(pos);
-            curr_accu.eval = nnue.evaluate(curr_accu.*, perspective_color);
+            curr_accu.eval = nnue.evaluate(curr_accu.*, perspective_color)+20;
             curr_accu.computed_score = true;
             return curr_accu.eval;
 

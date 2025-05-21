@@ -1260,7 +1260,6 @@ pub const Position = struct {
     };
 
     pub fn set(self: *Position, fen: []const u8) !void {
-        self.* = Position.new();
 
         self.* = Position.new();
         var parts = std.mem.splitScalar(u8, fen, ' ');
@@ -1347,6 +1346,13 @@ pub const Position = struct {
 
         self.hash ^= zobrist.castling_keys[self.history[self.game_ply].castling];
         self.history[self.game_ply].hash_key = self.hash;
+
+        // Tole je novo
+        self.delta.reset();
+        self.history[0].accumulator = nnue.refresh_accumulator(self.*);
+        self.history[0].accumulator.computed_accumulation = true;
+        self.history[0].accumulator.computed_score = false;   
+        // Tole je novo     
 
     }
 

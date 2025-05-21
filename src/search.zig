@@ -6,6 +6,7 @@ const history = @import("history.zig");
 const evaluation = @import("evaluation.zig");
 const nnue = @import("nnue.zig");
 const lists = @import("lists.zig");
+const uci = @import("uci.zig");
 
 const Instant = std.time.Instant;
 
@@ -14,9 +15,7 @@ const Piece = position.Piece;
 const PieceType = position.PieceType;
 const Color = position.Color;
 const Move = position.Move;
-
-const DefaultPrng = std.rand.DefaultPrng;
-const Random = std.rand.Random;
+const MoveFlags = position.MoveFlags;
 
 const MoveList = lists.MoveList;
 const ScoreList = lists.ScoreList;
@@ -40,9 +39,15 @@ const fm_history_limit = [_]i32{ -1000, -2000 }; //{ -2000, -4000 };
 const futility_histroy_limit = [_]i32{ -500, -1000 };
 const lmp_depth = 8;
 
+// var lmp = [2][11]i8{
+//     [_]i8{ 0, 2, 3, 5, 9, 13, 18, 25, 34, 45, 55 },
+//     [_]i8{ 0, 5, 6, 9, 14, 21, 30, 41, 55, 69, 84 },
+// };
+
+// Testiraj še z daljšimi tc
 var lmp = [2][11]i8{
-    [_]i8{ 0, 2, 3, 5, 9, 13, 18, 25, 34, 45, 55 },
-    [_]i8{ 0, 5, 6, 9, 14, 21, 30, 41, 55, 69, 84 },
+    [_]i8{ 0, 2, 3, 4, 6, 8, 10, 13, 17, 22, 30 },
+    [_]i8{ 0, 4, 5, 7, 10, 13, 17, 22, 29, 38, 50 },
 };
 var lmr: [MAX_DEPTH][MAX_MOVES]i8 = undefined;
 
@@ -59,9 +64,9 @@ pub inline fn _mate_in(score: i32) i32 {
 }
 
 pub inline fn init_lmr() void {
-    lmr[0][0] = 1.0;
-    lmr[0][1] = 1.0;
-    lmr[1][0] = 1.0;
+    lmr[0][0] = 1;
+    lmr[0][1] = 1;
+    lmr[1][0] = 1;
 
     for (1..MAX_DEPTH) |depth| {
         for (1..MAX_MOVES) |played| {
@@ -70,11 +75,29 @@ pub inline fn init_lmr() void {
     }
 }
 
-pub fn start_search(search: *Search, pos: *Position) void {
+pub fn start_main_search(search: *Search, pos: *Position) void {
     if (pos.side_to_play == Color.White) {
         search.iterative_deepening(pos, Color.White);
     } else {
         search.iterative_deepening(pos, Color.Black);
+    }
+
+    for (1..uci.num_threads) |i| {
+        @atomicStore(bool, &uci.thinkers[i].stop, true, .seq_cst);
+    }
+
+    for (1..uci.num_threads) |i| {
+        if (uci.threads[i]) |thread| {
+            thread.join();
+        }
+    }
+}
+
+pub fn start_search(search: *Search, pos: *Position, _delta: i32) void {
+    if (pos.side_to_play == Color.White) {
+        search.iterative_deepening_thread(pos, _delta, Color.White);
+    } else {
+        search.iterative_deepening_thread(pos, _delta, Color.Black);
     }
 }
 
@@ -170,6 +193,8 @@ pub const Search = struct {
     ns_stack: [MAX_PLY + 4]NodeState = undefined,
 
     manager: SearchManager = undefined,
+
+    non_terminal_nodes: u64 = 0, // Nodes with legal moves
 
     pub fn new() Search {
         return Search{};
@@ -267,6 +292,7 @@ pub const Search = struct {
         self.stop = false;
 
         self.nodes = 0;
+        self.non_terminal_nodes = 0;
         self.ply = 0;
         self.max_depth = MAX_DEPTH - 1;
         self.seldepth = 0;
@@ -285,6 +311,7 @@ pub const Search = struct {
         self.stop = false;
 
         self.nodes = 0;
+        self.non_terminal_nodes = 0;
         self.ply = 0;
     }
 
@@ -329,12 +356,8 @@ pub const Search = struct {
             const k: f32 = (fac_min - 1) / (64 - ph_min);
             const n = 1 - k * ph_min;
             factor_ph = k * phase + n;
-            if (factor_ph < fac_min) {
-                factor_ph = fac_min;
-            }
-            if (factor_ph > 1) {
-                factor_ph = 1;
-            }
+            if (factor_ph < fac_min) factor_ph = fac_min;
+            if (factor_ph > 1) factor_ph = 1;
             factor *= factor_ph;
             early_adjusted_ms = @as(u64, @intFromFloat(@as(f32, @floatFromInt(early_adjusted_ms)) * factor));
         }
@@ -371,12 +394,16 @@ pub const Search = struct {
 
         const start = Instant.now() catch unreachable;
         self.nodes = 0;
+        self.non_terminal_nodes = 0;
 
         mainloop: while (it_depth <= self.max_depth) {
             self.ply = 0;
             self.seldepth = 0;
             //self.nodes = 0;
             depth = it_depth;
+
+            const start_nodes = self.nodes;
+            const start_non_terminal = self.non_terminal_nodes;
 
             if (depth >= 4) {
                 delta = 5;
@@ -428,14 +455,10 @@ pub const Search = struct {
 
             if (score > prev_score + 20) {
                 improving += 1;
-                if (score > prev_score + 60) {
-                    improving += 1;
-                }
+                if (score > prev_score + 60) improving += 1;
             } else if (score < prev_score - 20) {
                 improving -= 1;
-                if (score < prev_score - 60) {
-                    improving -= 1;
-                }
+                if (score < prev_score - 60) improving -= 1;
             }
 
             prev_score = score;
@@ -443,13 +466,24 @@ pub const Search = struct {
             if (self.stop) {
                 break :mainloop;
             }
-
+            var nodes = self.nodes;
+            for (1..uci.num_threads) |i| {
+                nodes += uci.thinkers[i].nodes;
+            }
             const now = Instant.now() catch unreachable;
             const time_elapsed = now.since(start);
             const elapsed_nanos = @as(f64, @floatFromInt(time_elapsed));
             const elapsed_seconds = elapsed_nanos / 1_000_000_000;
             const elapsed_ms: u32 = @intFromFloat(elapsed_nanos / 1_000_000);
-            const nps: u46 = @intFromFloat(@as(f64, @floatFromInt(self.nodes)) / elapsed_seconds);
+            const nps: u46 = @intFromFloat(@as(f64, @floatFromInt(nodes)) / elapsed_seconds);
+
+            const nodes_used = self.nodes - start_nodes;
+            const non_terminal_used = self.non_terminal_nodes - start_non_terminal;
+
+            const mbf: f32 = if (non_terminal_used > 0)
+                @as(f32, @floatFromInt(nodes_used)) / @as(f32, @floatFromInt(non_terminal_used))
+            else
+                0.0;
 
             //self.best_move = self.pv_table[0][0];
 
@@ -461,7 +495,7 @@ pub const Search = struct {
             } else {
                 _ = std.fmt.format(stdout, "cp {} ", .{score}) catch unreachable;
             }
-            _ = std.fmt.format(stdout, "depth {} seldepth {} nodes {} nps {d} time {d} hashfull {d} pv ", .{ it_depth, self.seldepth, self.nodes, nps, elapsed_ms, est_hash_full }) catch unreachable;
+            _ = std.fmt.format(stdout, "depth {} seldepth {} nodes {} nps {d} time {d} hashfull {d} mbf {d:.2} pv ", .{ it_depth, self.seldepth, self.nodes, nps, elapsed_ms, est_hash_full, mbf }) catch unreachable;
 
             var next_ply: usize = 0;
             while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
@@ -493,6 +527,75 @@ pub const Search = struct {
         const move_name = self.best_move.to_str(allocator);
         defer allocator.free(move_name);
         _ = std.fmt.format(stdout, "bestmove {s}\n", .{move_name}) catch unreachable;
+    }
+
+    pub fn iterative_deepening_thread(self: *Search, pos: *Position, _delta: i32, comptime color: Color) void {
+        self.clear_for_new_search();
+        pos.history[pos.game_ply].accumulator = nnue.refresh_accumulator(pos.*);
+        pos.history[pos.game_ply].accumulator.eval = nnue.evaluate(pos.history[pos.game_ply].accumulator, color);
+        pos.history[pos.game_ply].accumulator.computed_score = true;
+
+        var alpha: i32 = -MAX_SCORE;
+        var beta: i32 = MAX_SCORE;
+        var score: i32 = 0;
+        var delta: i32 = 16;
+
+        var it_depth: i8 = 1;
+        var depth = it_depth;
+
+        self.nodes = 0;
+
+        mainloop: while (it_depth <= self.max_depth) {
+            self.ply = 0;
+            self.seldepth = 0;
+            depth = it_depth;
+
+            if (depth >= 4) {
+                delta = _delta;
+            } else {
+                delta = MAX_SCORE;
+            }
+
+            alpha = @max(-MAX_SCORE, score - delta);
+            beta = @min(score + delta, MAX_SCORE);
+
+            aspirationloop: while (delta <= MAX_SCORE) {
+                score = self.pvs(depth, alpha, beta, pos, false, color);
+
+                if (self.stop) {
+                    break :mainloop;
+                }
+
+                self.best_move = self.pv_table[0][0];
+
+                delta += 2 + @divTrunc(delta, 2);
+
+                if (@abs(score) > 2000) {
+                    delta = MAX_SCORE;
+                }
+
+                if (score <= alpha) {
+                    beta = @divTrunc(alpha + beta, 2);
+                    alpha = @max(-MAX_SCORE, score - delta);
+                    //depth = it_depth;
+                } else if (score >= beta) {
+                    beta = @min(score + delta, MAX_SCORE);
+                } else {
+                    break :aspirationloop;
+                }
+
+                if (delta > 500) {
+                    delta = MAX_SCORE;
+                }
+            }
+
+            if (self.stop) {
+                self.stop = true;
+                break :mainloop;
+            }
+
+            it_depth += 1;
+        }
     }
 
     pub fn pvs(self: *Search, _depth: i8, _alpha: i32, _beta: i32, pos: *Position, cutnode: bool, comptime color: Color) i32 {
@@ -541,9 +644,7 @@ pub const Search = struct {
         if (!is_root) {
             if (pos.upcoming_repetition() and alpha < 0) {
                 alpha = 1 - (@as(i32, @intCast(self.nodes & 2)));
-                if (alpha >= beta) {
-                    return alpha;
-                }
+                if (alpha >= beta) return alpha;
             }
 
             if (pos.is_draw()) return 1 - (@as(i32, @intCast(self.nodes & 2)));
@@ -555,9 +656,7 @@ pub const Search = struct {
             r_alpha = @max(alpha, -MATE_VALUE + @as(i32, self.ply));
             r_beta = @min(beta, MATE_VALUE - @as(i32, self.ply) + 1);
 
-            if (r_alpha >= r_beta) {
-                return r_alpha;
-            }
+            if (r_alpha >= r_beta) return r_alpha;
         }
 
         var tt_move = Move.empty();
@@ -629,9 +728,7 @@ pub const Search = struct {
 
             if (depth <= razor_depth and static_eval + razor_margin <= alpha) {
                 const raz_score = self.quiescence(alpha, beta, pos, depth, me);
-                if (raz_score <= alpha) {
-                    return raz_score;
-                }
+                if (raz_score <= alpha) return raz_score;
             }
 
             if ((depth <= 8) and ((best_score - 85 * (@as(i32, @intCast(depth)) - improving)) >= beta)) {
@@ -666,9 +763,7 @@ pub const Search = struct {
 
                     score = self.pvs(depth - R, beta - 1, beta, pos, false, me);
 
-                    if (score >= beta) {
-                        return score;
-                    }
+                    if (score >= beta) return score;
                 }
             }
         }
@@ -690,6 +785,12 @@ pub const Search = struct {
             }
         }
 
+        // Count as non-terminal node
+        if (move_list.count > 0) {
+            self.non_terminal_nodes += 1;
+            //std.debug.print("Non-terminal node at depth {}, ply {}, moves {}\n", .{ depth, self.ply, move_list.count });
+        }
+
         var score_list: ScoreList = .{};
 
         ms.score_move(pos, self, &move_list, &score_list, tt_move, me);
@@ -708,9 +809,7 @@ pub const Search = struct {
         for (0..move_list.count) |mv_idx| {
             const move = ms.get_next_best(&move_list, &score_list, mv_idx);
 
-            if (move.equal(self.excluded[self.ply])) {
-                continue;
-            }
+            if (move.equal(self.excluded[self.ply])) continue;
 
             const mv_quiet = move.is_quiet();
             const piece = pos.board[move.from];
@@ -734,9 +833,7 @@ pub const Search = struct {
 
             if (!is_root and best_score > MATED_IN_MAX) {
                 if (mv_quiet) {
-                    if (skip_quiets) {
-                        continue;
-                    }
+                    if (skip_quiets) continue;
 
                     if (depth <= histroy_depth[improving] and (cm_hist + fm_hist) < cm_history_limit[improving]) {
                         continue;
@@ -763,9 +860,7 @@ pub const Search = struct {
                 if (depth <= 8 and !in_check) {
                     const depth_i32 = depth_as_i32(depth);
                     const see_val: i32 = if (mv_quiet) -46 * depth_i32 else -10 * depth_i32 * depth_i32;
-                    if (ms.see_value(pos, move, false) < see_val) {
-                        continue;
-                    }
+                    if (ms.see_value(pos, move, false) < see_val) continue;
                 }
             }
 
@@ -914,6 +1009,115 @@ pub const Search = struct {
         return best_score;
     }
 
+    // pub fn quiescence(self: *Search, _alpha: i32, _beta: i32, pos: *Position, depth: i8, comptime color: Color) i32 {
+    //     const opp = if (color == Color.White) Color.Black else Color.White;
+    //     const me = if (color == Color.White) Color.White else Color.Black;
+    //     var alpha: i32 = @max(_alpha, -MATE_VALUE + @as(i32, self.ply));
+    //     const beta: i32 = @min(_beta, MATE_VALUE - @as(i32, self.ply) + 1);
+    //     var best_score: i32 = undefined;
+    //     var score: i32 = undefined;
+    //     const in_check = pos.in_check(color);
+
+    //     self.pv_length[self.ply] = 0;
+    //     self.seldepth = @max(self.ply, self.seldepth);
+
+    //     if (alpha >= beta) return alpha;
+
+    //     if (self.ply >= MAX_PLY) return pos.eval.eval(pos, me);
+
+    //     if (self.check_stop_conditions()) {
+    //         self.stop_on_time = true;
+    //         return 0;
+    //     }
+
+    //     if (pos.is_draw()) return 1 - (@as(i32, @intCast(self.nodes & 2)));
+
+    //     const entry = tt.TT.fetch(pos.hash);
+    //     const tt_hit: bool = if (entry != null) true else false;
+
+    //     var tt_move = Move.empty();
+    //     var tt_score: i32 = 0;
+    //     var tt_bound = tt.Bound.BOUND_NONE;
+    //     const tt_depth: i8 = if (in_check or depth >= 0) 0 else -1;
+
+    //     if (tt_hit) {
+    //         tt_move = entry.?.move;
+    //         tt_bound = entry.?.bound;
+    //         tt_score = tt.TT.adjust_hash_score(entry.?.score, self.ply);
+    //         //tt_depth = entry.?.depth;
+
+    //         if ((tt_bound == tt.Bound.BOUND_LOWER and tt_score >= beta) or
+    //             (tt_bound == tt.Bound.BOUND_UPPER and tt_score <= alpha) or
+    //             (tt_bound == tt.Bound.BOUND_EXACT))
+    //         {
+    //             return tt_score;
+    //         }
+    //     }
+
+    //     if (in_check) {
+    //         best_score = -MATE_VALUE + @as(i32, self.ply);
+    //     } else {
+    //         best_score = pos.eval.eval(pos, me);
+
+    //         if (tt_hit) {
+    //             if ((tt_bound == tt.Bound.BOUND_LOWER and tt_score > best_score) or
+    //                 (tt_bound == tt.Bound.BOUND_UPPER and tt_score < best_score) or
+    //                 (tt_bound == tt.Bound.BOUND_EXACT))
+    //             {
+    //                 best_score = tt_score;
+    //             }
+    //         }
+
+    //         if (best_score >= beta) return best_score;
+    //         if (best_score > alpha) alpha = best_score;
+    //     }
+
+    //     var best_move = Move.empty();
+
+    //     var move_list: MoveList = .{};
+    //     pos.generate_captures_list(me, &move_list);
+    //     var score_list: ScoreList = .{};
+    //     ms.score_move(pos, self, &move_list, &score_list, tt_move, me);
+
+    //     for (0..move_list.count) |mv_idx| {
+    //         const move = ms.get_next_best(&move_list, &score_list, mv_idx);
+
+    //         const see_val = ms.see_value(pos, move, false);
+
+    //         if (!in_check and see_val < -1) continue;
+
+    //         // make move
+    //         self.ply += 1;
+    //         pos.play(move, me);
+    //         tt.TT.prefetch(pos.hash);
+    //         self.nodes += 1;
+    //         // make move
+
+    //         score = -self.quiescence(-beta, -alpha, pos, depth - 1, opp);
+
+    //         // unmake move
+    //         self.ply -= 1;
+    //         pos.undo(move, me);
+    //         tt.TT.prefetch_write(pos.hash);
+    //         // unmake move
+
+    //         if (score > best_score) {
+    //             best_score = score;
+    //             if (score > alpha) {
+    //                 best_move = move;
+    //                 self.update_pv(move);
+    //                 alpha = score;
+
+    //                 if (alpha >= beta) break;
+    //             }
+    //         }
+    //     }
+
+    //     tt_bound = if (best_score >= beta) tt.Bound.BOUND_LOWER else if (best_score > _alpha) tt.Bound.BOUND_EXACT else tt.Bound.BOUND_UPPER;
+    //     tt.TT.store(tt.scoreEntry.new(pos.hash, best_move, tt.TT.to_hash_score(best_score, self.ply), tt_bound, tt_depth, tt.TT.age));
+    //     return best_score;
+    // }
+
     pub fn quiescence(self: *Search, _alpha: i32, _beta: i32, pos: *Position, depth: i8, comptime color: Color) i32 {
         const opp = if (color == Color.White) Color.Black else Color.White;
         const me = if (color == Color.White) Color.White else Color.Black;
@@ -949,7 +1153,6 @@ pub const Search = struct {
             tt_move = entry.?.move;
             tt_bound = entry.?.bound;
             tt_score = tt.TT.adjust_hash_score(entry.?.score, self.ply);
-            //tt_depth = entry.?.depth;
 
             if ((tt_bound == tt.Bound.BOUND_LOWER and tt_score >= beta) or
                 (tt_bound == tt.Bound.BOUND_UPPER and tt_score <= alpha) or
@@ -973,30 +1176,41 @@ pub const Search = struct {
                 }
             }
 
-            if (best_score >= beta) {
-                return best_score;
-            }
-
-            if (best_score > alpha) {
-                alpha = best_score;
-            }
+            if (best_score >= beta) return best_score;
+            if (best_score > alpha) alpha = best_score;
         }
 
         var best_move = Move.empty();
 
         var move_list: MoveList = .{};
-        pos.generate_captures_list(me, &move_list);
+        if (in_check) {
+            pos.generate_legals(me, &move_list);
+        } else {
+            pos.generate_captures_list(me, &move_list);
+        }
         var score_list: ScoreList = .{};
         ms.score_move(pos, self, &move_list, &score_list, tt_move, me);
+
+        const delta_margin: i32 = 500; // Margin for delta pruning
 
         for (0..move_list.count) |mv_idx| {
             const move = ms.get_next_best(&move_list, &score_list, mv_idx);
 
-            const see_val = ms.see_value(pos, move, false);
-
-            if (!in_check and see_val < -1) {
-                continue;
+            // Delta pruning for captures
+            if (!in_check and move.is_capture()) {
+                const captured = if (move.flags == MoveFlags.EN_PASSANT) 0 else pos.board[move.to].type_of().toU3();
+                const piece_value = ms.piece_val[captured];
+                if (best_score + piece_value + delta_margin < alpha) {
+                    continue;
+                }
             }
+
+            // SEE pruning with depth-dependent threshold
+            const see_val = ms.see_value(pos, move, false);
+            // if (!in_check and see_val < -depth * 50) {
+            //     continue;
+            // }
+            if (!in_check and see_val < -1) continue;
 
             // make move
             self.ply += 1;
@@ -1020,9 +1234,7 @@ pub const Search = struct {
                     self.update_pv(move);
                     alpha = score;
 
-                    if (alpha >= beta) {
-                        break;
-                    }
+                    if (alpha >= beta) break;
                 }
             }
         }
