@@ -90,7 +90,9 @@ In late 2024 version v0.6.0 was listed on CCRL 40/15 list and CCRL Blitz list wi
 
 In January 2025 version 1.0 was listed on CCRL 40/15 list and CCRL Blitz list with score 3209 &plusmn; 19 Elo and 3208 &plusmn; 17 Elo.
 
-In 27th of March 2025 version 1.1 was released, estimated strength is 3340 Elo blitz.
+On 27th of March 2025 version 1.1 was released, estimated strength is 3340 Elo blitz.
+
+On 21th of 2025 version 1.2 was released, slightly stronger than previous version.
 
 ## Credits
 
