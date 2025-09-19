@@ -7,6 +7,9 @@ const evaluation = @import("evaluation.zig");
 const nnue = @import("nnue.zig");
 const lists = @import("lists.zig");
 const uci = @import("uci.zig");
+const fathom = @import("fathom.zig");
+
+pub const use_tb = @import("config").use_tb;
 
 const Instant = std.time.Instant;
 
@@ -22,12 +25,15 @@ const ScoreList = lists.ScoreList;
 const PieceList = lists.PieceList;
 const PieceTypeList = lists.PieceTypeList;
 
+const printout = uci.printout;
+
 pub const MAX_DEPTH = 100;
 pub const MAX_PLY = 128;
 pub const MAX_MOVES = 256;
 pub const MAX_MATE_PLY = 50;
 pub const MAX_SCORE = 50_000;
 pub const MATE_VALUE = 49_000;
+pub const TBWIN = 48_000;
 pub const MATED_IN_MAX = MAX_PLY - MATE_VALUE;
 
 const null_move_depth = 2;
@@ -45,25 +51,31 @@ const lmp_depth = 8;
 // };
 
 // Testiraj še z daljšimi tc
+// var lmp = [2][11]i8{
+//     [_]i8{ 0, 2, 3, 4, 6, 8, 10, 13, 17, 22, 30 },
+//     [_]i8{ 0, 4, 5, 7, 10, 13, 17, 22, 29, 38, 50 },
+// };
+
 var lmp = [2][11]i8{
-    [_]i8{ 0, 2, 3, 4, 6, 8, 10, 13, 17, 22, 30 },
-    [_]i8{ 0, 4, 5, 7, 10, 13, 17, 22, 29, 38, 50 },
+    [_]i8{ 0, 2, 3, 5, 8, 11, 15, 20, 25, 31, 37 },
+    [_]i8{ 0, 5, 6, 9, 14, 20, 29, 37, 46, 60, 70 },
 };
+
 var lmr: [MAX_DEPTH][MAX_MOVES]i8 = undefined;
 
-inline fn depth_as_i32(depth: i8) i32 {
+fn depth_as_i32(depth: i8) i32 {
     return @as(i32, @intCast(depth));
 }
 
-pub inline fn _is_mate_score(score: i32) bool {
+pub fn _is_mate_score(score: i32) bool {
     return ((score <= -MATE_VALUE + MAX_MATE_PLY) or (score >= MATE_VALUE - MAX_MATE_PLY));
 }
 
-pub inline fn _mate_in(score: i32) i32 {
+pub fn _mate_in(score: i32) i32 {
     return if (score > 0) @divFloor(MATE_VALUE - score + 1, 2) else @divFloor(-MATE_VALUE - score, 2);
 }
 
-pub inline fn init_lmr() void {
+pub fn init_lmr() void {
     lmr[0][0] = 1;
     lmr[0][1] = 1;
     lmr[1][0] = 1;
@@ -101,13 +113,24 @@ pub fn start_search(search: *Search, pos: *Position, _delta: i32) void {
     }
 }
 
-pub const Termination = enum(u3) { INFINITE, DEPTH, NODES, TIME, MOVETIME };
+pub const Termination = enum(u3) { INFINITE, DEPTH, NODES, TIME, MOVETIME, MATE };
 
 pub const SearchManager = struct {
     termination: Termination = Termination.INFINITE,
     max_ms: u64 = 1000,
     early_ms: u64 = 1000,
     max_nodes: ?u32 = null,
+    max_depth: ?u32 = null,
+    ponder: bool = false,
+    wtime: ?u64 = null,
+    btime: ?u64 = null,
+    winc: ?u32 = null,
+    binc: ?u32 = null,
+    movestogo: ?u32 = null,
+    movetime: ?u64 = null,
+    mate: ?u32 = null,
+    infinite: bool = false,
+    printout: bool = true,
 
     pub fn new() SearchManager {
         return SearchManager{
@@ -115,39 +138,101 @@ pub const SearchManager = struct {
             .max_ms = 1000,
             .early_ms = 1000,
             .max_nodes = null,
+            .ponder = false,
+            .wtime = null,
+            .btime = null,
+            .winc = null,
+            .binc = null,
+            .movestogo = null,
+            .movetime = null,
+            .mate = null,
+            .infinite = false,
+            .printout = true,
         };
     }
 
-    pub fn set_time_limits(self: *SearchManager, movestogo: ?u32, movetime: ?u64, _rem_time: ?u64, time_inc: ?u32) void {
-        const overhead: u32 = 10;
-        var rem_time = _rem_time;
+    pub fn configure(self: *SearchManager, pos: *Position) void {
+        var rem_time: ?u64 = null;
+        var rem_enemy_time: ?u64 = null;
+        var time_inc: ?u32 = null;
 
-        if (self.termination == Termination.INFINITE or self.termination == Termination.DEPTH or self.termination == Termination.NODES) {
+        if (self.infinite) {
+            self.termination = Termination.INFINITE;
+        } else if (self.max_depth) |_| {
+            self.termination = Termination.DEPTH;
+        } else if (self.max_nodes) |_| {
+            self.termination = Termination.NODES;
+        } else if (self.mate) |m| {
+            self.max_depth = m * 2; // Example: mate in N moves requires ~2N plies
+            self.termination = Termination.MATE;
+        }
+
+        if (self.movetime) |_| {
+            self.termination = Termination.MOVETIME;
+        }
+        if (self.movestogo) |_| {
+            self.termination = Termination.TIME;
+        }
+        if (self.wtime) |wt| {
+            self.termination = Termination.TIME;
+            if (pos.side_to_play == Color.White) {
+                rem_time = wt;
+            } else {
+                rem_enemy_time = wt;
+            }
+        }
+        if (self.btime) |bt| {
+            self.termination = Termination.TIME;
+            if (pos.side_to_play == Color.Black) {
+                rem_time = bt;
+            } else {
+                rem_enemy_time = bt;
+            }
+        }
+        if (self.winc) |wi| {
+            if (pos.side_to_play == Color.White) time_inc = wi;
+        }
+        if (self.binc) |bi| {
+            if (pos.side_to_play == Color.Black) time_inc = bi;
+        }
+
+        self.set_time_limits(self.movestogo, self.movetime, rem_time, time_inc);
+    }
+
+    pub fn set_time_limits(self: *SearchManager, movestogo: ?u32, movetime: ?u64, rem_time: ?u64, time_inc: ?u32) void {
+        const overhead: u32 = 10;
+
+        if (self.termination == Termination.INFINITE or
+            self.termination == Termination.DEPTH or
+            self.termination == Termination.NODES or
+            self.termination == Termination.MATE)
+        {
             self.max_ms = 1 << 63;
             self.early_ms = self.max_ms;
         } else if (self.termination == Termination.TIME or self.termination == Termination.MOVETIME) {
-            if (movetime != null) {
-                self.max_ms = movetime.? - @as(u64, @intCast(overhead));
+            if (movetime) |mt| {
+                self.max_ms = mt - @as(u64, @intCast(overhead));
                 self.early_ms = self.max_ms;
                 return;
-            } else if (rem_time != null) {
-                const inc: u32 = if (time_inc != null) time_inc.? else 0;
-                const mtg: u32 = if (movestogo != null) @min(movestogo.?, 50) else 50;
+            } else if (rem_time) |rt| {
+                const inc: u32 = if (time_inc) |ti| ti else 0;
+                const mtg: u32 = if (movestogo) |mg| @min(mg, 50) else 50;
+                var adjusted_time = rt;
                 if (inc > overhead) {
-                    rem_time = rem_time.? + @as(u64, @intCast(mtg * (inc - overhead)));
+                    adjusted_time += @as(u64, @intCast(mtg * (inc - overhead)));
                 }
-                if (rem_time.? <= overhead) {
+                if (adjusted_time <= overhead) {
                     self.max_ms = @max(2, overhead - 2);
                     self.early_ms = self.max_ms;
                     return;
                 }
                 if (movestogo == null) {
                     const scale_div: u64 = 50;
-                    self.early_ms = @min(@divTrunc(rem_time.?, scale_div), @divTrunc(_rem_time.?, 5));
-                    self.max_ms = @min(5 * self.early_ms, @divTrunc(4 * _rem_time.?, 5)); //inc + (rem_time.? - overhead) / 20;
+                    self.early_ms = @min(@divTrunc(adjusted_time, scale_div), @divTrunc(rt, 5));
+                    self.max_ms = @min(5 * self.early_ms, @divTrunc(4 * rt, 5));
                 } else {
-                    self.early_ms = @min(@divTrunc(7 * rem_time.?, 10 * mtg), @divTrunc(4 * _rem_time.?, 5));
-                    self.max_ms = @min(5 * self.early_ms, @divTrunc(4 * _rem_time.?, 5)); //inc + (rem_time.? - overhead) / 20;
+                    self.early_ms = @min(@divTrunc(7 * adjusted_time, 10 * mtg), @divTrunc(4 * rt, 5));
+                    self.max_ms = @min(5 * self.early_ms, @divTrunc(4 * rt, 5));
                 }
                 return;
             } else {
@@ -178,6 +263,7 @@ pub const Search = struct {
     nodes: u64 = 0,
     ply: u16 = 0,
     seldepth: u16 = 0,
+    tbhits: u64 = 0,
 
     pv_length: [MAX_PLY]u16 = undefined,
     pv_table: [MAX_PLY][MAX_PLY]Move = undefined,
@@ -198,13 +284,12 @@ pub const Search = struct {
     manager: SearchManager = undefined,
 
     non_terminal_nodes: u64 = 0, // Nodes with legal moves
-    beta_cutoffs: u64 = 0, // New counter for beta cutoffs
 
     pub fn new() Search {
         return Search{};
     }
 
-    inline fn clear_pv_table(self: *Search) void {
+    fn clear_pv_table(self: *Search) void {
         for (0..MAX_PLY) |i| {
             for (0..MAX_PLY) |j| {
                 self.pv_table[i][j] = Move.empty();
@@ -213,14 +298,14 @@ pub const Search = struct {
         }
     }
 
-    inline fn clear_mv_killer(self: *Search) void {
+    fn clear_mv_killer(self: *Search) void {
         for (0..(MAX_PLY + 1)) |i| {
             self.mv_killer[i][0] = Move.empty();
             self.mv_killer[i][1] = Move.empty();
         }
     }
 
-    inline fn clear_mv_counter(self: *Search) void {
+    fn clear_mv_counter(self: *Search) void {
         for (0..position.NPIECES) |pc| {
             for (0..64) |sq| {
                 self.mv_counter[pc][sq] = Move.empty();
@@ -228,7 +313,7 @@ pub const Search = struct {
         }
     }
 
-    inline fn clear_sc_history(self: *Search) void {
+    fn clear_sc_history(self: *Search) void {
         for (0..2) |pc| {
             for (0..64) |sq1| {
                 for (0..64) |sq2| {
@@ -238,7 +323,7 @@ pub const Search = struct {
         }
     }
 
-    inline fn clear_corr_history(self: *Search) void {
+    fn clear_corr_history(self: *Search) void {
         for (0..history.CORRHIST_SIZE) |i| {
             self.pawn_corr[i][0] = 0;
             self.pawn_corr[i][1] = 0;
@@ -253,7 +338,7 @@ pub const Search = struct {
         }
     }
 
-    inline fn age_sc_history(self: *Search) void {
+    fn age_sc_history(self: *Search) void {
         for (0..2) |pc| {
             for (0..64) |sq1| {
                 for (0..64) |sq2| {
@@ -263,7 +348,7 @@ pub const Search = struct {
         }
     }
 
-    inline fn clear_sc_follow_table(self: *Search) void {
+    fn clear_sc_follow_table(self: *Search) void {
         for (0..position.NPIECES) |i| {
             for (0..64) |j| {
                 for (0..position.NPIECES) |k| {
@@ -275,7 +360,7 @@ pub const Search = struct {
         }
     }
 
-    inline fn clear_node_state_stack(self: *Search) void {
+    fn clear_node_state_stack(self: *Search) void {
         for (0..(MAX_PLY + 4)) |i| {
             self.ns_stack[i].eval = 0;
             self.ns_stack[i].is_null = false;
@@ -285,11 +370,11 @@ pub const Search = struct {
         }
     }
 
-    pub inline fn get_sh(self: *Search, color: u4, move_from: u6, move_to: u6) i32 {
+    pub fn get_sh(self: *Search, color: u4, move_from: u6, move_to: u6) i32 {
         return (&self.sc_history)[color][move_from][move_to];
     }
 
-    pub inline fn get_ch(self: *Search, p_piece: u4, parent_to: u6, piece: u4, move_to: u6) i32 {
+    pub fn get_ch(self: *Search, p_piece: u4, parent_to: u6, piece: u4, move_to: u6) i32 {
         return (&self.sc_hist_table)[p_piece][parent_to][piece][move_to];
     }
 
@@ -311,7 +396,7 @@ pub const Search = struct {
         self.ply = 0;
         self.max_depth = MAX_DEPTH - 1;
         self.seldepth = 0;
-        self.beta_cutoffs = 0; // Reset beta cutoffs
+        self.tbhits = 0;
     }
 
     pub fn clear_for_new_search(self: *Search) void {
@@ -330,10 +415,10 @@ pub const Search = struct {
         self.nodes = 0;
         self.non_terminal_nodes = 0;
         self.ply = 0;
-        self.beta_cutoffs = 0; // Reset beta cutoffs
+        self.tbhits = 0;
     }
 
-    pub inline fn check_stop_conditions(self: *Search) bool {
+    pub fn check_stop_conditions(self: *Search) bool {
         if (self.stop) return true;
 
         if (self.manager.termination == Termination.INFINITE) {
@@ -345,7 +430,16 @@ pub const Search = struct {
             return true;
         }
 
-        if (self.nodes & 1023 == 0 and ((self.timer.read() / std.time.ns_per_ms) >= self.manager.max_ms)) {
+        // if (self.nodes & 1023 == 0) {
+        //     const elapsed_ms = self.timer.read() / std.time.ns_per_ms;
+        //     if (elapsed_ms >= self.manager.max_ms) {
+        //         self.stop = true;
+        //         self.stop_on_time = true;
+        //         return true;
+        //     }
+        // }
+
+        if ((self.nodes & 1023 == 0) and (self.timer.read() / std.time.ns_per_ms >= self.manager.max_ms)) {
             self.stop = true;
             self.stop_on_time = true;
             return true;
@@ -354,7 +448,7 @@ pub const Search = struct {
         return false;
     }
 
-    pub inline fn check_early_stop_conditions(self: *Search, pos: *Position, stability: u8, improving: i16) bool {
+    pub fn check_early_stop_conditions(self: *Search, pos: *Position, stability: u8, improving: i16) bool {
         if (self.stop) return true;
 
         var early_adjusted_ms = self.manager.early_ms;
@@ -378,16 +472,23 @@ pub const Search = struct {
             if (factor_ph > 1) factor_ph = 1;
             factor *= factor_ph;
             early_adjusted_ms = @as(u64, @intFromFloat(@as(f32, @floatFromInt(early_adjusted_ms)) * factor));
-        }
-        if ((self.timer.read() / std.time.ns_per_ms) >= early_adjusted_ms) {
-            return true;
+
+            if ((self.timer.read() / std.time.ns_per_ms) >= early_adjusted_ms) {
+                return true;
+            }
+        } else if (self.manager.termination == Termination.NODES) {
+            if (self.nodes >= self.manager.max_nodes.?) {
+                return true;
+            }
         }
 
         return false;
     }
 
     pub fn iterative_deepening(self: *Search, pos: *Position, comptime color: Color) void {
-        const stdout = std.io.getStdOut().writer();
+        //const stdout = std.io.getStdOut().writer();
+        // var stdout_buffer = [1]u8{0} ** 10000;
+        // var stdout = std.Io.Writer.fixed(&stdout_buffer);
         const allocator = std.heap.c_allocator;
 
         self.clear_for_new_search();
@@ -407,23 +508,19 @@ pub const Search = struct {
         var improving: i16 = 0;
         var prev_best_move: Move = Move.empty();
         var prev_score = score;
+        var prev_non_terminal_nodes: u64 = 0;
 
         self.timer = std.time.Timer.start() catch unreachable;
 
         const start = Instant.now() catch unreachable;
         self.nodes = 0;
         self.non_terminal_nodes = 0;
-        self.beta_cutoffs = 0; // Reset beta cutoffs
 
         mainloop: while (it_depth <= self.max_depth) {
             self.ply = 0;
             self.seldepth = 0;
             //self.nodes = 0;
             depth = it_depth;
-
-            const start_nodes = self.nodes;
-            const start_non_terminal = self.non_terminal_nodes;
-            const start_beta_cutoffs = self.beta_cutoffs;
 
             if (depth >= 4) {
                 delta = 5;
@@ -486,57 +583,59 @@ pub const Search = struct {
             if (self.stop) {
                 break :mainloop;
             }
-            var nodes = self.nodes;
-            for (1..uci.num_threads) |i| {
-                nodes += uci.thinkers[i].nodes;
+
+            if (self.manager.printout) {
+                var nodes = self.nodes;
+                var tbhits = self.tbhits;
+                for (1..uci.num_threads) |i| {
+                    nodes += uci.thinkers[i].nodes;
+                    tbhits += uci.thinkers[i].tbhits;
+                }
+                const now = Instant.now() catch unreachable;
+                const time_elapsed = now.since(start);
+                const elapsed_nanos = @as(f64, @floatFromInt(time_elapsed));
+                const elapsed_seconds = elapsed_nanos / 1_000_000_000;
+                const elapsed_ms: u32 = @intFromFloat(elapsed_nanos / 1_000_000);
+                const nps: u46 = @intFromFloat(@as(f64, @floatFromInt(nodes)) / elapsed_seconds);
+
+                const ebf: f32 = if (it_depth > 1 and prev_non_terminal_nodes > 0)
+                    @as(f32, @floatFromInt(self.non_terminal_nodes)) / @as(f32, @floatFromInt(prev_non_terminal_nodes))
+                else
+                    0.0;
+
+                //self.best_move = self.pv_table[0][0];
+
+                const est_hash_full = tt.TT.hash_full();
+
+                printout(uci.stdout, "info depth {} seldepth {} score ", .{ it_depth, self.seldepth }) catch unreachable;
+                if (_is_mate_score(score)) {
+                    printout(uci.stdout, "mate {} ", .{_mate_in(score)}) catch unreachable;
+                } else {
+                    printout(uci.stdout, "cp {} ", .{score}) catch unreachable;
+                }
+                printout(uci.stdout, "nodes {} nps {d} time {d} hashfull {d} ebf {d:.2} ", .{ self.nodes, nps, elapsed_ms, est_hash_full, ebf }) catch unreachable;
+                if (use_tb) {
+                    printout(uci.stdout, "tbhits {d} ", .{tbhits}) catch unreachable;
+                }
+                printout(uci.stdout, "pv ", .{}) catch unreachable;
+
+                var next_ply: usize = 0;
+                while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
+                    var pv_move = self.pv_table[0][next_ply];
+                    const pv_move_str = pv_move.to_str(allocator);
+                    defer allocator.free(pv_move_str);
+                    printout(uci.stdout, "{s} ", .{pv_move_str}) catch unreachable;
+                }
+
+                printout(uci.stdout, "\n", .{}) catch unreachable;
             }
-            const now = Instant.now() catch unreachable;
-            const time_elapsed = now.since(start);
-            const elapsed_nanos = @as(f64, @floatFromInt(time_elapsed));
-            const elapsed_seconds = elapsed_nanos / 1_000_000_000;
-            const elapsed_ms: u32 = @intFromFloat(elapsed_nanos / 1_000_000);
-            const nps: u46 = @intFromFloat(@as(f64, @floatFromInt(nodes)) / elapsed_seconds);
-
-            const nodes_used = self.nodes - start_nodes;
-            const non_terminal_used = self.non_terminal_nodes - start_non_terminal;
-            const beta_cutoffs_used = self.beta_cutoffs - start_beta_cutoffs;
-
-            const mbf: f32 = if (non_terminal_used > 0)
-                @as(f32, @floatFromInt(nodes_used)) / @as(f32, @floatFromInt(non_terminal_used))
-            else
-                0.0;
-
-            const search_eff: f32 = if (non_terminal_used > 0)
-                (@as(f32, @floatFromInt(beta_cutoffs_used)) / @as(f32, @floatFromInt(non_terminal_used))) * 100.0
-            else
-                0.0;
-
-            //self.best_move = self.pv_table[0][0];
-
-            const est_hash_full = tt.TT.hash_full();
-
-            _ = std.fmt.format(stdout, "info score ", .{}) catch unreachable;
-            if (_is_mate_score(score)) {
-                _ = std.fmt.format(stdout, "mate {} ", .{_mate_in(score)}) catch unreachable;
-            } else {
-                _ = std.fmt.format(stdout, "cp {} ", .{score}) catch unreachable;
-            }
-            _ = std.fmt.format(stdout, "depth {} seldepth {} nodes {} nps {d} time {d} hashfull {d} mbf {d:.2} bc {d:.2} pv ", .{ it_depth, self.seldepth, self.nodes, nps, elapsed_ms, est_hash_full, mbf, search_eff }) catch unreachable;
-
-            var next_ply: usize = 0;
-            while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
-                var pv_move = self.pv_table[0][next_ply];
-                const pv_move_str = pv_move.to_str(allocator);
-                defer allocator.free(pv_move_str);
-                _ = std.fmt.format(stdout, "{s} ", .{pv_move_str}) catch unreachable;
-            }
-
-            _ = std.fmt.format(stdout, "\n", .{}) catch unreachable;
 
             if (self.stop or self.check_early_stop_conditions(pos, stability_counter, improving)) {
                 self.stop = true;
                 break :mainloop;
             }
+
+            prev_non_terminal_nodes = self.non_terminal_nodes;
 
             it_depth += 1;
         }
@@ -550,9 +649,11 @@ pub const Search = struct {
             self.best_move = ms.get_next_best(&move_list, &score_list, 0);
         }
 
-        const move_name = self.best_move.to_str(allocator);
-        defer allocator.free(move_name);
-        _ = std.fmt.format(stdout, "bestmove {s}\n", .{move_name}) catch unreachable;
+        if (self.manager.printout) {
+            const move_name = self.best_move.to_str(allocator);
+            defer allocator.free(move_name);
+            printout(uci.stdout, "bestmove {s}\n", .{move_name}) catch unreachable;
+        }
     }
 
     pub fn iterative_deepening_thread(self: *Search, pos: *Position, _delta: i32, comptime color: Color) void {
@@ -669,11 +770,11 @@ pub const Search = struct {
 
         if (!is_root) {
             if (pos.upcoming_repetition() and alpha < 0) {
-                alpha = 1 - (@as(i32, @intCast(self.nodes & 2)));
+                alpha = 0;
                 if (alpha >= beta) return alpha;
             }
 
-            if (pos.is_draw()) return 1 - (@as(i32, @intCast(self.nodes & 2)));
+            if (pos.is_draw()) return 0;
 
             if (self.ply >= MAX_PLY) {
                 if (in_check) return 0 else return pos.eval.eval(pos, me);
@@ -716,6 +817,53 @@ pub const Search = struct {
 
             if (!is_pv and (tt_depth >= depth - 1) and (tt_bound == tt.Bound.BOUND_UPPER) and (tt_score + 140 <= alpha) and (cutnode or tt_score <= alpha)) {
                 return alpha;
+            }
+        }
+
+        if (use_tb) {
+            if (!is_root and !skip_move) {
+                const wdl_result = fathom.probeWDL(pos, depth);
+                if ((wdl_result >= 0) and (wdl_result <= 4)) {
+                    tt.TT.prefetch_write(pos.hash);
+                    self.tbhits += 1;
+                    //self.new_tbhits += 1;
+
+                    var tb_bound = tt.Bound.BOUND_NONE;
+                    var tb_score: i32 = -MATE_VALUE;
+                    // switch (wdl_result) {
+                    //     0 => { // Loss
+                    //         tb_score = -TBWIN + @as(i32, self.ply);
+                    //         tb_bound = tt.Bound.BOUND_UPPER;
+                    //     },
+                    //     1, 2, 3 => { //Draw
+                    //         tb_score = 0;
+                    //         tb_bound = tt.Bound.BOUND_EXACT;
+                    //     },
+                    //     4 => {
+                    //         tb_score = TBWIN - @as(i32, self.ply);
+                    //         tb_bound = tt.Bound.BOUND_LOWER;
+                    //     },
+                    //     else => {},
+                    // }
+                    if (wdl_result == 0) { // Loss
+                        tb_score = -TBWIN + @as(i32, self.ply);
+                        tb_bound = tt.Bound.BOUND_UPPER;
+                    } else if (wdl_result == 1 or wdl_result == 2 or wdl_result == 3) { // Draw
+                        tb_score = 0;
+                        tb_bound = tt.Bound.BOUND_EXACT;
+                    } else if (wdl_result == 4) { // Win
+                        tb_score = TBWIN - @as(i32, self.ply);
+                        tb_bound = tt.Bound.BOUND_LOWER;
+                    }
+
+                    if ((tb_bound == tt.Bound.BOUND_LOWER and tb_score >= beta) or
+                        (tb_bound == tt.Bound.BOUND_UPPER and tb_score <= alpha) or
+                        (tb_bound == tt.Bound.BOUND_EXACT))
+                    {
+                        tt.TT.store(tt.scoreEntry.new(pos.hash, Move.empty(), tb_score, tb_bound, MAX_DEPTH, tt.TT.age));
+                        return tb_score;
+                    }
+                }
             }
         }
 
@@ -1021,7 +1169,6 @@ pub const Search = struct {
                         if (mv_quiet) {
                             history.update_all_history(self, move, quiet_list, quet_mv_pieces, depth, me);
                         }
-                        self.beta_cutoffs += 1;
                         break;
                     }
                 }
@@ -1170,7 +1317,7 @@ pub const Search = struct {
             return 0;
         }
 
-        if (pos.is_draw()) return 1 - (@as(i32, @intCast(self.nodes & 2)));
+        if (pos.is_draw()) return 0;
 
         // if (alpha < 0 and pos.upcoming_repetition()) {
         //     alpha = 0;
@@ -1283,9 +1430,151 @@ pub const Search = struct {
         return best_score;
     }
 
-    inline fn update_pv(self: *Search, move: Move) void {
+    // fn update_pv(self: *Search, move: Move) void {
+    //     self.pv_table[self.ply][0] = move;
+    //     std.mem.copyBackwards(Move, self.pv_table[self.ply][1..(self.pv_length[self.ply + 1] + 1)], self.pv_table[self.ply + 1][0..(self.pv_length[self.ply + 1])]);
+    //     self.pv_length[self.ply] = self.pv_length[self.ply + 1] + 1;
+    // }
+
+    // fn update_pv(self: *Search, move: Move) void {
+    //     // Store the best move at the current ply
+    //     self.pv_table[self.ply][0] = move;
+
+    //     // Copy the PV from the next ply using a for loop
+    //     const child_pv_length = self.pv_length[self.ply + 1];
+    //     for (1..child_pv_length + 1) |i| {
+    //         self.pv_table[self.ply][i] = self.pv_table[self.ply + 1][i - 1];
+    //     }
+
+    //     // Update the PV length for the current ply
+    //     self.pv_length[self.ply] = child_pv_length + 1;
+    // }
+
+    fn update_pv(self: *Search, move: Move) void {
         self.pv_table[self.ply][0] = move;
-        std.mem.copyBackwards(Move, self.pv_table[self.ply][1..(self.pv_length[self.ply + 1] + 1)], self.pv_table[self.ply + 1][0..(self.pv_length[self.ply + 1])]);
-        self.pv_length[self.ply] = self.pv_length[self.ply + 1] + 1;
+        const child_pv_length = self.pv_length[self.ply + 1];
+        if (child_pv_length > 0) {
+            @memcpy(
+                self.pv_table[self.ply][1 .. 1 + child_pv_length],
+                self.pv_table[self.ply + 1][0..child_pv_length],
+            );
+        }
+        self.pv_length[self.ply] = child_pv_length + 1;
     }
 };
+
+const expect = std.testing.expect;
+
+const TestSimpleSearch = struct {
+    pv_table: [MAX_DEPTH][MAX_DEPTH]Move,
+    pv_length: [MAX_DEPTH]u8,
+    ply: usize,
+};
+
+// Original function with std.mem.copyBackwards
+fn update_pv1(self: *TestSimpleSearch, move: Move) void {
+    self.pv_table[self.ply][0] = move;
+    std.mem.copyBackwards(Move, self.pv_table[self.ply][1..(self.pv_length[self.ply + 1] + 1)], self.pv_table[self.ply + 1][0..(self.pv_length[self.ply + 1])]);
+    self.pv_length[self.ply] = self.pv_length[self.ply + 1] + 1;
+}
+
+fn update_pv2(self: *TestSimpleSearch, move: Move) void {
+    self.pv_table[self.ply][0] = move;
+    const child_pv_length = self.pv_length[self.ply + 1];
+    if (child_pv_length > 0) {
+        @memcpy(
+            self.pv_table[self.ply][1 .. 1 + child_pv_length],
+            self.pv_table[self.ply + 1][0..child_pv_length],
+        );
+    }
+    self.pv_length[self.ply] = child_pv_length + 1;
+}
+
+fn update_pv3(self: *TestSimpleSearch, move: Move) void {
+    self.pv_table[self.ply][0] = move;
+    const child_pv_length = self.pv_length[self.ply + 1];
+    if (child_pv_length > 0) {
+        @memmove(
+            self.pv_table[self.ply][1 .. 1 + child_pv_length],
+            self.pv_table[self.ply + 1][0..child_pv_length],
+        );
+    }
+    self.pv_length[self.ply] = child_pv_length + 1;
+}
+
+// Benchmark test for both functions
+test "benchmark update_pv1 vs update_pv2" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    //const allocator = arena.allocator();
+
+    // Initialize TestSimpleSearch struct
+    var simple_search = TestSimpleSearch{
+        .pv_table = undefined,
+        .pv_length = undefined,
+        .ply = 0,
+    };
+
+    // Test with different PV lengths
+    const pv_lengths = [_]u8{ 5, 10, 20, 30 };
+    const iterations = 100000; // Number of iterations per test
+    var timer = try std.time.Timer.start();
+
+    std.debug.print("\n", .{});
+    for (pv_lengths) |pv_len| {
+        // Setup: Initialize pv_length and pv_table
+        simple_search.ply = 0;
+        simple_search.pv_length[1] = pv_len; // Child PV length
+        for (0..pv_len) |i| {
+            simple_search.pv_table[1][i] = Move.empty(); // Dummy moves
+        }
+
+        // Benchmark update_pv1
+        timer.reset();
+        for (0..iterations) |_| {
+            update_pv1(&simple_search, Move.empty()); // Dummy move
+        }
+        const time_pv1 = timer.read();
+
+        // Reset pv_table for fairness
+        simple_search.pv_table[0] = undefined;
+
+        // Benchmark update_pv2
+        timer.reset();
+        for (0..iterations) |_| {
+            update_pv2(&simple_search, Move.empty()); // Same dummy move
+        }
+        const time_pv2 = timer.read();
+
+        // Reset pv_table for fairness
+        simple_search.pv_table[0] = undefined;
+
+        // Benchmark update_pv2
+        timer.reset();
+        for (0..iterations) |_| {
+            update_pv3(&simple_search, Move.empty()); // Same dummy move
+        }
+        const time_pv3 = timer.read();
+
+        // Print results (nanoseconds per call)
+        const ns_per_call_pv1 = @as(f64, @floatFromInt(time_pv1)) / @as(f64, @floatFromInt(iterations));
+        const ns_per_call_pv2 = @as(f64, @floatFromInt(time_pv2)) / @as(f64, @floatFromInt(iterations));
+        const ns_per_call_pv3 = @as(f64, @floatFromInt(time_pv3)) / @as(f64, @floatFromInt(iterations));
+        std.debug.print("PV length {}: update_pv1 = {:.2} ns/call, update_pv2 = {:.2} ns/call, update_pv3 = {:.2} ns/call, speedup (pv1/pv2) = {:.2}x, speedup (pv2/pv3) = {:.2}x\n", .{ pv_len, ns_per_call_pv1, ns_per_call_pv2, ns_per_call_pv3, ns_per_call_pv1 / ns_per_call_pv2, ns_per_call_pv2 / ns_per_call_pv3 });
+
+        // Verify correctness (all functions should produce identical results)
+        var pv1 = TestSimpleSearch{ .pv_table = undefined, .pv_length = undefined, .ply = 0 };
+        pv1.pv_length[1] = pv_len;
+        for (0..pv_len) |i| {
+            pv1.pv_table[1][i] = Move.empty();
+        }
+        var pv2 = pv1;
+        var pv3 = pv1;
+        update_pv1(&pv1, Move.empty());
+        update_pv2(&pv2, Move.empty());
+        update_pv3(&pv3, Move.empty());
+        try expect(std.mem.eql(Move, pv1.pv_table[0][0..pv1.pv_length[0]], pv2.pv_table[0][0..pv2.pv_length[0]]));
+        try expect(std.mem.eql(Move, pv1.pv_table[0][0..pv1.pv_length[0]], pv3.pv_table[0][0..pv3.pv_length[0]]));
+        try expect(pv1.pv_length[0] == pv2.pv_length[0] and pv2.pv_length[0] == pv3.pv_length[0]);
+    }
+}

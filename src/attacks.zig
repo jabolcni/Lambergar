@@ -100,7 +100,7 @@ pub const BLACK_PAWN_ATTACKS = [_]u64{
     0x28000000000000, 0x50000000000000, 0xa0000000000000, 0x40000000000000,
 };
 
-pub inline fn reverse(_b: u64) u64 {
+pub fn reverse(_b: u64) u64 {
     var b = _b;
     b = (b & 0x5555555555555555) << 1 | ((b >> 1) & 0x5555555555555555);
     b = (b & 0x3333333333333333) << 2 | ((b >> 2) & 0x3333333333333333);
@@ -111,12 +111,12 @@ pub inline fn reverse(_b: u64) u64 {
         ((b >> 16) & 0xffff0000) | (b >> 48);
 }
 
-pub inline fn sliding_attacks(sq_idx: u6, occ: u64, mask: u64) u64 {
+pub fn sliding_attacks(sq_idx: u6, occ: u64, mask: u64) u64 {
     return (((mask & occ) -% SQUARE_BB[sq_idx] *% 2) ^
         reverse(reverse(mask & occ) -% reverse(SQUARE_BB[sq_idx]) *% 2)) & mask;
 }
 
-pub inline fn get_rook_attacks_for_init(square: Square, occ: u64) u64 {
+pub fn get_rook_attacks_for_init(square: Square, occ: u64) u64 {
     const sq_idx = square.toU6();
     return sliding_attacks(sq_idx, occ, MASK_FILE[square.file_of().toU3()]) | sliding_attacks(sq_idx, occ, MASK_RANK[square.rank_of().toU3()]);
 }
@@ -144,7 +144,7 @@ pub const ROOK_MAGICS = [_]u64{
     0x0001000204080011, 0x0001000204000801, 0x0001000082000401, 0x0001FFFAABFAD1A2,
 };
 
-pub inline fn initialise_rook_attacks() void {
+pub fn initialise_rook_attacks() void {
     var edges: u64 = undefined;
     var subset: u64 = undefined;
     var index: u64 = undefined;
@@ -175,13 +175,13 @@ pub inline fn initialise_rook_attacks() void {
 }
 
 //Returns the attacks bitboard for a rook at a given square, using the magic lookup table
-pub inline fn get_rook_attacks(square: u6, occ: u64) u64 {
+pub fn get_rook_attacks(square: u6, occ: u64) u64 {
     return ROOK_ATTACKS[square][((occ & ROOK_ATTACK_MASKS[square]) *% ROOK_MAGICS[square]) >> @as(u6, @intCast(ROOK_ATTACK_SHIFTS[square]))];
 }
 
 //Returns the 'x-ray attacks' for a rook at a given square. X-ray attacks cover squares that are not immediately
 //accessible by the rook, but become available when the immediate blockers are removed from the board
-pub inline fn get_xray_rook_attacks(square: Square, occ: u64, _blockers: u64) u64 {
+pub fn get_xray_rook_attacks(square: Square, occ: u64, _blockers: u64) u64 {
     var blockers = _blockers;
     const sq_idx = square.toU6();
     const attcks = get_rook_attacks(sq_idx, occ);
@@ -191,7 +191,7 @@ pub inline fn get_xray_rook_attacks(square: Square, occ: u64, _blockers: u64) u6
 
 //Returns bishop attacks from a given square, using the Hyperbola Quintessence Algorithm. Only used to initialize
 //the magic lookup table
-pub inline fn get_bishop_attacks_for_init(square: Square, occ: u64) u64 {
+pub fn get_bishop_attacks_for_init(square: Square, occ: u64) u64 {
     const sq_idx = square.toU6();
     return sliding_attacks(sq_idx, occ, MASK_DIAGONAL[square.diagonal_of()]) |
         sliding_attacks(sq_idx, occ, MASK_ANTI_DIAGONAL[square.anti_diagonal_of()]);
@@ -221,7 +221,7 @@ pub const BISHOP_MAGICS = [_]u64{
 };
 
 //Initializes the magic lookup table for bishops
-pub inline fn initialise_bishop_attacks() void {
+pub fn initialise_bishop_attacks() void {
     var edges: u64 = undefined;
     var subset: u64 = undefined;
     var index: u64 = undefined;
@@ -252,7 +252,7 @@ pub inline fn initialise_bishop_attacks() void {
 }
 
 //Returns the attacks bitboard for a bishop at a given square, using the magic lookup table
-pub inline fn get_bishop_attacks(square: u6, occ: u64) u64 {
+pub fn get_bishop_attacks(square: u6, occ: u64) u64 {
     return BISHOP_ATTACKS[square][
         ((occ & BISHOP_ATTACK_MASKS[square]) *% BISHOP_MAGICS[square]) >> @as(u6, @intCast(BISHOP_ATTACK_SHIFTS[square]))
     ];
@@ -260,7 +260,7 @@ pub inline fn get_bishop_attacks(square: u6, occ: u64) u64 {
 
 //Returns the 'x-ray attacks' for a bishop at a given square. X-ray attacks cover squares that are not immediately
 //accessible by the rook, but become available when the immediate blockers are removed from the board
-pub inline fn get_xray_bishop_attacks(square: Square, occ: u64, _blockers: u64) u64 {
+pub fn get_xray_bishop_attacks(square: Square, occ: u64, _blockers: u64) u64 {
     var blockers = _blockers;
     const sq_idx = square.toU6();
     const attcks = get_bishop_attacks(sq_idx, occ);
@@ -272,7 +272,7 @@ pub var SQUARES_BETWEEN_BB: [64][64]u64 = std.mem.zeroes([64][64]u64);
 
 //Initializes the lookup table for the bitboard of squares in between two given squares (0 if the
 //two squares are not aligned)
-pub inline fn initialise_squares_between() void {
+pub fn initialise_squares_between() void {
     var sqs: u64 = undefined;
 
     for (sq_iter) |sq1| {
@@ -293,7 +293,7 @@ pub var LINE: [64][64]u64 = std.mem.zeroes([64][64]u64);
 
 //Initializes the lookup table for the bitboard of all squares along the line of two given squares (0 if the
 //two squares are not aligned)
-pub inline fn initialise_line() void {
+pub fn initialise_line() void {
     for (sq_iter) |sq1| {
         for (sq_iter) |sq2| {
             if ((file_of_iter(sq1) == file_of_iter(sq2)) or (rank_of_iter(sq1) == rank_of_iter(sq2))) {
@@ -312,11 +312,11 @@ pub var PSEUDO_LEGAL_ATTACKS: [position.NPIECE_TYPES][64]u64 = std.mem.zeroes([p
 
 //Initializes the table containg pseudolegal attacks of each piece for each square. This does not include blockers
 //for sliding pieces
-pub inline fn initialise_pseudo_legal() void {
-    std.mem.copyBackwards(u64, (&PAWN_ATTACKS)[0][0..64], WHITE_PAWN_ATTACKS[0..64]);
-    std.mem.copyBackwards(u64, (&PAWN_ATTACKS)[1][0..64], BLACK_PAWN_ATTACKS[0..64]);
-    std.mem.copyBackwards(u64, PSEUDO_LEGAL_ATTACKS[PieceType.Knight.toU3()][0..64], KNIGHT_ATTACKS[0..64]);
-    std.mem.copyBackwards(u64, PSEUDO_LEGAL_ATTACKS[PieceType.King.toU3()][0..64], KING_ATTACKS[0..64]);
+pub fn initialise_pseudo_legal() void {
+    @memcpy((&PAWN_ATTACKS)[0][0..64], WHITE_PAWN_ATTACKS[0..64]);
+    @memcpy((&PAWN_ATTACKS)[1][0..64], BLACK_PAWN_ATTACKS[0..64]);
+    @memcpy(PSEUDO_LEGAL_ATTACKS[PieceType.Knight.toU3()][0..64], KNIGHT_ATTACKS[0..64]);
+    @memcpy(PSEUDO_LEGAL_ATTACKS[PieceType.King.toU3()][0..64], KING_ATTACKS[0..64]);
     for (sq_iter) |s| {
         PSEUDO_LEGAL_ATTACKS[PieceType.Rook.toU3()][s] = get_rook_attacks_for_init(Square.fromInt(s), 0);
         PSEUDO_LEGAL_ATTACKS[PieceType.Bishop.toU3()][s] = get_bishop_attacks_for_init(Square.fromInt(s), 0);
@@ -326,7 +326,7 @@ pub inline fn initialise_pseudo_legal() void {
 }
 
 //Initializes lookup tables for rook moves, bishop moves, in-between squares, aligned squares and pseudolegal moves
-pub inline fn initialise_all_databases() void {
+pub fn initialise_all_databases() void {
     initialise_rook_attacks();
     initialise_bishop_attacks();
     initialise_squares_between();
@@ -334,7 +334,7 @@ pub inline fn initialise_all_databases() void {
     initialise_pseudo_legal();
 }
 
-pub inline fn piece_attacks(sq_idx: u6, occ: u64, P: PieceType) u64 {
+pub fn piece_attacks(sq_idx: u6, occ: u64, P: PieceType) u64 {
     std.debug.assert(P != PieceType.Pawn);
 
     return switch (P) {
@@ -345,7 +345,7 @@ pub inline fn piece_attacks(sq_idx: u6, occ: u64, P: PieceType) u64 {
     };
 }
 
-pub inline fn piece_attacks_Sq(s: Square, occ: u64, comptime P: PieceType) u64 {
+pub fn piece_attacks_Sq(s: Square, occ: u64, comptime P: PieceType) u64 {
     std.debug.assert(P != PieceType.Pawn);
     const sq_idx = s.toU6();
 
@@ -357,17 +357,17 @@ pub inline fn piece_attacks_Sq(s: Square, occ: u64, comptime P: PieceType) u64 {
     };
 }
 
-pub inline fn pawn_attacks_from_bitboard(p: u64, comptime c: Color) u64 {
+pub fn pawn_attacks_from_bitboard(p: u64, comptime c: Color) u64 {
     return if (c == Color.White)
         shift(p, Direction.NORTH_WEST) | shift(p, Direction.NORTH_EAST)
     else
         shift(p, Direction.SOUTH_WEST) | shift(p, Direction.SOUTH_EAST);
 }
 
-pub inline fn pawn_attacks_from_square_Sq(s: Square, comptime c: Color) u64 {
+pub fn pawn_attacks_from_square_Sq(s: Square, comptime c: Color) u64 {
     return (&PAWN_ATTACKS)[c.toU4()][s.toU6()];
 }
 
-pub inline fn pawn_attacks_from_square(s: u6, comptime c: Color) u64 {
+pub fn pawn_attacks_from_square(s: u6, comptime c: Color) u64 {
     return (&PAWN_ATTACKS)[c.toU4()][s];
 }

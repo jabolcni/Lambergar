@@ -99,6 +99,8 @@ On 19th of September 2025 version 1.3 was released, estimated at around 3420 Elo
 
 ## Credits
 
+- [Fathom library](https://github.com/jdart1/Fathom) by [Jon Dart](https://github.com/jdart1) for Syzygy tablebase probing
+  
 - [Chess Programming Wiki](https://www.chessprogramming.org/)
 
 - [BitBoard Chess Engine in C YouTube playlist](https://www.youtube.com/playlist?list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs) by [@maksimKorzh](https://github.com/maksimKorzh) in which the authors explain the development of [BBC](https://github.com/maksimKorzh/bbc) engine

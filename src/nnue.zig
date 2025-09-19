@@ -38,28 +38,28 @@ pub const DeltaPieces = struct {
         self.count = 0;
     }
 
-    pub inline fn move_piece_quiet(self: *DeltaPieces, pc: Piece, from: u6, to: u6) void {
+    pub fn move_piece_quiet(self: *DeltaPieces, pc: Piece, from: u6, to: u6) void {
         self.pieces[self.count] = pc.toU4();
         self.from[self.count] = from;
         self.to[self.count] = to;
         self.count += 1;
     }
 
-    pub inline fn remove_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
+    pub fn remove_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
         self.pieces[self.count] = pc.toU4();
         self.from[self.count] = sq;
         self.to[self.count] = null;
         self.count += 1;
     }
 
-    pub inline fn put_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
+    pub fn put_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
         self.pieces[self.count] = pc.toU4();
         self.from[self.count] = null;
         self.to[self.count] = sq;
         self.count += 1;
     }
 
-    pub inline fn move_piece(self: *DeltaPieces, from_pc: Piece, to_pc: Piece, from: u6, to: u6) void {
+    pub fn move_piece(self: *DeltaPieces, from_pc: Piece, to_pc: Piece, from: u6, to: u6) void {
         self.move_piece_quiet(from_pc, from, to);
         self.remove_piece(to_pc, to);
     }
@@ -278,50 +278,15 @@ pub fn init(allocator: std.mem.Allocator) !void {
     try load_output_layer(nnue_data);
 }
 
-inline fn orient(sq: u6, c: Color) u6 {
+fn orient(sq: u6, c: Color) u6 {
     return if (c == Color.White) sq else sq ^ 0x3F;
 }
 
-inline fn make_index(sq: u6, pc: u4, ksq: u6, color: Color) usize {
+fn make_index(sq: u6, pc: u4, ksq: u6, color: Color) usize {
     const ret = orient(sq, color) +
         PieceToIndex[color.toU4()][@as(usize, @intCast(pc))] +
         @intFromEnum(PS.END) * @as(usize, @intCast(ksq));
     return @as(usize, @intCast(ret));
-}
-
-fn propagate(
-    input: []u8,
-    biases: []const i32,
-    weights: []const i8,
-) i32 {
-    var sum: i32 = biases[0];
-    comptime var i = 0;
-    inline while (i < 16) : (i += 1) {
-        sum += @as(i32, input[i]) * @as(i32, weights[i]);
-    }
-    return sum;
-}
-
-fn transform(
-    curr_accu: Accumulator,
-    player: Color,
-    output: []u8,
-) void {
-    std.debug.assert(output.len == FT_OUT_DIM);
-    const Vec = @Vector(16, i16);
-    const VecU8 = @Vector(16, u8);
-    const accumulation = &(curr_accu.accumulation);
-
-    var i: usize = 0;
-    while (i + 16 <= FT_HALF_DIM) : (i += 16) {
-        var sum_vec: Vec = accumulation[player.toU4()][i..][0..16].*;
-        var clamped_vec: Vec = @min(@max(sum_vec, @as(Vec, @splat(@as(i16, 0)))), @as(Vec, @splat(@as(i16, 127))));
-        output[i..][0..16].* = @as(VecU8, @intCast(clamped_vec));
-
-        sum_vec = accumulation[player.change_side().toU4()][i..][0..16].*;
-        clamped_vec = @min(@max(sum_vec, @as(Vec, @splat(@as(i16, 0)))), @as(Vec, @splat(@as(i16, 127))));
-        output[FT_HALF_DIM + i ..][0..16].* = @as(VecU8, @intCast(clamped_vec));
-    }
 }
 
 pub fn refresh_accumulator_side(pos: Position, accumulator: *Accumulator, comptime c: Color) void {
@@ -487,6 +452,159 @@ pub fn load_layer2(nnue_data: []u8) !void {
     }
 }
 
+fn propagate(
+    input: []u8,
+    biases: []const i32,
+    weights: []const i8,
+) i32 {
+    var sum: i32 = biases[0];
+    comptime var i = 0;
+    inline while (i < 16) : (i += 1) {
+        sum += @as(i32, input[i]) * @as(i32, weights[i]);
+    }
+    return sum;
+}
+
+// fn transform(
+//     curr_accu: Accumulator,
+//     player: Color,
+//     output: []u8,
+// ) void {
+//     std.debug.assert(output.len == FT_OUT_DIM);
+//     const Vec = @Vector(16, i16);
+//     const VecU8 = @Vector(16, u8);
+//     const accumulation = &(curr_accu.accumulation);
+
+//     var i: usize = 0;
+//     while (i + 16 <= FT_HALF_DIM) : (i += 16) {
+//         var sum_vec: Vec = accumulation[player.toU4()][i..][0..16].*;
+//         var clamped_vec: Vec = @min(@max(sum_vec, @as(Vec, @splat(@as(i16, 0)))), @as(Vec, @splat(@as(i16, 127))));
+//         output[i..][0..16].* = @as(VecU8, @intCast(clamped_vec));
+
+//         sum_vec = accumulation[player.change_side().toU4()][i..][0..16].*;
+//         clamped_vec = @min(@max(sum_vec, @as(Vec, @splat(@as(i16, 0)))), @as(Vec, @splat(@as(i16, 127))));
+//         output[FT_HALF_DIM + i ..][0..16].* = @as(VecU8, @intCast(clamped_vec));
+//     }
+// }
+
+fn transform(
+    curr_accu: Accumulator,
+    comptime player: Color,
+    output: []u8,
+) void {
+    std.debug.assert(output.len == FT_OUT_DIM);
+
+    const Vec = @Vector(16, i16);
+    const VecU8 = @Vector(16, u8);
+
+    const zero = @as(Vec, @splat(0));
+    const max127 = @as(Vec, @splat(@as(i16, 127)));
+
+    const accumulation = &curr_accu.accumulation;
+    //const p_idx = player.toU4();
+    const p_idx = if (player == Color.White) Color.White.toU4() else Color.Black.toU4();
+
+    //const opp_idx = player.change_side().toU4();
+    const opp_idx = if (player == Color.White) Color.Black.toU4() else Color.White.toU4();
+
+    var i: usize = 0;
+    //comptime var i = 0;
+    while (i + 16 <= FT_HALF_DIM) : (i += 16) {
+        const v1: Vec = accumulation[p_idx][i..][0..16].*;
+        const v2: Vec = accumulation[opp_idx][i..][0..16].*;
+
+        const c1 = @min(@max(v1, zero), max127);
+        const c2 = @min(@max(v2, zero), max127);
+
+        output[i..][0..16].* = @as(VecU8, @intCast(c1));
+        output[FT_HALF_DIM + i ..][0..16].* = @as(VecU8, @intCast(c2));
+    }
+}
+
+// fn transform(
+//     curr_accu: Accumulator,
+//     player: Color,
+//     output: []u8,
+// ) void {
+//     std.debug.assert(output.len == FT_OUT_DIM);
+
+//     const Vec = @Vector(16, i16);
+//     const VecU8 = @Vector(16, u8);
+
+//     const zero = @as(Vec, @splat(0));
+//     const max127 = @as(Vec, @splat(@as(i16, 127)));
+
+//     const accumulation = &curr_accu.accumulation;
+//     const p_idx = player.toU4();
+//     const o_idx = player.change_side().toU4();
+
+//     // Hoist slices for cleaner indexing
+//     const p = accumulation[p_idx][0..FT_HALF_DIM];
+//     const o = accumulation[o_idx][0..FT_HALF_DIM];
+
+//     // Reasonable prefetch distance: 64 elements (== 128 bytes for i16),
+//     // i.e. ~2 cachelines on x86. Tune if you benchmark different CPUs.
+//     const PF_DIST: usize = 64;
+
+//     var i: usize = 0;
+//     const step = 16 * 4; // processing 4 blocks per iteration
+//     while (i < FT_HALF_DIM) : (i += step) {
+//         // Optionally prefetch the upcoming blocks
+//         if (i + PF_DIST + step < FT_HALF_DIM) {
+//             @prefetch(&p[i + PF_DIST], .{ .rw = .read, .locality = 3, .cache = .data });
+//             @prefetch(&o[i + PF_DIST], .{ .rw = .read, .locality = 3, .cache = .data });
+//         }
+
+//         // Block 0
+//         {
+//             const v_p: Vec = p[i..][0..16].*;
+//             const v_o: Vec = o[i..][0..16].*;
+//             const c_p: Vec = @min(@max(v_p, zero), max127);
+//             const c_o: Vec = @min(@max(v_o, zero), max127);
+//             const u8_p: VecU8 = @as(VecU8, @intCast(c_p));
+//             const u8_o: VecU8 = @as(VecU8, @intCast(c_o));
+//             output[i..][0..16].* = u8_p;
+//             output[FT_HALF_DIM + i ..][0..16].* = u8_o;
+//         }
+//         // Block 1 (i + 16)
+//         {
+//             const base = i + 16;
+//             const v_p: Vec = p[base..][0..16].*;
+//             const v_o: Vec = o[base..][0..16].*;
+//             const c_p: Vec = @min(@max(v_p, zero), max127);
+//             const c_o: Vec = @min(@max(v_o, zero), max127);
+//             const u8_p: VecU8 = @as(VecU8, @intCast(c_p));
+//             const u8_o: VecU8 = @as(VecU8, @intCast(c_o));
+//             output[base..][0..16].* = u8_p;
+//             output[FT_HALF_DIM + base ..][0..16].* = u8_o;
+//         }
+//         // Block 2 (i + 32)
+//         {
+//             const base = i + 32;
+//             const v_p: Vec = p[base..][0..16].*;
+//             const v_o: Vec = o[base..][0..16].*;
+//             const c_p: Vec = @min(@max(v_p, zero), max127);
+//             const c_o: Vec = @min(@max(v_o, zero), max127);
+//             const u8_p: VecU8 = @as(VecU8, @intCast(c_p));
+//             const u8_o: VecU8 = @as(VecU8, @intCast(c_o));
+//             output[base..][0..16].* = u8_p;
+//             output[FT_HALF_DIM + base ..][0..16].* = u8_o;
+//         }
+//         // Block 3 (i + 48)
+//         {
+//             const base = i + 48;
+//             const v_p: Vec = p[base..][0..16].*;
+//             const v_o: Vec = o[base..][0..16].*;
+//             const c_p: Vec = @min(@max(v_p, zero), max127);
+//             const c_o: Vec = @min(@max(v_o, zero), max127);
+//             const u8_p: VecU8 = @as(VecU8, @intCast(c_p));
+//             const u8_o: VecU8 = @as(VecU8, @intCast(c_o));
+//             output[base..][0..16].* = u8_p;
+//             output[FT_HALF_DIM + base ..][0..16].* = u8_o;
+//         }
+//     }
+// }
+
 inline fn affine(
     input: []const u8,
     output: []u8,
@@ -515,7 +633,83 @@ inline fn affine(
     }
 }
 
-pub fn evaluate(curr_accu: Accumulator, player: Color) i32 {
+// inline fn affine(
+//     input: []const u8,
+//     output: []u8,
+//     biases: []const i32,
+//     weights: []const i8,
+//     input_len: usize,
+//     output_len: usize,
+// ) void {
+//     std.debug.assert(output.len == output_len);
+//     std.debug.assert(weights.len == output_len * input_len);
+
+//     const VecI16 = @Vector(16, i16);
+//     const VecI32 = @Vector(16, i32);
+
+//     comptime var out_idx = 0;
+//     inline while (out_idx < output_len) : (out_idx += 1) {
+//         var sum: VecI32 = @splat(0);
+
+//         var i: usize = 0;
+//         while (i < input_len) : (i += 16) {
+//             const w_base = out_idx * input_len + i;
+
+//             // Load 16 weights (i8 → i16)
+//             const w_i16: VecI16 = @as(VecI16, weights[w_base..][0..16].*);
+
+//             // Load 16 inputs (u8 → i16)
+//             const x_i16: VecI16 = @as(VecI16, input[i..][0..16].*);
+
+//             // Multiply-add: widen both to i32, then accumulate
+//             sum += @as(VecI32, x_i16) * @as(VecI32, w_i16);
+//         }
+
+//         // Horizontal sum of 16 lanes
+//         var total: i32 = biases[out_idx] + @reduce(.Add, sum);
+
+//         // Quantize
+//         total = std.math.clamp(total >> 6, 0, 127);
+//         output[out_idx] = @intCast(total);
+//     }
+// }
+
+// inline fn affine(
+//     input: []const u8,
+//     output: []u8,
+//     biases: []const i32,
+//     weights: []const i8,
+//     input_len: usize,
+//     output_len: usize,
+// ) void {
+//     std.debug.assert(output.len == output_len);
+//     std.debug.assert(weights.len == output_len * input_len);
+//     std.debug.assert(input_len % 16 == 0);
+
+//     const VecI16 = @Vector(16, i16);
+//     const VecI32 = @Vector(16, i32);
+
+//     var out_idx: usize = 0;
+//     while (out_idx < output_len) : (out_idx += 1) {
+//         // SIMD accumulator (16 lanes -> i32)
+//         var sum_vec: VecI32 = @splat(@as(i32, 0));
+
+//         var i: usize = 0;
+//         while (i < input_len) : (i += 16) {
+//             const w_base = out_idx * input_len + i;
+//             const x_i16: VecI16 = @as(VecI16, input[i..][0..16].*);
+//             const w_i16: VecI16 = @as(VecI16, weights[w_base..][0..16].*);
+//             sum_vec += @as(VecI32, x_i16) * @as(VecI32, w_i16);
+//         }
+
+//         var total: i32 = biases[out_idx] + @reduce(.Add, sum_vec);
+
+//         total = std.math.clamp(total >> 6, 0, 127);
+//         output[out_idx] = @intCast(total);
+//     }
+// }
+
+pub fn evaluate(curr_accu: Accumulator, comptime player: Color) i32 {
     const FV_SCALE = 16;
 
     var input: [FT_OUT_DIM]u8 = undefined;

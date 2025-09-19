@@ -55,93 +55,93 @@ pub const Square = enum(u7) {
     NO_SQUARE,
     // zig fmt: on
 
-    pub inline fn toU(self: Square) usize {
+    pub fn toU(self: Square) usize {
         return @as(usize, @intFromEnum(self));
     }
 
-    pub inline fn toU7(self: Square) u7 {
+    pub fn toU7(self: Square) u7 {
         return @as(u7, @intFromEnum(self));
     }
 
-    pub inline fn toU6(self: Square) u6 {
+    pub fn toU6(self: Square) u6 {
         return @as(u6, @truncate(@intFromEnum(self)));
     }
 
-    pub inline fn fromInt(square: usize) Square {
+    pub fn fromInt(square: usize) Square {
         return @enumFromInt(square);
     }
 
-    pub inline fn fromU6(square: u6) Square {
+    pub fn fromU6(square: u6) Square {
         return @enumFromInt(square);
     }
 
-    pub inline fn from_str(str: []const u8) Square {
+    pub fn from_str(str: []const u8) Square {
         return @enumFromInt((str[1] - '1') * 8 + (str[0] - 'a'));
     }
 
-    pub inline fn rank_of(self: Square) Rank {
+    pub fn rank_of(self: Square) Rank {
         return @as(Rank, @enumFromInt(@intFromEnum(self) >> 3));
     }
 
-    pub inline fn file_of(self: Square) File {
+    pub fn file_of(self: Square) File {
         return @as(File, @enumFromInt(@intFromEnum(self) & 0b111));
     }
 
-    pub inline fn diagonal_of(self: Square) u4 {
+    pub fn diagonal_of(self: Square) u4 {
         return (7 + @as(u4, @intCast(self.rank_of().toU3())) - @as(u4, @intCast(self.file_of().toU3())));
     }
 
-    pub inline fn anti_diagonal_of(self: Square) u4 {
+    pub fn anti_diagonal_of(self: Square) u4 {
         return @as(u4, @intCast(self.rank_of().toU3())) + @as(u4, @intCast(self.file_of().toU3()));
     }
 
-    pub inline fn create_square(f: File, r: Rank) Square {
+    pub fn create_square(f: File, r: Rank) Square {
         return @as(Square, @enumFromInt(@intFromEnum(f) | (@intFromEnum(r) << 3)));
     }
 };
 
-pub inline fn rank_of_iter(sq: usize) usize {
+pub fn rank_of_iter(sq: usize) usize {
     return sq >> 3;
 }
 
-pub inline fn rank_of_isize(sq: usize) isize {
+pub fn rank_of_isize(sq: usize) isize {
     return @as(isize, @intCast(sq >> 3));
 }
 
-pub inline fn rank_of_u6(sq: u6) u6 {
+pub fn rank_of_u6(sq: u6) u6 {
     return sq >> 3;
 }
 
-pub inline fn relative_rank_of_u6(sq: u6, comptime c: Color) u6 {
+pub fn relative_rank_of_u6(sq: u6, comptime c: Color) u6 {
     const rank = rank_of_u6(sq);
     return if (c == Color.White) rank else 7 - rank;
 }
 
-pub inline fn file_of_iter(sq: usize) usize {
+pub fn file_of_iter(sq: usize) usize {
     return sq & 0b111;
 }
 
-pub inline fn file_of_isize(sq: usize) isize {
+pub fn file_of_isize(sq: usize) isize {
     return @as(isize, @intCast(sq & 0b111));
 }
 
-pub inline fn file_of_u6(sq: u6) u6 {
+pub fn file_of_u6(sq: u6) u6 {
     return sq & 0b111;
 }
 
-pub inline fn diagonal_of_iter(sq: usize) usize {
+pub fn diagonal_of_iter(sq: usize) usize {
     return 7 + rank_of_iter(sq) - file_of_iter(sq);
 }
 
-pub inline fn diagonal_of_u6(sq: u6) u6 {
+pub fn diagonal_of_u6(sq: u6) u6 {
     return 7 + rank_of_u6(sq) - file_of_u6(sq);
 }
 
-pub inline fn anti_diagonal_of_iter(sq: usize) usize {
+pub fn anti_diagonal_of_iter(sq: usize) usize {
     return rank_of_iter(sq) + file_of_iter(sq);
 }
 
-pub inline fn anti_diagonal_of_u6(sq: u6) u6 {
+pub fn anti_diagonal_of_u6(sq: u6) u6 {
     return rank_of_u6(sq) + file_of_u6(sq);
 }
 
@@ -354,6 +354,20 @@ pub const MoveFlags = enum(u4) {
             else => PieceType.NoType,
         };
     }
+
+    pub inline fn promote_type_str(self: MoveFlags) ?u8 {
+        return switch (self) {
+            MoveFlags.PR_KNIGHT => 'n',
+            MoveFlags.PR_BISHOP => 'b',
+            MoveFlags.PR_ROOK => 'r',
+            MoveFlags.PR_QUEEN => 'q',
+            MoveFlags.PC_KNIGHT => 'n',
+            MoveFlags.PC_BISHOP => 'b',
+            MoveFlags.PC_ROOK => 'r',
+            MoveFlags.PC_QUEEN => 'q',            
+            else => null,
+        };
+    }    
 };
 
 const MoveParseError = error{
@@ -425,16 +439,14 @@ pub const Move = packed struct {
         if (self.is_promotion()) {
             var move_str = allocator.alloc(u8, 5) catch unreachable;
 
-            //std.mem.copyBackwards(comptime T: type, dest: []T, source: []const T)
-
-            std.mem.copyBackwards(u8, move_str[0..2], sq_to_coord[self.from]);
-            std.mem.copyBackwards(u8, move_str[2..4], sq_to_coord[self.to]);
+            @memcpy(move_str[0..2], sq_to_coord[self.from]);
+            @memcpy(move_str[2..4], sq_to_coord[self.to]);
             move_str[4] = PROM_TYPESTR[self.flags.toU4()][0];
             return move_str;
         } else {
             var move_str = allocator.alloc(u8, 4) catch unreachable;
-            std.mem.copyBackwards(u8, move_str[0..2], sq_to_coord[self.from]);
-            std.mem.copyBackwards(u8, move_str[2..4], sq_to_coord[self.to]);
+            @memcpy(move_str[0..2], sq_to_coord[self.from]);
+            @memcpy(move_str[2..4], sq_to_coord[self.to]);
             return move_str;
         }
 
@@ -465,6 +477,164 @@ pub const Move = packed struct {
             }
         }
         return MoveParseError.IllegalMove;
+    }
+
+    pub fn parse_alg_move(move_str: []const u8, pos: *Position) !Move {
+        const uci_move = try algebraic_to_uci(move_str, pos);
+        defer std.testing.allocator.free(uci_move);  
+        const move = try Move.parse_move(uci_move, pos);
+        return move;     
+    }
+
+    fn algebraic_to_uci(move_str: []const u8, curr_pos: *Position) ![]const u8 {
+        // Buffer for UCI string (max 5 chars: e.g., "e7e8q")
+        var uci_buf: [5]u8 = undefined;
+        var uci_len: usize = 0;
+
+        // Handle castling
+        if (std.mem.eql(u8, move_str, "O-O")) {
+            return try std.testing.allocator.dupe(u8, if (curr_pos.side_to_play == .White) "e1g1" else "e8g8");
+        } else if (std.mem.eql(u8, move_str, "O-O-O")) {
+            return try std.testing.allocator.dupe(u8, if (curr_pos.side_to_play == .White) "e1c1" else "e8c8");
+        }
+
+        // Parse algebraic move
+        var piece: u8 = 'P'; // Default to pawn
+        var src_file: ?u8 = null;
+        var src_rank: ?u8 = null;
+        var dest_square: []const u8 = undefined;
+        var promotion: ?u8 = null;
+        var is_cap = false;
+        var move_idx: usize = 0;
+
+        // Check for piece identifier (N, B, R, Q, K)
+        if (move_idx < move_str.len and move_str[move_idx] >= 'A' and move_str[move_idx] <= 'Z') {
+            piece = move_str[move_idx];
+            move_idx += 1;
+        }
+
+        // Parse source file/rank, capture, or destination
+        while (move_idx < move_str.len) {
+            const c = move_str[move_idx];
+            // Check for destination square (file + rank)
+            if (move_idx + 2 <= move_str.len and
+                move_str[move_idx] >= 'a' and move_str[move_idx] <= 'h' and
+                move_str[move_idx + 1] >= '1' and move_str[move_idx + 1] <= '8')
+            {
+                dest_square = move_str[move_idx .. move_idx + 2];
+                move_idx += 2;
+                break;
+            }
+            if (c == 'x') {
+                is_cap = true;
+                move_idx += 1;
+            } else if (c >= 'a' and c <= 'h') {
+                src_file = c;
+                move_idx += 1;
+            } else if (c >= '1' and c <= '8') {
+                src_rank = c;
+                move_idx += 1;
+            } else {
+                return error.InvalidAlgebraicMove;
+            }
+        }
+
+        //std.debug.print("\nmove: {s}, move_idx={d}, dest_square={s}\n", .{ move_str, move_idx, dest_square });
+
+        // Validate destination square
+        if (dest_square.len != 2 or dest_square[0] < 'a' or dest_square[0] > 'h' or
+            dest_square[1] < '1' or dest_square[1] > '8')
+        {
+            return error.InvalidDestinationSquare;
+        }
+
+        // Promotion (e.g., "=Q")
+        if (move_idx < move_str.len and move_str[move_idx] == '=') {
+            move_idx += 1;
+            if (move_idx < move_str.len) {
+                promotion = std.ascii.toLower(move_str[move_idx]);
+                if (promotion != 'q' and promotion != 'r' and promotion != 'b' and promotion != 'n') {
+                    return error.InvalidPromotion;
+                }
+                move_idx += 1;
+            } else {
+                return error.InvalidPromotion;
+            }
+        }
+
+        // Convert destination to square index (0-63)
+        const dest_file = dest_square[0] - 'a';
+        const dest_rank = dest_square[1] - '1';
+        const dest_idx = dest_rank * 8 + dest_file;
+
+        // Debug: Print legal moves
+        var move_list: MoveList = .{};
+        if (curr_pos.side_to_play == Color.White) {
+            curr_pos.generate_legals(Color.White, &move_list);
+        } else {
+            curr_pos.generate_legals(Color.Black, &move_list);
+        }
+        // std.debug.print("Legal moves for {s}:\n", .{move_str});
+        // for (0..move_list.count) |i| {
+        //     const move = move_list.moves[i];
+        //     std.debug.print("Move: from={d}, to={d}, promotion={?c}, capture={}\n", .{
+        //         move.from, move.to, move.flags.promote_type_str(), move.is_capture(),
+        //     });
+        // }
+
+        // Find source square by checking legal moves
+        var src_square: ?u64 = null;
+        for (0..move_list.count) |i| {
+            const move = move_list.moves[i];
+            if (move.to == dest_idx and
+                (promotion == null or move.flags.promote_type_str() == promotion) and
+                (is_cap == move.is_capture()))
+            {
+                // Check piece type
+                const piece_type = curr_pos.board[move.from];
+                const expected_piece = switch (piece) {
+                    'P' => if (curr_pos.side_to_play == .White) Piece.WHITE_PAWN else Piece.BLACK_PAWN,
+                    'N' => if (curr_pos.side_to_play == .White) Piece.WHITE_KNIGHT else Piece.BLACK_KNIGHT,
+                    'B' => if (curr_pos.side_to_play == .White) Piece.WHITE_BISHOP else Piece.BLACK_BISHOP,
+                    'R' => if (curr_pos.side_to_play == .White) Piece.WHITE_ROOK else Piece.BLACK_ROOK,
+                    'Q' => if (curr_pos.side_to_play == .White) Piece.WHITE_QUEEN else Piece.BLACK_QUEEN,
+                    'K' => if (curr_pos.side_to_play == .White) Piece.WHITE_KING else Piece.BLACK_KING,
+                    else => return error.InvalidPiece,
+                };
+                if (piece_type == expected_piece) {
+                    // Check source file/rank if specified
+                    const src_file_idx = @as(u8, @intCast(move.from % 8));
+                    const src_rank_idx = @as(u8, @intCast(move.from / 8));
+                    if ((src_file == null or src_file_idx == src_file.? - 'a') and
+                        (src_rank == null or src_rank_idx == src_rank.? - '1'))
+                    {
+                        src_square = move.from;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (src_square == null) {
+            // std.debug.print("No matching move for {s}, dest_idx={d}, promotion={?c}, is_capture={}\n", .{
+            //     move_str, dest_idx, promotion, is_cap,
+            // });
+            return error.NoMatchingMove;
+        }
+
+        // Build UCI string
+        uci_buf[0] = @as(u8, 'a') + @as(u8, @intCast(src_square.? % 8));
+        uci_buf[1] = @as(u8, '1') + @as(u8, @intCast(src_square.? / 8));
+        uci_buf[2] = dest_square[0];
+        uci_buf[3] = dest_square[1];
+        uci_len = 4;
+        if (promotion) |p| {
+            uci_buf[4] = p;
+            uci_len = 5;
+        }
+
+        // Return allocated string
+        return try std.testing.allocator.dupe(u8, uci_buf[0..uci_len]);
     }
 
 
@@ -590,8 +760,6 @@ pub const Position = struct {
     minor_hash: u64 = undefined, // for correction history
 
     history: [2048]UndoInfo = undefined,
-    checkers: u64 = undefined,
-    pinned: u64 = undefined,
 
     eval: Evaluation = undefined,
     delta: nnue.DeltaPieces = nnue.DeltaPieces{},
@@ -608,8 +776,6 @@ pub const Position = struct {
         pos.non_pawn_hash = .{0} ** 2;
         pos.major_hash = 0;
         pos.minor_hash = 0;
-        pos.pinned = 0;
-        pos.checkers = 0;
         pos.history[0] = UndoInfo.new();
         pos.eval.eval_mg = 0;
         pos.eval.eval_eg = 0;
@@ -631,8 +797,6 @@ pub const Position = struct {
             .major_hash = from.major_hash,
             .minor_hash = from.minor_hash,
             .history = from.history,
-            .checkers = from.checkers,
-            .pinned = from.pinned,
             .eval = from.eval,
             .delta = nnue.DeltaPieces{},
         };
@@ -837,7 +1001,7 @@ pub const Position = struct {
         return self.piece_bb[pc.toU4()];
     }
 
-    pub inline fn bitboard_of_pt(self: *Position, comptime c: Color, pt: PieceType) u64 {
+    pub inline fn bitboard_of_pt(self: *Position, comptime c: Color, comptime pt: PieceType) u64 {
         return self.piece_bb[Piece.new(c, pt).toU4()];
     }
 
@@ -938,21 +1102,17 @@ pub const Position = struct {
 
         const fifty = self.history[self.game_ply].fifty;
 
-        if (fifty < 3) {
+        if (fifty < 2) {
             return false;
         }
 
         var index = @as(isize, self.game_ply) - 2;
         const min_index = @as(isize, self.game_ply) - @as(isize, fifty);
-        var count: u2 = 0;
 
         while (index >= min_index and index >= 0) {
             if (self.hash == self.history[@as(usize,@intCast(index))].hash_key) {
-                count += 1;
-                if (count >= 1) {
                     return true;
                 }
-            }  
             index -= 2;    
         }
 
@@ -1460,6 +1620,7 @@ pub const Position = struct {
 
     const FenParseError = error{
         MissingField,
+        MissingCastlingRights,
         InvalidPosition,
         InvalidActiveColor,
         InvalidCastlingRights,
@@ -1519,7 +1680,7 @@ pub const Position = struct {
             return FenParseError.InvalidActiveColor;
         }
 
-        const castling_fen = parts.next().?;
+        const castling_fen = parts.next() orelse return FenParseError.MissingCastlingRights;
         self.history[self.game_ply].entry = ALL_CASTLING_MASK;
 
         for (castling_fen) |c| {
@@ -1565,6 +1726,126 @@ pub const Position = struct {
 
     }
 
+    /// Converts the current state of a `Position` struct into a FEN string.
+    /// The caller is responsible for freeing the returned string using `allocator`.
+    pub fn get_fen(self: *Position, allocator: std.mem.Allocator) ![]u8 {
+        var fen_parts = std.ArrayList(u8).init(allocator);
+        defer fen_parts.deinit();
+
+        // --- 1. Piece placement ---
+        var rank: i8 = 7; // Start from rank 8 (index 7)
+        while (rank >= 0) : (rank -= 1) {
+            var file: u8 = 0;
+            var empty_count: u8 = 0;
+
+            while (file < 8) : (file += 1) {
+                const sq_index = @as(u6, @intCast((@as(u8, @intCast(rank)) * 8) + file));
+                const piece = self.board[sq_index];
+
+                if (piece == Piece.NO_PIECE) {
+                    empty_count += 1;
+                } else {
+                    // If we were counting empty squares, add the count to the FEN
+                    if (empty_count > 0) {
+                        try fen_parts.append('0' + empty_count);
+                        empty_count = 0;
+                    }
+                    // Add the piece character
+                    // Assuming PIECE_STR exists and maps pieces correctly
+                    // Adjust indexing if your Piece enum or PIECE_STR is different
+                    const piece_char = PIECE_STR[@intFromEnum(piece)];
+                    try fen_parts.append(piece_char);
+                }
+            }
+            // After processing a rank, add any trailing empty squares
+            if (empty_count > 0) {
+                try fen_parts.append('0' + empty_count);
+            }
+            // Add rank separator, except after the last rank (rank 1)
+            if (rank > 0) {
+                try fen_parts.append('/');
+            }
+        }
+
+        // --- 2. Active color ---
+        try fen_parts.append(' ');
+        if (self.side_to_play == Color.White) {
+            try fen_parts.append('w');
+        } else {
+            try fen_parts.append('b');
+        }
+
+        // --- 3. Castling availability ---
+        try fen_parts.append(' ');
+        var has_castling = false;
+        const castling_rights = self.history[self.game_ply].castling; // Assuming u4 field
+
+        // Check for White castling rights (assuming Castling enum values)
+        if ((castling_rights & Castling.WK.toU4()) != 0) {
+            try fen_parts.append('K');
+            has_castling = true;
+        }
+        if ((castling_rights & Castling.WQ.toU4()) != 0) {
+            try fen_parts.append('Q');
+            has_castling = true;
+        }
+        // Check for Black castling rights
+        if ((castling_rights & Castling.BK.toU4()) != 0) {
+            try fen_parts.append('k');
+            has_castling = true;
+        }
+        if ((castling_rights & Castling.BQ.toU4()) != 0) {
+            try fen_parts.append('q');
+            has_castling = true;
+        }
+
+        if (!has_castling) {
+            try fen_parts.append('-');
+        }
+
+        // --- 4. En passant target square ---
+        try fen_parts.append(' ');
+        const ep_square = self.history[self.game_ply].epsq; // Assuming Square enum
+        if (ep_square != Square.NO_SQUARE) {
+            // Assuming sq_to_coord array exists as in your provided code
+            const ep_str = sq_to_coord[ep_square.toU()]; // Use toU() which returns usize
+            try fen_parts.appendSlice(ep_str);
+        } else {
+            try fen_parts.append('-');
+        }
+
+        // --- 5. Halfmove clock (50-move counter) ---
+        try fen_parts.append(' ');
+        // Assuming fifty_move_counter or similar field exists in history
+        const halfmove_clock = self.history[self.game_ply].fifty; // Adjust field name if needed
+        var halfmove_buf: [10]u8 = undefined; // Buffer for integer to string conversion
+        const halfmove_str = try std.fmt.bufPrint(&halfmove_buf, "{}", .{halfmove_clock});
+        try fen_parts.appendSlice(halfmove_str);
+
+        // --- 6. Fullmove number ---
+        try fen_parts.append(' ');
+        // Fullmove number is (game_ply / 2) + 1
+        // Ensure game_ply is at least 0, then perform calculation
+        const fullmove_number: u32 = @intCast((self.game_ply / 2) + 1);
+        var fullmove_buf: [10]u8 = undefined;
+        const fullmove_str = try std.fmt.bufPrint(&fullmove_buf, "{}", .{fullmove_number});
+        try fen_parts.appendSlice(fullmove_str);
+
+        // Null-terminate the string
+        try fen_parts.append(0);
+        // Resize to exclude the null terminator for the returned slice
+        const fen_string = try fen_parts.toOwnedSlice();
+        return fen_string[0 .. fen_string.len - 1]; // Exclude the null terminator
+    }
+
+    // Example usage (assuming you have a Position instance):
+    // const allocator = std.heap.page_allocator; // Or your preferred allocator
+    // var pos = Position.new();
+    // try pos.set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    // const fen = try positionToFen(allocator, &pos);
+    // defer allocator.free(fen);
+    // std.debug.print("Generated FEN: {s}\n", .{fen});
+
     pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
         const Them = Us.change_side();
 
@@ -1585,6 +1866,9 @@ pub const Position = struct {
         var b3: u64 = 0;        
 
         var danger: u64 = 0;
+        var checkers: u64 = 0;
+        var pinned: u64 = 0;
+
 
         //For each enemy piece, add all of its attacks to the danger bitboard
         danger |= attacks.pawn_attacks_from_bitboard(self.bitboard_of_pt(Them, PieceType.Pawn), Them) | attacks.piece_attacks(their_king, all_bb, PieceType.King);
@@ -1629,13 +1913,13 @@ pub const Position = struct {
         //Checkers of each piece type are identified by:
         //1. Projecting attacks FROM the king square
         //2. Intersecting this bitboard with the enemy bitboard of that piece type
-        self.checkers = (attacks.piece_attacks(our_king, all_bb, PieceType.Knight) & self.bitboard_of_pt(Them, PieceType.Knight)) | (attacks.pawn_attacks_from_square(our_king, Us) & self.bitboard_of_pt(Them, PieceType.Pawn)); // Bug in original code //piece_bb[Piece.new(Them, PieceType.Knight).toU4()]  //self.piece_bb[Piece.new(Them, PieceType.Pawn).toU4()]
+        checkers = (attacks.piece_attacks(our_king, all_bb, PieceType.Knight) & self.bitboard_of_pt(Them, PieceType.Knight)) | (attacks.pawn_attacks_from_square(our_king, Us) & self.bitboard_of_pt(Them, PieceType.Pawn)); // Bug in original code //piece_bb[Piece.new(Them, PieceType.Knight).toU4()]  //self.piece_bb[Piece.new(Them, PieceType.Pawn).toU4()]
 
         //Here, we identify slider checkers and pinners simultaneously, and candidates for such pinners 
         //and checkers are represented by the bitboard <candidates>
         var candidates = (attacks.piece_attacks(our_king, them_bb, PieceType.Rook) & their_orth_sliders) | (attacks.piece_attacks(our_king, them_bb, PieceType.Bishop) & their_diag_sliders); // Possible bug in original code
         
-        self.pinned = 0;
+        pinned = 0;
 
         while (candidates != 0) {
             s = bb.pop_lsb(&candidates);
@@ -1644,30 +1928,30 @@ pub const Position = struct {
             //Do the squares in between the enemy slider and our king contain any of our pieces?
             //If not, add the slider to the checker bitboard   
             if (b1 == 0) {
-                self.checkers ^= SQUARE_BB[s];
+                checkers ^= SQUARE_BB[s];
             }
             //If there is only one of our pieces between them, add our piece to the pinned bitboard 
             else if ((b1 & b1-1) == 0) {
-                self.pinned ^= b1;
+                pinned ^= b1;
             }
         }
 
         //This makes it easier to mask pieces
-        const not_pinned = ~self.pinned;
+        const not_pinned = ~pinned;
 
-        switch (bb.pop_count(self.checkers)) {
+        switch (bb.pop_count(checkers)) {
             //If there is a double check, the only legal moves are king moves out of check
             2 => return,
             1 => {
                 //It's a single check!
 
-                const checker_square = bb.get_ls1b_index(self.checkers);
+                const checker_square = bb.get_ls1b_index(checkers);
                 switch (self.board[checker_square]) {
                     Piece.new(Them, PieceType.Pawn) => {
                         //If the checker is a pawn, we must check for e.p. moves that can capture it
                         //This evaluates to true if the checking piece is the one which just double pushed                        
                         const sq_idx = self.history[self.game_ply].epsq.toU6();
-                        if (self.checkers == shift(SQUARE_BB[sq_idx], Direction.relative_dir(Direction.SOUTH, Us))) {
+                        if (checkers == shift(SQUARE_BB[sq_idx], Direction.relative_dir(Direction.SOUTH, Us))) {
                             b1 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn) & not_pinned;
                             while (b1 != 0) {
                                 list.append(Move.new(bb.pop_lsb_Sq(&b1), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
@@ -1688,7 +1972,7 @@ pub const Position = struct {
                     },
                     else => {
                         //We must capture the checking piece
-                        capture_mask = self.checkers;     
+                        capture_mask = checkers;     
 
                         //...or we can block it since it is guaranteed to be a slider
                         quiet_mask = attacks.SQUARES_BETWEEN_BB[our_king][checker_square];     
@@ -1726,7 +2010,7 @@ pub const Position = struct {
                     }
 
                     //Pinned pawns can only capture e.p. if they are pinned diagonally and the e.p. square is in line with the king 
-                    b1 = b2 & self.pinned & attacks.LINE[sq_idx][our_king];
+                    b1 = b2 & pinned & attacks.LINE[sq_idx][our_king];
                     if (b1 != 0) {
                         list.append(Move.new(Square.fromU6(bb.get_ls1b_index(b1)), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));     
                     }
@@ -1935,6 +2219,8 @@ pub const Position = struct {
         var b3: u64 = 0;
 
         var danger: u64 = 0;
+        var checkers: u64 = 0;
+        var pinned: u64 = 0;
 
         //For each enemy piece, add all of its attacks to the danger bitboard
         danger |= attacks.pawn_attacks_from_bitboard(self.bitboard_of_pt(Them, PieceType.Pawn), Them) | attacks.piece_attacks(their_king, all_bb, PieceType.King);
@@ -1979,13 +2265,13 @@ pub const Position = struct {
         //Checkers of each piece type are identified by:
         //1. Projecting attacks FROM the king square
         //2. Intersecting this bitboard with the enemy bitboard of that piece type
-        self.checkers = (attacks.piece_attacks(our_king, all_bb, PieceType.Knight) & self.bitboard_of_pt(Them, PieceType.Knight)) | (attacks.pawn_attacks_from_square(our_king, Us) & self.bitboard_of_pt(Them, PieceType.Pawn)); // Bug in original code //piece_bb[Piece.new(Them, PieceType.Knight).toU4()]  //self.piece_bb[Piece.new(Them, PieceType.Pawn).toU4()]
+        checkers = (attacks.piece_attacks(our_king, all_bb, PieceType.Knight) & self.bitboard_of_pt(Them, PieceType.Knight)) | (attacks.pawn_attacks_from_square(our_king, Us) & self.bitboard_of_pt(Them, PieceType.Pawn)); // Bug in original code //piece_bb[Piece.new(Them, PieceType.Knight).toU4()]  //self.piece_bb[Piece.new(Them, PieceType.Pawn).toU4()]
 
         //Here, we identify slider checkers and pinners simultaneously, and candidates for such pinners
         //and checkers are represented by the bitboard <candidates>
         var candidates = (attacks.piece_attacks(our_king, them_bb, PieceType.Rook) & their_orth_sliders) | (attacks.piece_attacks(our_king, them_bb, PieceType.Bishop) & their_diag_sliders); // Possible bug in original code
 
-        self.pinned = 0;
+        pinned = 0;
 
         while (candidates != 0) {
             s = bb.pop_lsb(&candidates);
@@ -1994,30 +2280,30 @@ pub const Position = struct {
             //Do the squares in between the enemy slider and our king contain any of our pieces?
             //If not, add the slider to the checker bitboard
             if (b1 == 0) {
-                self.checkers ^= SQUARE_BB[s];
+                checkers ^= SQUARE_BB[s];
             }
             //If there is only one of our pieces between them, add our piece to the pinned bitboard
             else if ((b1 & b1 - 1) == 0) {
-                self.pinned ^= b1;
+                pinned ^= b1;
             }
         }
 
         //This makes it easier to mask pieces
-        const not_pinned = ~self.pinned;
+        const not_pinned = ~pinned;
 
-        switch (bb.pop_count(self.checkers)) {
+        switch (bb.pop_count(checkers)) {
             //If there is a double check, the only legal moves are king moves out of check
             2 => return,
             1 => {
                 //It's a single check!
 
-                const checker_square = bb.get_ls1b_index(self.checkers);
+                const checker_square = bb.get_ls1b_index(checkers);
                 switch (self.board[checker_square]) {
                     Piece.new(Them, PieceType.Pawn) => {
                         //If the checker is a pawn, we must check for e.p. moves that can capture it
                         //This evaluates to true if the checking piece is the one which just double pushed
                         const sq_idx = self.history[self.game_ply].epsq.toU6();
-                        if (self.checkers == shift(SQUARE_BB[sq_idx], Direction.relative_dir(Direction.SOUTH, Us))) {
+                        if (checkers == shift(SQUARE_BB[sq_idx], Direction.relative_dir(Direction.SOUTH, Us))) {
                             b1 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn) & not_pinned;
                             while (b1 != 0) {
                                 list.append(Move.new(bb.pop_lsb_Sq(&b1), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
@@ -2038,7 +2324,7 @@ pub const Position = struct {
                     },
                     else => {
                         //We must capture the checking piece
-                        capture_mask = self.checkers;
+                        capture_mask = checkers;
 
                         //...or we can block it since it is guaranteed to be a slider
                         quiet_mask = attacks.SQUARES_BETWEEN_BB[our_king][checker_square];
@@ -2075,7 +2361,7 @@ pub const Position = struct {
                     }
 
                     //Pinned pawns can only capture e.p. if they are pinned diagonally and the e.p. square is in line with the king
-                    b1 = b2 & self.pinned & attacks.LINE[sq_idx][our_king];
+                    b1 = b2 & pinned & attacks.LINE[sq_idx][our_king];
                     if (b1 != 0) {
                         list.append(Move.new(Square.fromU6(bb.get_ls1b_index(b1)), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
                     }
@@ -2213,3 +2499,175 @@ pub const Position = struct {
     }
 
 };
+
+test "three-fold repetition: multiple positions" {
+    attacks.initialise_all_databases();
+    zobrist.initialise_zobrist_keys();
+
+    const fens = [_][]const u8{
+        "r5k1/pbN2rp1/4Q1Np/2pn1pB1/8/P7/1PP2PPP/6K1 b - - 0 25", // Original: knight and king
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", // Knight shuffle in opening
+        "r1bqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/R1BQKB1R w KQkq - 0 1", // Queen and bishop in middlegame
+        "8/5k2/5p2/5P2/5K2/8/8/8 w - - 0 50", // King shuffle in endgame
+    };
+
+    const moves_strs = [_][]const u8{
+        "d5c7 g6e7 g8f8 e7g6 f8g8 g6e7 g8f8 e7g6 f8g8", // Original
+        "g1f3 g8f6 f3g1 f6g8 g1f3 g8f6 f3g1 f6g8", // Knight shuffle
+        "f3h4 d7d6 d1f3 c8e6 f3d1 e6c8 d1f3 c8e6 f3d1 e6c8", // Queen and bishop
+        "f4e4 f7e7 e4f4 e7f7 f4e4 f7e7 e4f4 e7f7", // King shuffle
+    };
+
+    const test_names = [_][]const u8{
+        "knight and king",
+        "knight shuffle in opening",
+        "queen and bishop in middlegame",
+        "king shuffle in endgame",
+    };
+
+    // Iterate over each test case
+    for (fens, moves_strs, test_names) |fen, moves_str, test_name| {
+        std.debug.print("\nTesting: {s}\n", .{test_name});
+        var pos = Position.new();
+
+        // Set position from FEN
+        try pos.set(fen);
+        pos.print_unicode();
+
+        var moves = std.mem.splitScalar(u8, std.mem.trim(u8, moves_str, " "), ' ');
+
+        // Apply moves
+        while (moves.next()) |move_str| {
+            std.debug.print("|{s}|", .{move_str});
+            const move = try Move.parse_move(move_str, &pos);
+            if (pos.side_to_play == Color.White) {
+                pos.play(move, Color.White);
+            } else {
+                pos.play(move, Color.Black);
+            }
+        }
+        std.debug.print("\n", .{});
+
+        // Verify three-fold repetition
+        if (!pos.is_repetition()) {
+            std.debug.print("Repetition test failed for {s}\n", .{test_name});
+            try std.testing.expect(false);
+        }
+    }
+}
+
+test "Algebraic to UCI conversion Nxe5" {
+    attacks.initialise_all_databases();
+    zobrist.initialise_zobrist_keys();
+
+    var curr_pos = Position.new();
+    try curr_pos.set("rnbqkbnr/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1");
+    const uci = try Move.algebraic_to_uci("Nxe5", &curr_pos);
+    defer std.testing.allocator.free(uci);
+    try std.testing.expectEqualStrings("f3e5", uci);
+}
+
+test "Algebraic to UCI conversion f8=Q" {
+    attacks.initialise_all_databases();
+    zobrist.initialise_zobrist_keys();
+
+    var curr_pos = Position.new();
+    try curr_pos.set("6RR/4bP2/8/8/5r2/3K4/5p2/4k3 w - - 0 1");
+    const uci = try Move.algebraic_to_uci("f8=Q", &curr_pos);
+    //std.debug.print("\nuci move: {s}", .{uci});
+    defer std.testing.allocator.free(uci);
+    try std.testing.expectEqualStrings("f7f8q", uci);
+}
+
+test "Algebraic to UCI conversion O-O" {
+    attacks.initialise_all_databases();
+    zobrist.initialise_zobrist_keys();
+
+    var curr_pos = Position.new();
+    try curr_pos.set("r1bqk1nr/pppp1ppp/2n5/1B2p3/1b2P3/5N2/PPPP1PPP/RNBQK2R w KQkq -");
+    const uci = try Move.algebraic_to_uci("O-O", &curr_pos);
+    //std.debug.print("\nuci move: {s}", .{uci});
+    defer std.testing.allocator.free(uci);
+    try std.testing.expectEqualStrings("e1g1", uci);
+}
+
+test "Test in_check function for white" {
+
+    attacks.initialise_all_databases();
+    zobrist.initialise_zobrist_keys();
+
+    const test_cases = [_]struct { fen: []const u8, in_check: bool}{
+        .{ .fen = "8/3k4/8/3q4/8/5K2/8/8 w - - 1 1", .in_check = true},
+        .{ .fen = "8/3k4/8/2q5/8/1Q3K2/8/8 w - - 1 1", .in_check = false},
+        .{ .fen = "8/1b1k4/8/2q5/8/1Q3K2/8/8 w - - 1 1", .in_check = true},
+        .{ .fen = "8/1b1k4/8/2q5/4B3/1Q3K2/8/8 w - - 1 1", .in_check = false},
+        .{ .fen = "8/1b1k4/8/2q3n1/4B3/1Q3K2/8/8 w - - 1 1", .in_check = true},
+        .{ .fen = "8/1b1k4/5n2/2q5/4B3/1Q3K2/8/8 w - - 1 1", .in_check = false},
+        .{ .fen = "8/1b1k4/5n2/2q5/4B1p1/1Q3K2/8/8 w - - 1 1", .in_check = true},
+        .{ .fen = "8/1b1k4/5n2/2q3p1/4B3/1Q3K2/8/5r2 w - - 1 1", .in_check = true},
+        .{ .fen = "8/1b1k4/5n2/2q3p1/4B3/1Q3K2/5P2/5r2 w - - 1 1", .in_check = false},
+    };
+
+    const me = Color.White;
+
+    std.debug.print("\n", .{});
+    
+    for (test_cases) |test_case| {
+        // Set up position
+        var curr_pos = Position.new();
+        try curr_pos.set(test_case.fen);
+        const in_check = curr_pos.in_check(me);
+
+        // Compare with expected
+        if (in_check != test_case.in_check) {
+            std.debug.print(
+                "in_check failed for FEN: {s}, expected: {}, got: {}\n",
+                .{ test_case.fen, test_case.in_check, in_check },
+            );
+            try std.testing.expectEqual(test_case.in_check, in_check);
+        }        
+
+    }
+}
+
+test "Test in_check function for black" {
+
+    attacks.initialise_all_databases();
+    zobrist.initialise_zobrist_keys();
+
+    const test_cases = [_]struct { fen: []const u8, in_check: bool}{
+        .{ .fen = "8/1b1k4/5n2/2q3p1/Q3B3/5K2/5P2/5r2 b - - 1 1", .in_check = true},
+        .{ .fen = "8/1b1k4/2p2n2/2q3p1/Q3B3/5K2/5P2/5r2 b - - 1 1", .in_check = false},
+        .{ .fen = "8/1b1k3R/2p2n2/2q3p1/Q3B3/5K2/5P2/5r2 b - - 1 1", .in_check = true},
+        .{ .fen = "8/1b1k1b1R/2p2n2/2q3p1/Q3B3/5K2/5P2/5r2 b - - 1 1", .in_check = false},
+        .{ .fen = "8/1b1k1b1R/2p1Pn2/2q3p1/Q3B3/5K2/5P2/5r2 b - - 1 1", .in_check = true},
+        .{ .fen = "8/1b1k1b1R/2p2n2/2q1P1p1/Q3B3/5K2/5P2/5r2 b - - 1 1", .in_check = false},
+        .{ .fen = "8/1b1k1b1R/1Np2n2/2q1P1p1/Q3B3/5K2/5P2/5r2 b - - 1 1", .in_check = true},
+        .{ .fen = "8/1b1k1b1R/2p2n2/2q1P1p1/Q3B1B1/N4K2/5P2/5r2 b - - 1 1", .in_check = true},
+        .{ .fen = "4k3/1b3b1R/2p2n2/2q1P1p1/Q3B1B1/N4K2/5P2/5r2 b - - 1 1", .in_check = false},
+        .{ .fen = "3q4/1b2kb1R/2p2n2/4P1p1/Q2B2B1/N4K2/5P2/5r2 b - - 1 1", .in_check = false},
+    };
+
+    const me = Color.Black;
+
+    std.debug.print("\n", .{});
+    
+    for (test_cases) |test_case| {
+        // Set up position
+        var curr_pos = Position.new();
+        try curr_pos.set(test_case.fen);
+        const in_check = curr_pos.in_check(me);
+
+        // Compare with expected
+        if (in_check != test_case.in_check) {
+            std.debug.print(
+                "in_check failed for FEN: {s}, expected: {}, got: {}\n",
+                .{ test_case.fen, test_case.in_check, in_check },
+            );
+            try std.testing.expectEqual(test_case.in_check, in_check);
+        }        
+
+    }
+
+
+}

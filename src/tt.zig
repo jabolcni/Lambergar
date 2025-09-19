@@ -101,7 +101,7 @@ pub const TranspositionTable = struct {
         self.clear();
     }
 
-    pub inline fn clear(self: *TranspositionTable) void {
+    pub fn clear(self: *TranspositionTable) void {
         for (self.locks, 0..) |*lock, i| {
             lock.lock();
             defer lock.unlock();
@@ -115,27 +115,27 @@ pub const TranspositionTable = struct {
         self.reset_counters();
     }
 
-    pub inline fn index(self: *TranspositionTable, hash: u64) u64 {
+    pub fn index(self: *TranspositionTable, hash: u64) u64 {
         return hash & self.mask;
     }
 
-    // pub inline fn lock_idx(self: *TranspositionTable, hash: u64) usize {
+    // pub  fn lock_idx(self: *TranspositionTable, hash: u64) usize {
     //     return self.index(hash) / self.bucket_size;
     // }
 
-    pub inline fn increase_age(self: *TranspositionTable) void {
+    pub fn increase_age(self: *TranspositionTable) void {
         self.locks[0].lock();
         defer self.locks[0].unlock();
         self.age +%= 1;
     }
 
-    pub inline fn clear_age(self: *TranspositionTable) void {
+    pub fn clear_age(self: *TranspositionTable) void {
         self.locks[0].lock();
         defer self.locks[0].unlock();
         self.age = 0;
     }
 
-    pub inline fn hash_full(self: *TranspositionTable) u16 {
+    pub fn hash_full(self: *TranspositionTable) u16 {
         var count: u16 = 0;
         for (0..1000) |idx| {
             const hash_idx = (idx * 1000) & self.mask;
@@ -152,18 +152,18 @@ pub const TranspositionTable = struct {
         return count;
     }
 
-    pub inline fn get_hit_rate(self: *TranspositionTable) u64 {
+    pub fn get_hit_rate(self: *TranspositionTable) u64 {
         if (self.lookups == 0) return 0.0;
         //return @as(f32, @floatFromInt(self.hits)) / @as(f32, @floatFromInt(self.lookups)) * 100.0;
         return @divTrunc(self.hits * 1000, self.lookups);
     }
 
-    pub inline fn reset_counters(self: *TranspositionTable) void {
+    pub fn reset_counters(self: *TranspositionTable) void {
         self.lookups = 0;
         self.hits = 0;
     }
 
-    pub inline fn store(self: *TranspositionTable, entry: scoreEntry) void {
+    pub fn store(self: *TranspositionTable, entry: scoreEntry) void {
         const idx = self.index(entry.hash_key);
         const lock_idx = idx / self.bucket_size;
         self.locks[lock_idx].lock();
@@ -173,16 +173,15 @@ pub const TranspositionTable = struct {
         const key = entry.hash_key;
         const current_age = self.age;
 
-        // Find the best entry to replace (or update if key matches)
-        var replace_idx: usize = 0;
-        var best_value: i32 = std.math.maxInt(i32); // Lower value = less valuable
-
-        for (bucket, 0..) |*e, i| {
+        // Check for existing entry with matching key
+        for (bucket) |*e| {
             if (e.hash_key == key) {
-                // If key matches, update this entry directly
-                if (entry.move.is_empty()) e.move = e.move else e.move = entry.move;
+                // Update move only if new one is provided
+                if (!entry.move.is_empty()) {
+                    e.move = entry.move;
+                }
+                // Update entry if exact bound, deeper search, or different age
                 if (entry.bound == Bound.BOUND_EXACT or
-                    key != e.hash_key or
                     entry.depth + 5 > e.depth or
                     e.age != current_age)
                 {
@@ -190,9 +189,13 @@ pub const TranspositionTable = struct {
                 }
                 return;
             }
+        }
 
-            // Calculate "value" of this entry (lower is less valuable)
-            const age_diff = @as(i32, MAX_AGE + current_age - e.age) & MAX_AGE;
+        // Find least valuable entry to replace
+        var replace_idx: usize = 0;
+        var best_value: i32 = std.math.maxInt(i32);
+        for (bucket, 0..) |e, i| {
+            const age_diff: i32 = @as(i32, current_age -% e.age);
             const value = @as(i32, e.depth) - age_diff * 4;
             if (value < best_value) {
                 best_value = value;
@@ -200,14 +203,14 @@ pub const TranspositionTable = struct {
             }
         }
 
-        // Preserve existing move if no new move provided and key differs
+        // Preserve existing move if no new move and keys differ
         if (entry.move.is_empty() and key != bucket[replace_idx].hash_key) {
             bucket[replace_idx].move = bucket[replace_idx].move;
         } else {
             bucket[replace_idx].move = entry.move;
         }
 
-        // Overwrite if new entry is more valuable
+        // Overwrite if more valuable
         if (entry.bound == Bound.BOUND_EXACT or
             key != bucket[replace_idx].hash_key or
             entry.depth + 5 > bucket[replace_idx].depth or
@@ -216,7 +219,63 @@ pub const TranspositionTable = struct {
             bucket[replace_idx] = entry;
         }
     }
-    // pub inline fn store(self: *TranspositionTable, entry: scoreEntry) void {
+
+    // pub  fn store(self: *TranspositionTable, entry: scoreEntry) void {
+    //     const idx = self.index(entry.hash_key);
+    //     const lock_idx = idx / self.bucket_size;
+    //     self.locks[lock_idx].lock();
+    //     defer self.locks[lock_idx].unlock();
+
+    //     var bucket = &self.ttArray[idx];
+    //     const key = entry.hash_key;
+    //     const current_age = self.age;
+
+    //     // Find the best entry to replace (or update if key matches)
+    //     var replace_idx: usize = 0;
+    //     var best_value: i32 = std.math.maxInt(i32); // Lower value = less valuable
+
+    //     for (bucket, 0..) |*e, i| {
+    //         if (e.hash_key == key) {
+    //             // If key matches, update this entry directly
+    //             if (entry.move.is_empty()) e.move = e.move else e.move = entry.move;
+    //             if (entry.bound == Bound.BOUND_EXACT or
+    //                 key != e.hash_key or
+    //                 entry.depth + 5 > e.depth or
+    //                 e.age != current_age)
+    //             {
+    //                 e.* = entry;
+    //             }
+    //             return;
+    //         }
+
+    //         // Calculate "value" of this entry (lower is less valuable)
+    //         //const age_diff = @as(i32, MAX_AGE + current_age - e.age) & MAX_AGE;
+    //         const age_diff: i32 = @as(i32, current_age -% e.age);
+    //         const value = @as(i32, e.depth) - age_diff * 4;
+    //         if (value < best_value) {
+    //             best_value = value;
+    //             replace_idx = i;
+    //         }
+    //     }
+
+    //     // Preserve existing move if no new move provided and key differs
+    //     if (entry.move.is_empty() and key != bucket[replace_idx].hash_key) {
+    //         bucket[replace_idx].move = bucket[replace_idx].move;
+    //     } else {
+    //         bucket[replace_idx].move = entry.move;
+    //     }
+
+    //     // Overwrite if new entry is more valuable
+    //     if (entry.bound == Bound.BOUND_EXACT or
+    //         key != bucket[replace_idx].hash_key or
+    //         entry.depth + 5 > bucket[replace_idx].depth or
+    //         bucket[replace_idx].age != current_age)
+    //     {
+    //         bucket[replace_idx] = entry;
+    //     }
+    // }
+
+    // pub  fn store(self: *TranspositionTable, entry: scoreEntry) void {
     //     const idx = self.index(entry.hash_key);
     //     const lock_idx = idx / self.bucket_size;
     //     self.locks[lock_idx].lock();
@@ -245,7 +304,7 @@ pub const TranspositionTable = struct {
     //     bucket[replace_idx] = entry;
     // }
 
-    pub inline fn prefetch(self: *TranspositionTable, hash: u64) void {
+    pub fn prefetch(self: *TranspositionTable, hash: u64) void {
         @prefetch(&self.ttArray[self.index(hash)], .{
             .rw = .read,
             .locality = 1,
@@ -253,7 +312,7 @@ pub const TranspositionTable = struct {
         });
     }
 
-    pub inline fn prefetch_write(self: *TranspositionTable, hash: u64) void {
+    pub fn prefetch_write(self: *TranspositionTable, hash: u64) void {
         @prefetch(&self.ttArray[self.index(hash)], .{
             .rw = .write,
             .locality = 1,
@@ -261,7 +320,7 @@ pub const TranspositionTable = struct {
         });
     }
 
-    pub inline fn fetch(self: *TranspositionTable, hash: u64) ?scoreEntry {
+    pub fn fetch(self: *TranspositionTable, hash: u64) ?scoreEntry {
         const idx = self.index(hash);
         const lock_idx = idx / self.bucket_size;
         self.locks[lock_idx].lock();
@@ -276,14 +335,14 @@ pub const TranspositionTable = struct {
         return null;
     }
 
-    pub inline fn adjust_hash_score(self: *TranspositionTable, score: i32, ply: u16) i32 {
+    pub fn adjust_hash_score(self: *TranspositionTable, score: i32, ply: u16) i32 {
         _ = self;
         if (score >= MATE_VALUE - MAX_PLY) return score - @as(i32, ply);
         if (score <= -MATE_VALUE + MAX_PLY) return score + @as(i32, ply);
         return score;
     }
 
-    pub inline fn to_hash_score(self: *TranspositionTable, score: i32, ply: u16) i32 {
+    pub fn to_hash_score(self: *TranspositionTable, score: i32, ply: u16) i32 {
         _ = self;
         if (score >= MATE_VALUE - MAX_PLY) return score + @as(i32, ply);
         if (score <= -MATE_VALUE + MAX_PLY) return score - @as(i32, ply);

@@ -1,0 +1,3017 @@
+Python-chess tablebase initialized with C:/Users/janezp/Downloads/syzygy
+Loaded 439 positions from d:\Ostalo\LambergarTesting\zig\Lambergar-1.4.14\tests\tb_sm.epd
+Sending UCI command...
+Draining engine startup output...
+Engine startup: uci command
+Engine startup: id name Lambergar 1.4
+Engine startup: id author Janez Podobnik
+Engine startup: option name Hash type spin default 128 min 1 max 4096
+Engine startup: option name Threads type spin default 1 min 1 max 32
+Engine startup: option name UseNNUE type check default true
+Engine startup: option name Debug type check default false
+Engine startup: option name SyzygyPath type string default <empty>
+Engine startup: option name SyzygyProbeDepth type spin default 1 min 0 max 127
+Engine startup: uciok
+Setting Syzygy path: C:/Users/janezp/Downloads/syzygy
+Waiting for Fathom initialization...
+Engine init: info string SyzygyPath set to: C:/Users/janezp/Downloads/syzygy
+Engine init: info string fathom initialized. Largest TB: 5 pieces
+Engine initialized. Starting WDL tests...
+
+--- Test 1: 1B1b4/7K/1p6/1k6/8/8/8/8 w - - (BM: Ba7) ---
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 2: 1b6/7k/8/8/6K1/8/8/R7 w - - (BM: Kf5) ---
+Engine output: info string Best Move: b8a7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (12 total): h7g6 h7h6 h7g7 h7g8 h7h8 b8h2 b8g3 b8f4 b8e5 b8d6 b8c7
+Engine output: bestmove b8a7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 3: 1k2q3/8/4N3/8/2Q5/3K4/8/8 w - - (BM: Qc7+) ---
+Engine output: info string Best Move: g4f5 (Win in 30 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): g4f3 g4h3 g4h4 g4g5 g4h5 a1b1 a1c1 a1d1 a1e1 a1f1 a1g1 a1h1 a1a2 a1a3 a1a4 a1a5 a1a6 a1a7 a1a8
+Engine output: bestmove g4f5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 4: 1k3K2/5P2/8/8/3r2N1/8/8/8 w - - (BM: Ke7) ---
+Engine output: info string Best Move: c4c7 (Win in 12 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (34 total): d3c2 d3d2 d3e2 d3c3 d3e3 d3d4 d3e4 c4c1 c4a2 c4c2 c4b3 c4c3 c4a4 c4b4 c4d4 c4e4 c4f4 c4g4 c4h4 c4b5 c4c5 c4d5 c4a6 c4c6 c4c8 e6d4 e6f4 e6c5 e6g5 e6c7 e6g7 e6d8 e6f8
+Engine output: bestmove c4c7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 5: 1K6/2R5/p1p5/8/1k6/8/8/8 w - - (BM: Rb7+) ---
+Engine output: info string Best Move: f8e7 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): f8g7 f8e8 f8g8 g4f2 g4h2 g4e3 g4e5 g4f6 g4h6
+Engine output: bestmove f8e7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 6: 1k6/8/8/3N4/5K1p/7r/8/8 w - - (BM: Ne3) ---
+Engine output: info string Best Move: c7b7 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): b8a7 b8b7 b8a8 b8c8 c7c6 c7a7 c7d7 c7e7 c7f7 c7g7 c7h7 c7c8
+Engine output: bestmove c7b7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 7: 1k6/R7/K7/8/8/8/2p5/8 w - - (BM: Rb7+) ---
+Engine output: info string Best Move: d5e3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (12 total): f4e4 f4g4 f4e5 f4f5 f4g5 d5c3 d5b4 d5b6 d5f6 d5c7 d5e7
+Engine output: bestmove d5e3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 8: 1kB5/3K4/8/1P6/8/8/8/8 w - - (BM: b6) ---
+Engine output: info string Best Move: a7b7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (11 total): a6a5 a6b5 a6b6 a7c7 a7d7 a7e7 a7f7 a7g7 a7h7 a7a8
+Engine output: bestmove a7b7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 9: 1nk5/6R1/3K4/8/8/8/8/8 b - - (BM: Na6) ---
+Engine output: info string Best Move: b5b6 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): d7c6 d7d6 d7e6 d7e7 d7d8 d7e8 c8a6 c8b7
+Engine output: bestmove b5b6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 10: 1R6/7K/8/8/2k5/1p3p2/8/8 w - - (BM: Rc8+) ---
+Engine output: info string Best Move: b8a6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (4 total): c8d8 b8c6 b8d7
+Engine output: bestmove b8a6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 11: 1r6/8/1P6/8/1K1k4/8/2P5/8 w - - (BM: Kb5) ---
+Engine output: info string Best Move: b8c8 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (17 total): h7g6 h7h6 h7g7 h7g8 h7h8 b8b3 b8b4 b8b5 b8b6 b8b7 b8a8 b8d8 b8e8 b8f8 b8g8 b8h8
+Engine output: bestmove b8c8
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 12: 1R6/8/8/8/8/3K2p1/6k1/8 b - - (BM: Kf2) ---
+Engine output: info string Best Move: b4b5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (8 total): b4a3 b4b3 b4a4 b4a5 c2c3 c2c4 b6b7
+Engine output: bestmove b4b5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 13: 1r6/R3K1k1/4P3/8/8/8/8/8 w - - (BM: Kd6+) ---
+Engine output: info string Best Move: g2f2 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (7 total): g2f1 g2g1 g2h1 g2h2 g2f3 g2h3
+Engine output: bestmove g2f2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 14: 2k5/2P5/2K5/8/3q4/8/8/2R5 w - - (BM: Rc5) ---
+Engine output: info string Best Move: e7d6 (Win in 19 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (12 total): e7d7 a7a1 a7a2 a7a3 a7a4 a7a5 a7a6 a7b7 a7c7 a7d7 a7a8
+Engine output: bestmove e7d6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 15: 2k5/3r4/2K5/2B5/8/8/8/4R3 w - - (BM: Re8+) ---
+Engine output: info string Best Move: c1c5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (12 total): c6b5 c1a1 c1b1 c1d1 c1e1 c1f1 c1g1 c1h1 c1c2 c1c3 c1c4
+Engine output: bestmove c1c5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 16: 2k5/R7/3BK3/8/2r5/8/8/8 w - - (BM: Kd5) ---
+Engine output: info string Best Move: e1e8 (Win in 27 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (27 total): c6b5 c6b6 e1a1 e1b1 e1c1 e1d1 e1f1 e1g1 e1h1 e1e2 e1e3 e1e4 e1e5 e1e6 e1e7 c5g1 c5f2 c5a3 c5e3 c5b4 c5d4 c5b6 c5d6 c5a7 c5e7 c5f8
+Engine output: bestmove e1e8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 17: 2n5/kP6/8/K7/4B3/8/8/8 w - - (BM: bxc8=N+) ---
+Engine output: info string Best Move: e6d5 (Win in 31 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (31 total): e6e5 e6f5 e6f6 e6e7 e6f7 a7a1 a7a2 a7a3 a7a4 a7a5 a7a6 a7b7 a7c7 a7d7 a7e7 a7f7 a7g7 a7h7 a7a8 d6h2 d6a3 d6g3 d6b4 d6f4 d6c5 d6e5 d6c7 d6e7 d6b8 d6f8
+Engine output: bestmove e6d5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 18: 2r5/2Pk4/1P6/8/2K5/8/8/8 w - - (BM: Kb5) ---
+Engine output: info string Best Move: b7c8n (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): a5a4 a5b4 a5b5 e4b1 e4h1 e4c2 e4g2 e4d3 e4f3 e4d5 e4f5 e4c6 e4g6 e4h7 b7b8q b7b8n b7b8r b7b8b b7c8q b7c8r b7c8b
+Engine output: bestmove b7c8n
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 19: 2R5/7k/5K2/8/p7/8/1p6/8 w - - (BM: Rc7+) ---
+Engine output: info string Best Move: c4b5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (9 total): c4b3 c4c3 c4d3 c4b4 c4d4 c4c5 c4d5 b6b7
+Engine output: bestmove c4b5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 20: 2R5/8/8/3K4/1k6/5pp1/8/8 w - - (BM: Rc4+) ---
+Engine output: info string Best Move: c8c7 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): f6e5 f6f5 f6g5 f6e6 f6e7 f6f7 c8c1 c8c2 c8c3 c8c4 c8c5 c8c6 c8a8 c8b8 c8d8 c8e8 c8f8 c8g8 c8h8
+Engine output: bestmove c8c7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 21: 3b4/3P4/8/4N3/4K3/k7/8/8 w - - (BM: Nc6) ---
+Engine output: info string Best Move: c8c4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (20 total): d5d4 d5e4 d5e5 d5c6 d5d6 d5e6 c8c1 c8c2 c8c3 c8c5 c8c6 c8c7 c8a8 c8b8 c8d8 c8e8 c8f8 c8g8 c8h8
+Engine output: bestmove c8c4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 22: 3B4/8/2B5/1K6/8/8/3p4/3k4 w - - (BM: Ka6) ---
+Engine output: info string Best Move: e5c6 (Win in 25 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): e4d3 e4e3 e4f3 e4d4 e4f4 e4d5 e4f5 e5d3 e5f3 e5c4 e5g4 e5g6 e5f7
+Engine output: bestmove e5c6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 23: 3k2b1/8/3K4/2R5/4p3/8/8/8 w - - (BM: Re5) ---
+Engine output: info string Best Move: b5a6 (Win in 27 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (23 total): b5a4 b5b4 b5c4 b5a5 b5c5 b5b6 c6h1 c6g2 c6f3 c6e4 c6d5 c6b7 c6d7 c6a8 c6e8 d8h4 d8a5 d8g5 d8b6 d8f6 d8c7 d8e7
+Engine output: bestmove b5a6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 24: 3k4/1R6/K7/8/8/3P4/2p5/8 w - - (BM: Rb8+) ---
+Engine output: info string Best Move: c5e5 (Win in 16 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): d6e5 d6c6 c5c1 c5c2 c5c3 c5c4 c5a5 c5b5 c5d5 c5f5 c5g5 c5h5 c5c6 c5c7 c5c8
+Engine output: bestmove c5e5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 25: 3k4/2r5/2PK1P2/8/8/8/8/8 w - - (BM: Kd5) ---
+Engine output: info string Best Move: b7b8 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): a6a5 a6b5 a6b6 a6a7 b7b1 b7b2 b7b3 b7b4 b7b5 b7b6 b7a7 b7c7 b7d7 b7e7 b7f7 b7g7 b7h7 d3d4
+Engine output: bestmove b7b8
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 26: 3k4/3q4/8/4Q3/5P2/6K1/8/8 b - - (BM: Qe7) ---
+Engine output: info string Best Move: d6d5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (5 total): d6c5 d6e5 d6e6 f6f7
+Engine output: bestmove d6d5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 27: 3k4/4r3/3K4/3B4/8/8/8/5R2 w - - (BM: Rf8+) ---
+Engine output: info string Best Move: d7e7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (23 total): d8c8 d7d1 d7d2 d7d3 d7h3 d7a4 d7d4 d7g4 d7b5 d7d5 d7f5 d7c6 d7d6 d7e6 d7a7 d7b7 d7c7 d7f7 d7g7 d7h7 d7c8 d7e8
+Engine output: bestmove d7e7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 28: 3k4/7p/8/2P5/K7/8/8/8 w - - (BM: Kb5) ---
+Engine output: info string Best Move: f1f8 (Win in 29 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (29 total): d6c5 d6c6 f1a1 f1b1 f1c1 f1d1 f1e1 f1g1 f1h1 f1f2 f1f3 f1f4 f1f5 f1f6 f1f7 d5h1 d5a2 d5g2 d5b3 d5f3 d5c4 d5e4 d5c6 d5e6 d5b7 d5f7 d5a8 d5g8
+Engine output: bestmove f1f8
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 29: 3K4/7r/3k4/2R5/R7/8/8/8 w - - (BM: Rh5) ---
+Engine output: info string Best Move: a4b5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (6 total): a4a3 a4b3 a4b4 a4a5 c5c6
+Engine output: bestmove a4b5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 30: 3N4/8/8/3b4/6K1/5p2/8/7k w - - (BM: Kg3) ---
+Engine output: info string Best Move: c5h5 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (30 total): d8c8 d8e8 a4a1 a4a2 a4a3 a4b4 a4c4 a4d4 a4e4 a4f4 a4g4 a4h4 a4a5 a4a6 a4a7 a4a8 c5c1 c5c2 c5c3 c5c4 c5a5 c5b5 c5d5 c5e5 c5f5 c5g5 c5c6 c5c7 c5c8
+Engine output: bestmove c5h5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 31: 3r2kr/8/8/5K2/8/8/8/Q7 w - - (BM: Qg1+) ---
+Engine output: info string Best Move: g4g3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (11 total): g4h3 g4f4 g4h4 g4f5 g4g5 g4h5 d8c6 d8e6 d8b7 d8f7
+Engine output: bestmove g4g3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 32: 3r4/1P6/4K3/8/1k3B2/8/8/8 w - - (BM: Bc7) ---
+Engine output: info string Best Move: a1g1 (Win in 23 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (29 total): f5e4 f5f4 f5g4 f5e5 f5g5 f5e6 f5f6 f5g6 a1b1 a1c1 a1d1 a1e1 a1f1 a1h1 a1a2 a1b2 a1a3 a1c3 a1a4 a1d4 a1a5 a1e5 a1a6 a1f6 a1a7 a1g7 a1a8 a1h8
+Engine output: bestmove a1g1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 33: 3R4/8/2bP4/4k3/8/2K5/8/8 b - - (BM: Kd5) ---
+Engine output: info string Best Move: f4c7 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): e6e5 e6f5 e6f6 e6e7 e6f7 f4c1 f4d2 f4h2 f4e3 f4g3 f4e5 f4g5 f4d6 f4h6 f4b8 b7b8q b7b8n b7b8r b7b8b
+Engine output: bestmove f4c7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 34: 3R4/8/8/8/3K4/p6p/4k3/8 w - - (BM: Ke4) ---
+Engine output: info string Best Move: e5d5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (17 total): e5e4 e5f4 e5f5 e5e6 e5f6 c6h1 c6g2 c6f3 c6a4 c6e4 c6b5 c6d5 c6b7 c6d7 c6a8 c6e8
+Engine output: bestmove e5d5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 35: 4B1nk/5P2/6K1/8/8/8/8/8 w - - (BM: f8=B) ---
+Engine output: info string Best Move: d4e4 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): d4c3 d4c4 d4c5 d4d5 d4e5 d8d5 d8d6 d8d7 d8a8 d8b8 d8c8 d8e8 d8f8 d8g8 d8h8
+Engine output: bestmove d4e4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 36: 4K1k1/R5P1/8/8/8/2b5/8/8 b - - (BM: Bf6) ---
+Engine output: info string Best Move: f7f8n (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): g6f5 g6g5 g6h5 e8a4 e8b5 e8c6 e8d7 f7f8q f7f8r f7f8b f7g8q f7g8n f7g8r f7g8b
+Engine output: bestmove f7f8n
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 37: 4K1k1/R5P1/8/8/8/2b5/8/8 w - - (BM: Ra3) ---
+Engine output: info string Best Move: c3f6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (11 total): g8h7 c3a1 c3e1 c3b2 c3d2 c3b4 c3d4 c3a5 c3e5 c3g7
+Engine output: bestmove c3f6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 38: 4k1r1/8/4K3/8/2P2P2/8/8/8 w - - (BM: f5) ---
+Engine output: info string Best Move: a7a3 (Win in 27 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): e8d7 e8e7 e8d8 a7a1 a7a2 a7a4 a7a5 a7a6 a7b7 a7c7 a7d7 a7e7 a7f7 a7a8
+Engine output: bestmove a7a3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 39: 4k1r1/8/8/5K2/8/8/2R4N/8 w - - (BM: Rc8+) ---
+Engine output: info string Best Move: f4f5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (7 total): e6d5 e6e5 e6f5 e6d6 e6f6 c4c5
+Engine output: bestmove f4f5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 40: 4k3/3R4/1b1K4/8/8/8/8/8 b - - (BM: Kf8) ---
+Engine output: info string Best Move: c2c8 (Win in 14 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (21 total): f5e4 f5f4 f5e5 f5e6 f5f6 c2c1 c2a2 c2b2 c2d2 c2e2 c2f2 c2g2 c2c3 c2c4 c2c5 c2c6 c2c7 h2f1 h2f3 h2g4
+Engine output: bestmove c2c8
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 41: 4k3/3R4/1b1K4/8/8/8/8/8 w - - (BM: Ke6) ---
+Engine output: info string Best Move: e8f8 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (10 total): b6g1 b6f2 b6e3 b6d4 b6a5 b6c5 b6a7 b6c7 b6d8
+Engine output: bestmove e8f8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 42: 4K3/3R4/8/6p1/8/5k2/8/8 w - - (BM: Rf7+) ---
+Engine output: info string Best Move: d6e6 (Win in 22 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (12 total): d6d5 d6e5 d6c6 d7a7 d7b7 d7c7 d7e7 d7f7 d7g7 d7h7 d7d8
+Engine output: bestmove d6e6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 43: 4k3/4p3/4P3/4P3/8/8/2K5/8 w - - (BM: Kd3) ---
+Engine output: info string Best Move: d7f7 (Win in 11 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): e8e7 e8f7 e8d8 e8f8 d7d1 d7d2 d7d3 d7d4 d7d5 d7d6 d7a7 d7b7 d7c7 d7e7 d7g7 d7h7 d7d8
+Engine output: bestmove d7f7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 44: 4k3/4q3/8/4B3/3R4/8/8/7K w - - (BM: Bg3) ---
+Engine output: info string Best Move: c2d3 (Win in 21 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): c2b1 c2c1 c2d1 c2b2 c2d2 c2b3 c2c3
+Engine output: bestmove c2d3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 45: 4k3/7R/8/4PK2/8/8/8/3r4 w - - (BM: Ke6) ---
+Engine output: info string Best Move: e5g3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (26 total): h1g1 h1g2 h1h2 d4d1 d4d2 d4d3 d4a4 d4b4 d4c4 d4e4 d4f4 d4g4 d4h4 d4d5 d4d6 d4d7 d4d8 e5h2 e5f4 e5d6 e5f6 e5c7 e5g7 e5b8 e5h8
+Engine output: bestmove e5g3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 46: 4K3/8/3P4/8/8/8/k5B1/2r5 w - - (BM: Bd5+) ---
+Engine output: info string Best Move: f5e6 (Win in 27 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): f5e4 f5f4 f5g4 f5g5 f5f6 f5g6 h7h1 h7h2 h7h3 h7h4 h7h5 h7h6 h7a7 h7b7 h7c7 h7d7 h7e7 h7f7 h7g7 h7h8 e5e6
+Engine output: bestmove f5e6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 47: 4k3/8/7K/8/6p1/2R2p2/8/8 w - - (BM: Rc8+) ---
+Engine output: info string Best Move: g2d5 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): e8d7 e8e7 e8f7 e8d8 e8f8 g2f1 g2h1 g2f3 g2h3 g2e4 g2c6 g2b7 g2a8 d6d7
+Engine output: bestmove g2d5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 48: 4k3/8/8/6pP/6B1/8/7K/8 w - - (BM: Be6) ---
+Engine output: info string Best Move: c3c8 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (17 total): h6g5 h6h5 h6g6 h6g7 h6h7 c3c1 c3c2 c3a3 c3b3 c3d3 c3e3 c3f3 c3c4 c3c5 c3c6 c3c7
+Engine output: bestmove c3c8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 49: 4K3/8/8/8/1pp5/3k4/8/6R1 w - - (BM: Rg3+) ---
+Engine output: info string Best Move: g4e6 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): h2g1 h2h1 h2g2 h2g3 h2h3 g4d1 g4e2 g4f3 g4h3 g4f5 g4d7 g4c8 h5h6
+Engine output: bestmove g4e6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 50: 4k3/8/PK6/1P6/8/r7/8/8 w - - (BM: Ka7) ---
+Engine output: info string Best Move: g1g3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): e8d7 e8e7 e8f7 e8d8 e8f8 g1a1 g1b1 g1c1 g1d1 g1e1 g1f1 g1h1 g1g2 g1g4 g1g5 g1g6 g1g7 g1g8
+Engine output: bestmove g1g3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 51: 4N3/8/1P6/K7/3rk3/8/8/8 w - - (BM: b7) ---
+Engine output: info string Best Move: b6a7 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (6 total): b6c5 b6c6 b6b7 b6c7 a6a7
+Engine output: bestmove b6a7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 52: 4N3/8/6p1/8/8/7p/5K1k/8 w - - (BM: Nf6) ---
+Engine output: info string Best Move: b6b7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (7 total): a5b5 a5a6 e8d6 e8f6 e8c7 e8g7
+Engine output: bestmove b6b7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 53: 4n3/8/8/8/8/8/p7/k2K4 w - - (BM: Kc2) ---
+Engine output: info string Best Move: e8f6 (Win in 4 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): f2e1 f2f1 f2e2 f2e3 f2f3 e8d6 e8c7 e8g7
+Engine output: bestmove e8f6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 54: 4r2k/P1P5/8/8/8/5K2/8/8 w - - (BM: Kf4) ---
+Engine output: info string Best Move: d1c2 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (5 total): d1c1 d1e1 d1d2 d1e2
+Engine output: bestmove d1c2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 55: 4R3/2k5/4K3/4P3/8/8/8/4r3 b - - (BM: Rh1) ---
+Engine output: info string Best Move: f3f4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (13 total): f3f2 f3g2 f3g3 f3g4 a7a8q a7a8n a7a8r a7a8b c7c8q c7c8n c7c8r c7c8b
+Engine output: bestmove f3f4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 56: 4R3/2k5/4K3/4P3/8/8/8/4r3 w - - (BM: Kf7) ---
+Engine output: info string Best Move: e1h1 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (14 total): c7b6 c7c6 c7b7 e1a1 e1b1 e1c1 e1d1 e1f1 e1g1 e1e2 e1e3 e1e4 e1e5
+Engine output: bestmove e1h1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 57: 4R3/8/8/8/2K5/5p2/2k1p3/8 w - - (BM: Re3) ---
+Engine output: info string Best Move: e6f7 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): e6d5 e6f5 e6f6 e6e7 e8e7 e8a8 e8b8 e8c8 e8d8 e8f8 e8g8 e8h8
+Engine output: bestmove e6f7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 58: 4rk2/8/R5K1/5N2/8/8/8/8 w - - (BM: Rf6+) ---
+Engine output: info string Best Move: e8e3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (18 total): c4b4 c4d4 c4b5 c4c5 c4d5 e8e2 e8e4 e8e5 e8e6 e8e7 e8a8 e8b8 e8c8 e8d8 e8f8 e8g8 e8h8
+Engine output: bestmove e8e3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 59: 5B2/8/5P1K/q7/5k2/8/8/8 w - - (BM: Bd6+) ---
+Engine output: info string Best Move: a6f6 (Win in 18 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (25 total): g6g5 g6h5 g6f6 g6h6 g6h7 a6a1 a6a2 a6a3 a6a4 a6a5 a6b6 a6c6 a6d6 a6e6 a6a7 a6a8 f5e3 f5g3 f5d4 f5h4 f5d6 f5h6 f5e7 f5g7
+Engine output: bestmove a6f6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 60: 5K2/1r6/3B4/2P5/8/4k3/8/8 w - - (BM: c6) ---
+Engine output: info string Best Move: f8d6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (10 total): h6g6 h6g7 h6h7 f8a3 f8b4 f8c5 f8e7 f8g7 f6f7
+Engine output: bestmove f8d6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 61: 5k2/2Q5/q7/6K1/8/1N6/8/8 w - - (BM: Nc5) ---
+Engine output: info string Best Move: c5c6 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): f8e8 f8g8 d6h2 d6g3 d6f4 d6e5 d6c7 d6e7 d6b8
+Engine output: bestmove c5c6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 62: 5k2/6p1/7p/8/7P/7K/8/8 w - - (BM: Kg3) ---
+Engine output: info string Best Move: b3c5 (Win in 20 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (34 total): g5f4 g5g4 g5h4 g5f5 g5h5 c7c1 c7c2 c7h2 c7c3 c7g3 c7c4 c7f4 c7a5 c7c5 c7e5 c7b6 c7c6 c7d6 c7a7 c7b7 c7d7 c7e7 c7f7 c7g7 c7h7 c7b8 c7c8 c7d8 b3a1 b3c1 b3d2 b3d4 b3a5
+Engine output: bestmove b3c5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 63: 5k2/6R1/5K2/8/8/5b2/8/8 b - - (BM: Ke8) ---
+Engine output: info string Best Move: h3g3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (5 total): h3g2 h3h2 h3g4 h4h5
+Engine output: bestmove h3g3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 64: 5k2/6R1/5K2/8/8/5b2/8/8 w - - (BM: Rg3) ---
+Engine output: info string Best Move: f8e8 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (12 total): f3d1 f3h1 f3e2 f3g2 f3e4 f3g4 f3d5 f3h5 f3c6 f3b7 f3a8
+Engine output: bestmove f8e8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 65: 5K2/8/1P6/4r3/8/8/k1B5/8 w - - (BM: Bd3) ---
+Engine output: info string Best Move: g7g3 (Win in 16 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): f6e5 f6f5 f6g5 f6e6 f6g6 g7g1 g7g2 g7g4 g7g5 g7g6 g7a7 g7b7 g7c7 g7d7 g7e7 g7f7 g7h7 g7g8
+Engine output: bestmove g7g3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 66: 5k2/8/8/8/8/2P5/8/3K4 w - - (BM: Kc2) ---
+Engine output: info string Best Move: c2d3 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): f8f7 f8g7 f8g8 c2b1 c2d1 c2b3 c2a4 c2e4 c2f5 c2g6 c2h7 b6b7
+Engine output: bestmove c2d3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 67: 5K2/8/p7/1k6/8/8/1P1N4/8 w - - (BM: Nb3) ---
+Engine output: info string Best Move: d1c2 (Win in 15 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (6 total): d1c1 d1e1 d1d2 d1e2 c3c4
+Engine output: bestmove d1c2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 68: 5K2/k7/4P1p1/8/8/8/4b3/8 w - - (BM: Ke7) ---
+Engine output: info string Best Move: d2b3 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): f8e7 f8f7 f8g7 f8e8 f8g8 d2b1 d2f1 d2f3 d2c4 d2e4 b2b3 b2b4
+Engine output: bestmove d2b3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 69: 5K2/p7/8/8/8/k3p3/8/6R1 w - - (BM: Rb1) ---
+Engine output: info string Best Move: f8e7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (6 total): f8f7 f8g7 f8e8 f8g8 e6e7
+Engine output: bestmove f8e7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 70: 5n1k/R7/8/6K1/8/8/8/8 w - - (BM: Kf6) ---
+Engine output: info string Best Move: g1b1 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): f8e7 f8f7 f8g7 f8e8 f8g8 g1a1 g1c1 g1d1 g1e1 g1f1 g1h1 g1g2 g1g3 g1g4 g1g5 g1g6 g1g7 g1g8
+Engine output: bestmove g1b1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 71: 5q1k/1RR5/8/8/8/8/4K3/8 w - - (BM: Rh7+) ---
+Engine output: info string Best Move: g5f6 (Win in 8 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (21 total): g5f4 g5g4 g5h4 g5f5 g5h5 g5h6 a7a1 a7a2 a7a3 a7a4 a7a5 a7a6 a7b7 a7c7 a7d7 a7e7 a7f7 a7g7 a7h7 a7a8
+Engine output: bestmove g5f6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 72: 5Q2/8/8/7q/1KNk4/8/8/8 w - - (BM: Qe7) ---
+Engine output: info string Best Move: c7h7 (Win in 20 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (25 total): e2d1 e2e1 e2d2 e2d3 e2e3 b7b1 b7b2 b7b3 b7b4 b7b5 b7b6 b7a7 b7b8 c7c1 c7c2 c7c3 c7c4 c7c5 c7c6 c7d7 c7e7 c7f7 c7g7 c7c8
+Engine output: bestmove c7h7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 73: 5r2/1P3P2/2K5/8/7k/8/8/8 w - - (BM: Kd6) ---
+Engine output: info string Best Move: f8e7 (Win in 22 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (30 total): b4a3 b4b3 b4a4 f8f1 f8f2 f8f3 f8f4 f8c5 f8f5 f8d6 f8f6 f8h6 f8f7 f8g7 f8a8 f8b8 f8c8 f8d8 f8e8 f8g8 f8h8 c4b2 c4d2 c4a3 c4e3 c4a5 c4e5 c4b6 c4d6
+Engine output: bestmove f8e7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 74: 5r2/3P4/k1K5/3P4/8/8/8/8 b - - (BM: Ka5) ---
+Engine output: info string Best Move: c6d6 (Win in 4 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (11 total): c6b5 c6c5 c6d5 c6b6 c6c7 c6d7 b7b8q b7b8n b7b8r b7b8b
+Engine output: bestmove c6d6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 75: 5r2/3P4/k1K5/3P4/8/8/8/8 w - - (BM: d6) ---
+Engine output: info string Best Move: a6a5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (16 total): a6a7 f8f1 f8f2 f8f3 f8f4 f8f5 f8f6 f8f7 f8a8 f8b8 f8c8 f8d8 f8e8 f8g8 f8h8
+Engine output: bestmove a6a5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 76: 5R2/6p1/8/8/7k/7b/5K2/8 w - - (BM: Rh8+) ---
+Engine output: info string Best Move: d5d6 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): c6c5 c6d6 c6c7 d7d8q d7d8n d7d8r d7d8b
+Engine output: bestmove d5d6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 77: 5r2/8/3k1P2/6P1/5K2/8/8/8 w - - (BM: g6) ---
+Engine output: info string Best Move: f8h8 (Win in 4 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (17 total): f2e1 f2g1 f2e2 f2e3 f2f3 f8f3 f8f4 f8f5 f8f6 f8f7 f8a8 f8b8 f8c8 f8d8 f8e8 f8g8
+Engine output: bestmove f8h8
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 78: 5R2/8/8/1K6/8/2k1p3/5p2/8 w - - (BM: Kc5) ---
+Engine output: info string Best Move: g5g6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (8 total): f4e3 f4f3 f4g3 f4e4 f4g4 f4f5 f6f7
+Engine output: bestmove g5g6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 79: 5R2/8/8/8/8/8/2p1p3/2K1k3 w - - (BM: Rh8) ---
+Engine output: info string Best Move: b5c5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): b5a4 b5a5 b5a6 b5b6 b5c6 f8f2 f8f3 f8f4 f8f5 f8f6 f8f7 f8a8 f8b8 f8c8 f8d8 f8e8 f8g8 f8h8
+Engine output: bestmove b5c5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 80: 6k1/2Q5/6q1/8/7K/5B2/8/8 w - - (BM: Bd5+) ---
+Engine output: info string Best Move: f8h8 (Win in 11 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): c1b2 c1c2 f8f1 f8f2 f8f3 f8f4 f8f5 f8f6 f8f7 f8a8 f8b8 f8c8 f8d8 f8e8 f8g8
+Engine output: bestmove f8h8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 81: 6k1/3p4/8/8/8/B7/P7/7K w - - (BM: Bb4) ---
+Engine output: info string Best Move: f3d5 (Win in 22 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (35 total): h4h3 c7c1 c7c2 c7h2 c7c3 c7g3 c7c4 c7f4 c7a5 c7c5 c7e5 c7b6 c7c6 c7d6 c7a7 c7b7 c7d7 c7e7 c7f7 c7g7 c7h7 c7b8 c7c8 c7d8 f3d1 f3h1 f3e2 f3g2 f3e4 f3g4 f3h5 f3c6 f3b7 f3a8
+Engine output: bestmove f3d5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 82: 6k1/4K3/3R4/8/p7/8/1p6/8 w - - (BM: Rg6+) ---
+Engine output: info string Best Move: a3b4 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): h1g1 h1g2 h1h2 a3c1 a3b2 a3c5 a3d6 a3e7 a3f8
+Engine output: bestmove a3b4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 83: 6k1/7p/5P1K/8/8/8/7P/8 w - - (BM: Kg5) ---
+Engine output: info string Best Move: d6g6 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): e7e6 e7f6 e7d7 e7d8 e7e8 d6d1 d6d2 d6d3 d6d4 d6d5 d6a6 d6b6 d6c6 d6e6 d6f6 d6h6 d6d7 d6d8
+Engine output: bestmove d6g6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 84: 6k1/8/3K2p1/8/6P1/8/8/8 w - - (BM: g5) ---
+Engine output: info string Best Move: h6g5 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (5 total): h6h5 h2h3 h2h4 f6f7
+Engine output: bestmove h6g5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 85: 6k1/8/4K3/3R4/3p4/8/7b/8 w - - (BM: Rg5+) ---
+Engine output: info string Best Move: g4g5 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): d6c5 d6d5 d6e5 d6c6 d6e6 d6c7 d6d7 d6e7
+Engine output: bestmove g4g5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 86: 6k1/8/6K1/2p5/1b6/5R2/8/8 w - - (BM: Rf5) ---
+Engine output: info string Best Move: d5g5 (Win in 14 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): e6f5 e6f6 e6d7 e6e7 d5d4 d5a5 d5b5 d5c5 d5e5 d5f5 d5h5 d5d6 d5d7 d5d8
+Engine output: bestmove d5g5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 87: 6k1/8/7K/8/8/8/p1p5/R7 b - - (BM: Kf7) ---
+Engine output: info string Best Move: f3f5 (Win in 12 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): g6f5 g6g5 g6h5 g6f6 g6h6 f3f1 f3f2 f3a3 f3b3 f3c3 f3d3 f3e3 f3g3 f3h3 f3f4 f3f6 f3f7 f3f8
+Engine output: bestmove f3f5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 88: 6K1/8/8/4p3/3k4/8/8/5R2 w - - (BM: Rd1+) ---
+Engine output: info string Best Move: g8f7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (7 total): g8f8 g8h8 c2c1q c2c1n c2c1r c2c1b
+Engine output: bestmove g8f7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 89: 6KR/8/pk6/8/8/8/8/8 b - - (BM: Kc5) ---
+Engine output: info string Best Move: f1d1 (Win in 11 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): g8f7 g8g7 g8h7 g8f8 g8h8 f1a1 f1b1 f1c1 f1e1 f1g1 f1h1 f1f2 f1f3 f1f4 f1f5 f1f6 f1f7 f1f8
+Engine output: bestmove f1d1
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 90: 6r1/1P6/8/2KP4/k7/8/8/8 w - - (BM: Kb6) ---
+Engine output: info string Best Move: b6c5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (8 total): b6a5 b6b5 b6c6 b6a7 b6b7 b6c7 a6a5
+Engine output: bestmove b6c5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 91: 6R1/8/3K4/8/8/7p/7k/8 w - - (BM: Ke5) ---
+Engine output: info string Best Move: c5b6 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): c5c4 c5d4 c5c6 c5d6 d5d6 b7b8q b7b8n b7b8r b7b8b
+Engine output: bestmove c5b6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 92: 6R1/8/8/2B5/8/5K2/7p/7k w - - (BM: Kg4) ---
+Engine output: info string Best Move: d6e5 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): d6c5 d6d5 d6c6 d6e6 d6c7 d6d7 d6e7 g8g1 g8g2 g8g3 g8g4 g8g5 g8g6 g8g7 g8a8 g8b8 g8c8 g8d8 g8e8 g8f8 g8h8
+Engine output: bestmove d6e5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 93: 6R1/8/8/8/1k1K4/8/1p4p1/8 w - - (BM: Kd5) ---
+Engine output: info string Best Move: f3g4 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (32 total): f3e2 f3f2 f3e3 f3g3 f3e4 f3f4 g8g1 g8g2 g8g3 g8g4 g8g5 g8g6 g8g7 g8a8 g8b8 g8c8 g8d8 g8e8 g8f8 g8h8 c5g1 c5f2 c5a3 c5e3 c5b4 c5d4 c5b6 c5d6 c5a7 c5e7 c5f8
+Engine output: bestmove f3g4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 94: 6R1/8/8/8/5K2/8/7p/7k w - - (BM: Kg3) ---
+Engine output: info string Best Move: d4d5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (18 total): d4d3 d4e3 d4e4 d4e5 g8g2 g8g3 g8g4 g8g5 g8g6 g8g7 g8a8 g8b8 g8c8 g8d8 g8e8 g8f8 g8h8
+Engine output: bestmove d4d5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 95: 6R1/8/8/8/8/6K1/4p3/4k3 w - - (BM: Kg2) ---
+Engine output: info string Best Move: f4g3 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): f4e3 f4f3 f4e4 f4g4 f4e5 f4f5 f4g5 g8g1 g8g2 g8g3 g8g4 g8g5 g8g6 g8g7 g8a8 g8b8 g8c8 g8d8 g8e8 g8f8 g8h8
+Engine output: bestmove f4g3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 96: 7B/5P1k/8/7K/8/8/8/8 w - - (BM: Kg5) ---
+Engine output: info string Best Move: g3g2 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): g3h2 g3f3 g3h3 g3f4 g3g4 g3h4 g8g4 g8g5 g8g6 g8g7 g8a8 g8b8 g8c8 g8d8 g8e8 g8f8 g8h8
+Engine output: bestmove g3g2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 97: 7K/3k4/8/pN6/8/8/1P6/8 w - - (BM: Nd4) ---
+Engine output: info string Best Move: h5g5 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): h5g4 h5h4 h8a1 h8b2 h8c3 h8d4 h8e5 h8f6 h8g7 f7f8q f7f8n f7f8r f7f8b
+Engine output: bestmove h5g5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 98: 7k/4K1R1/2b4P/8/8/8/8/8 w - - (BM: Rg4) ---
+Engine output: info string Best Move: b5d4 (Win in 19 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (11 total): h8g7 h8h7 h8g8 b5a3 b5c3 b5d6 b5a7 b5c7 b2b3 b2b4
+Engine output: bestmove b5d4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 99: 7k/4K1R1/7P/1b6/8/8/8/8 w - - (BM: Rg3) ---
+Engine output: info string Best Move: g7g4 (Win in 19 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): e7d6 e7e6 e7f6 e7f7 e7d8 e7f8 g7g1 g7g2 g7g3 g7g5 g7g6 g7f7 g7h7 g7g8 h6h7
+Engine output: bestmove g7g4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 100: 7k/4K1R1/7P/8/b7/8/8/8 w - - (BM: Rg2) ---
+Engine output: info string Best Move: g7g3 (Win in 25 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): e7d6 e7e6 e7f6 e7f7 e7d8 e7f8 g7g1 g7g2 g7g4 g7g5 g7g6 g7f7 g7h7 g7g8 h6h7
+Engine output: bestmove g7g3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 101: 7k/5K2/7P/6pP/8/8/8/8 w - - (BM: Kf6) ---
+Engine output: info string Best Move: g7g2 (Win in 21 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): e7d6 e7e6 e7f6 e7f7 e7d8 e7f8 g7g1 g7g3 g7g4 g7g5 g7g6 g7f7 g7h7 g7g8 h6h7
+Engine output: bestmove g7g2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 102: 7K/6p1/8/7p/8/8/R7/6k1 w - - (BM: Kh7) ---
+Engine output: info string Best Move: f7f6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (7 total): f7e6 f7g6 f7e7 f7e8 f7f8 h6h7
+Engine output: bestmove f7f6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 103: 7k/7P/6K1/8/R7/8/8/7b w - - (BM: Kg5) ---
+Engine output: info string Best Move: h8h7 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (17 total): h8g7 h8g8 a2a1 a2b2 a2c2 a2d2 a2e2 a2f2 a2g2 a2h2 a2a3 a2a4 a2a5 a2a6 a2a7 a2a8
+Engine output: bestmove h8h7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 104: 7K/8/2b5/8/6kP/8/5R2/8 w - - (BM: Rf6) ---
+Engine output: info string Best Move: g6g5 (Win in 15 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): g6f5 g6h5 g6f6 g6h6 g6f7 a4a1 a4a2 a4a3 a4b4 a4c4 a4d4 a4e4 a4f4 a4g4 a4h4 a4a5 a4a6 a4a7 a4a8
+Engine output: bestmove g6g5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 105: 7k/8/5N2/8/r7/2K5/1R6/8 w - - (BM: Rg2) ---
+Engine output: info string Best Move: f2f6 (Win in 11 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): h8g7 h8h7 h8g8 f2f1 f2a2 f2b2 f2c2 f2d2 f2e2 f2g2 f2h2 f2f3 f2f4 f2f5 f2f7 f2f8 h4h5
+Engine output: bestmove f2f6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 106: 7k/8/5r2/8/8/2R5/8/K1B5 w - - (BM: Bb2) ---
+Engine output: info string Best Move: b2g2 (Win in 50 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (26 total): c3c2 c3d2 c3b3 c3d3 b2b1 b2a2 b2c2 b2d2 b2e2 b2f2 b2h2 b2b3 b2b4 b2b5 b2b6 b2b7 b2b8 f6e4 f6g4 f6d5 f6h5 f6d7 f6h7 f6e8 f6g8
+Engine output: bestmove b2g2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 107: 7k/8/8/4R1K1/8/7b/8/8 w - - (BM: Re8+) ---
+Engine output: info string Best Move: c1b2 (Win in 11 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (23 total): a1b1 a1a2 a1b2 c3c2 c3a3 c3b3 c3d3 c3e3 c3f3 c3g3 c3h3 c3c4 c3c5 c3c6 c3c7 c3c8 c1d2 c1a3 c1e3 c1f4 c1g5 c1h6
+Engine output: bestmove c1b2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 108: 7K/8/8/8/3p4/1R1P4/3k4/8 b - - (BM: Kc2) ---
+Engine output: info string Best Move: e5e8 (Win in 30 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): g5f4 g5h4 g5h5 g5f6 g5g6 g5h6 e5e1 e5e2 e5e3 e5e4 e5a5 e5b5 e5c5 e5d5 e5f5 e5e6 e5e7
+Engine output: bestmove e5e8
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 109: 7k/8/8/8/6p1/8/4K2n/R7 w - - (BM: Rh1) ---
+Engine output: info string Best Move: d2c2 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (6 total): d2c1 d2d1 d2e1 d2e2 d2e3
+Engine output: bestmove d2c2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 110: 7K/8/k1P5/7p/8/8/8/8 w - - (BM: Kg7) ---
+Engine output: info string Best Move: a1h1 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): e2d1 e2e1 e2d2 e2f2 e2d3 e2e3 a1b1 a1c1 a1d1 a1e1 a1f1 a1g1 a1a2 a1a3 a1a4 a1a5 a1a6 a1a7 a1a8
+Engine output: bestmove a1h1
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 111: 7K/k7/8/P7/6pP/8/8/8 w - - (BM: a6) ---
+Engine output: info string Best Move: h8g7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (4 total): h8h7 h8g8 c6c7
+Engine output: bestmove h8g7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 112: 7k/R4KN1/8/8/8/8/8/7r w - - (BM: Nh5) ---
+Engine output: info string Best Move: a5a6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (5 total): h8g7 h8h7 h8g8 h4h5
+Engine output: bestmove a5a6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 113: 7k/R7/8/4K3/7b/8/8/8 w - - (BM: Kf5) ---
+Engine output: info string Best Move: g7h5 (Win in 42 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (21 total): f7e6 f7f6 f7g6 f7e7 f7e8 f7f8 a7a1 a7a2 a7a3 a7a4 a7a5 a7a6 a7b7 a7c7 a7d7 a7e7 a7a8 g7f5 g7e6 g7e8
+Engine output: bestmove g7h5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 114: 7N/2K5/8/8/7p/2k5/8/8 w - - (BM: Nf7) ---
+Engine output: info string Best Move: e5f5 (Win in 10 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (21 total): e5d4 e5e4 e5f4 e5d5 e5d6 e5e6 a7a1 a7a2 a7a3 a7a4 a7a5 a7a6 a7b7 a7c7 a7d7 a7e7 a7f7 a7g7 a7h7 a7a8
+Engine output: bestmove e5f5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 115: 7N/6P1/2k3K1/8/8/4r3/8/8 w - - (BM: Kh5) ---
+Engine output: info string Best Move: h8f7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (10 total): c7b6 c7c6 c7d6 c7b7 c7d7 c7b8 c7c8 c7d8 h8g6
+Engine output: bestmove h8f7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 116: 7r/4k3/8/8/2P5/2K5/8/3R4 w - - (BM: Kb4) ---
+Engine output: info string Best Move: g6h5 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (12 total): g6f5 g6g5 g6f6 g6h6 g6f7 g6h7 h8f7 g7g8q g7g8n g7g8r g7g8b
+Engine output: bestmove g6h5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 117: 7R/8/8/K2k4/4p3/8/8/8 b - - (BM: Kc4) ---
+Engine output: info string Best Move: c3b4 (Win in 15 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): c3b2 c3c2 c3d2 c3b3 c3d3 c3d4 d1a1 d1b1 d1c1 d1e1 d1f1 d1g1 d1h1 d1d2 d1d3 d1d4 d1d5 d1d6 d1d7 d1d8 c4c5
+Engine output: bestmove c3b4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 118: 8/1B3k2/8/6K1/q7/8/8/6Q1 w - - (BM: Qc5) ---
+Engine output: info string Best Move: d5c4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (8 total): d5d4 d5c5 d5e5 d5c6 d5d6 d5e6 e4e3
+Engine output: bestmove d5c4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 119: 8/1k1K4/8/8/1pN5/1N6/8/8 w - - (BM: Nc5+) ---
+Engine output: info string Best Move: g1c5 (Win in 20 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (29 total): g5f5 g5h5 g5h6 g1a1 g1b1 g1c1 g1d1 g1e1 g1f1 g1h1 g1f2 g1g2 g1h2 g1e3 g1g3 g1d4 g1g4 g1b6 g1a7 b7h1 b7g2 b7f3 b7e4 b7d5 b7a6 b7c6 b7a8 b7c8
+Engine output: bestmove g1c5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 120: 8/1k2P1K1/6P1/8/8/8/5r2/8 b - - (BM: Re2) ---
+Engine output: info string Best Move: b3c5 (Win in 10 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): d7d6 d7e6 d7e7 d7d8 d7e8 b3a1 b3c1 b3d2 b3d4 b3a5 c4b2 c4d2 c4a3 c4e3 c4a5 c4e5 c4b6 c4d6
+Engine output: bestmove b3c5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 121: 8/1K6/8/8/8/R7/1kp5/8 w - - (BM: Ra6) ---
+Engine output: info string Best Move: f2e2 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (22 total): b7a6 b7b6 b7c6 b7a7 b7c7 b7a8 b7b8 b7c8 f2f1 f2a2 f2b2 f2c2 f2d2 f2g2 f2h2 f2f3 f2f4 f2f5 f2f6 f2f7 f2f8
+Engine output: bestmove f2e2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 122: 8/1K6/P7/kn6/4N3/8/8/8 w - - (BM: Nc5) ---
+Engine output: info string Best Move: a3a6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (22 total): b7a6 b7b6 b7c6 b7a7 b7c7 b7a8 b7b8 b7c8 a3a1 a3a2 a3b3 a3c3 a3d3 a3e3 a3f3 a3g3 a3h3 a3a4 a3a5 a3a7 a3a8
+Engine output: bestmove a3a6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 123: 8/1nP5/8/1K6/8/6kb/8/8 w - - (BM: c8=N) ---
+Engine output: info string Best Move: e4c5 (Win in 27 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): b7c6 b7a8 b7b8 b7c8 e4d2 e4f2 e4c3 e4g3 e4g5 e4d6 e4f6 a6a7
+Engine output: bestmove e4c5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 124: 8/1p6/4p3/1K2k3/8/P7/8/8 w - - (BM: Kc5) ---
+Engine output: info string Best Move: c7c8n (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (10 total): b5a4 b5b4 b5c4 b5a6 b5b6 b5c6 c7c8q c7c8r c7c8b
+Engine output: bestmove c7c8n
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 125: 8/1pPK3b/8/8/8/5k2/8/8 w - - (BM: Kc8) ---
+Engine output: info string Best Move: b5c5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (7 total): b5a4 b5b4 b5c4 b5a5 b5b6 a3a4
+Engine output: bestmove b5c5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 126: 8/1r6/4P3/8/5P2/8/k2K4/8 b - - (BM: Kb3) ---
+Engine output: info string Best Move: d7c8 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (10 total): d7d6 d7e6 d7e7 d7d8 d7e8 c7c8q c7c8n c7c8r c7c8b
+Engine output: bestmove d7c8
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 127: 8/2k3Nr/8/3K4/1R6/8/8/8 w - - (BM: Ne8+) ---
+Engine output: info string Best Move: a2b3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): a2a1 a2b1 a2b2 a2a3 b7b1 b7b2 b7b3 b7b4 b7b5 b7b6 b7a7 b7c7 b7d7 b7e7 b7f7 b7g7 b7h7 b7b8
+Engine output: bestmove a2b3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 128: 8/2K5/8/1k6/1p6/8/8/1R6 b - - (BM: Kc5) ---
+Engine output: info string Best Move: g7e8 (Win in 18 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (24 total): d5c4 d5d4 d5e4 d5c5 d5e5 d5e6 b4b1 b4b2 b4b3 b4a4 b4c4 b4d4 b4e4 b4f4 b4g4 b4h4 b4b5 b4b6 b4b7 b4b8 g7f5 g7h5 g7e6
+Engine output: bestmove g7e8
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 129: 8/2K5/8/1k6/1p6/8/8/1R6 w - - (BM: Kb7) ---
+Engine output: info string Best Move: b5c5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (6 total): b5a4 b5c4 b5a5 b5a6 b4b3
+Engine output: bestmove b5c5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 130: 8/2K5/8/8/3R4/5k2/4p3/8 w - - (BM: Rd3+) ---
+Engine output: info string Best Move: c7b7 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): c7d6 c7d7 c7b8 c7c8 c7d8 b1a1 b1c1 b1d1 b1e1 b1f1 b1g1 b1h1 b1b2 b1b3 b1b4
+Engine output: bestmove c7b7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 131: 8/2p4K/8/7k/8/8/6PP/8 w - - (BM: g4+) ---
+Engine output: info string Best Move: d4d3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (22 total): c7b6 c7c6 c7d6 c7b7 c7d7 c7b8 c7c8 c7d8 d4d1 d4d2 d4a4 d4b4 d4c4 d4e4 d4f4 d4g4 d4h4 d4d5 d4d6 d4d7 d4d8
+Engine output: bestmove d4d3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 132: 8/2R5/8/8/1p1p4/8/1k6/5K2 w - - (BM: Ke2) ---
+Engine output: info string Best Move: g2g4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (7 total): h7g7 h7g8 h7h8 g2g3 h2h3 h2h4
+Engine output: bestmove g2g4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 133: 8/3K1k2/8/8/4R3/3n4/8/8 w - - (BM: Re3) ---
+Engine output: info string Best Move: f1e2 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): f1e1 f1g1 f1f2 f1g2 c7c1 c7c2 c7c3 c7c4 c7c5 c7c6 c7a7 c7b7 c7d7 c7e7 c7f7 c7g7 c7h7 c7c8
+Engine output: bestmove f1e2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 134: 8/3k2P1/5K2/3r4/8/8/8/8 b - - (BM: Rd6+) ---
+Engine output: info string Best Move: e4e3 (Win in 42 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): d7c6 d7d6 d7c7 d7c8 d7d8 e4e1 e4e2 e4a4 e4b4 e4c4 e4d4 e4f4 e4g4 e4h4 e4e5 e4e6 e4e7 e4e8
+Engine output: bestmove e4e3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 135: 8/3P4/K7/7R/8/2k5/8/6q1 w - - (BM: Rd5) ---
+Engine output: info string Best Move: d5d6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (18 total): d7c6 d7d6 d7c7 d7c8 d7d8 d7e8 d5d1 d5d2 d5d3 d5d4 d5a5 d5b5 d5c5 d5e5 d5f5 d5g5 d5h5
+Engine output: bestmove d5d6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 136: 8/3pp3/8/8/2K5/8/4P3/k7 w - - (BM: Kb3) ---
+Engine output: info string Best Move: h5d5 (Win in 16 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (21 total): a6a5 a6b5 a6b7 h5h1 h5h2 h5h3 h5h4 h5a5 h5b5 h5c5 h5e5 h5f5 h5g5 h5h6 h5h7 h5h8 d7d8q d7d8n d7d8r d7d8b
+Engine output: bestmove h5d5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 137: 8/3r4/5P2/6P1/2k1K3/8/8/8 b - - (BM: Rd4+) ---
+Engine output: info string Best Move: c4b3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (10 total): c4c3 c4d3 c4b4 c4d4 c4b5 c4c5 c4d5 e2e3 e2e4
+Engine output: bestmove c4b3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 138: 8/3RK3/8/5kp1/8/8/8/8 w - - (BM: Kd6) ---
+Engine output: info string Best Move: d7d4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): c4b3 c4c3 c4b4 c4b5 c4c5 d7d1 d7d2 d7d3 d7d5 d7d6 d7a7 d7b7 d7c7 d7e7 d7f7 d7g7 d7h7 d7d8
+Engine output: bestmove d7d4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 139: 8/4k2N/7p/8/1p6/8/4K3/8 w - - (BM: Kd3) ---
+Engine output: info string Best Move: e7d6 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): e7f7 e7d8 e7e8 e7f8 d7d1 d7d2 d7d3 d7d4 d7d5 d7d6 d7a7 d7b7 d7c7 d7d8
+Engine output: bestmove e7d6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 140: 8/4k3/4P3/3K4/8/8/8/8 b - - (BM: Ke8) ---
+Engine output: info string Best Move: e2d3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (11 total): e2d1 e2e1 e2f1 e2d2 e2f2 e2e3 e2f3 h7g5 h7f6 h7f8
+Engine output: bestmove e2d3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 141: 8/4K3/8/3k4/8/1N1B4/6p1/8 w - - (BM: Bc4+) ---
+Engine output: info string Best Move: e7e8 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (4 total): e7f6 e7d8 e7f8
+Engine output: bestmove e7e8
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 142: 8/4K3/8/5k2/4p3/8/8/R7 b - - (BM: e3) ---
+Engine output: info string Best Move: d3c4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (23 total): e7f6 e7d7 e7f7 e7d8 e7e8 e7f8 d3b1 d3f1 d3c2 d3e2 d3e4 d3b5 d3f5 d3a6 d3g6 d3h7 b3a1 b3c1 b3d2 b3d4 b3a5 b3c5
+Engine output: bestmove d3c4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 143: 8/4k3/8/6r1/1KP5/8/8/7R w - - (BM: Rd1) ---
+Engine output: info string Best Move: e4e3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (6 total): f5f4 f5g4 f5e5 f5g5 f5g6
+Engine output: bestmove e4e3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 144: 8/4r3/7P/8/6P1/8/k4K2/8 b - - (BM: Rf7+) ---
+Engine output: info string Best Move: h1d1 (Win in 13 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): b4a3 b4b3 b4c3 b4a4 h1a1 h1b1 h1c1 h1e1 h1f1 h1g1 h1h2 h1h3 h1h4 h1h5 h1h6 h1h7 h1h8 c4c5
+Engine output: bestmove h1d1
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 145: 8/5k1p/8/5K2/5P1P/8/8/8 b - - (BM: Ke7) ---
+Engine output: info string Best Move: e7f7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): a2a1 a2b1 a2b2 a2a3 a2b3 e7e1 e7e2 e7e3 e7e4 e7e5 e7e6 e7a7 e7b7 e7c7 e7d7 e7g7 e7h7 e7e8
+Engine output: bestmove e7f7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 146: 8/5k2/1KP5/8/2Nr4/8/8/8 w - - (BM: Ne5+) ---
+Engine output: info string Best Move: f7e7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (7 total): f7g7 f7e8 f7f8 f7g8 h7h5 h7h6
+Engine output: bestmove f7e7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 147: 8/5K2/3R4/6p1/8/5k2/8/8 w - - (BM: Rf6+) ---
+Engine output: info string Best Move: c4e5 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): b6a5 b6b5 b6c5 b6a6 b6a7 b6b7 b6c7 c4b2 c4d2 c4a3 c4e3 c4a5 c4d6 c6c7
+Engine output: bestmove c4e5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 148: 8/5K2/4R3/6kp/8/8/8/8 w - - (BM: Re5+) ---
+Engine output: info string Best Move: d6f6 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): f7e6 f7f6 f7g6 f7e7 f7g7 f7e8 f7f8 f7g8 d6d1 d6d2 d6d3 d6d4 d6d5 d6a6 d6b6 d6c6 d6e6 d6g6 d6h6 d6d7 d6d8
+Engine output: bestmove d6f6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 149: 8/5k2/8/7r/2K5/p7/6B1/8 w - - (BM: Kb3) ---
+Engine output: info string Best Move: e6e5 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): f7e7 f7g7 f7e8 f7f8 f7g8 e6e1 e6e2 e6e3 e6e4 e6a6 e6b6 e6c6 e6d6 e6f6 e6g6 e6h6 e6e7 e6e8
+Engine output: bestmove e6e5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 150: 8/5K2/8/8/4pk2/8/8/R7 w - - (BM: Ke6) ---
+Engine output: info string Best Move: c4b3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (14 total): c4c3 c4d3 c4b4 c4d4 g2f1 g2h1 g2f3 g2h3 g2e4 g2d5 g2c6 g2b7 g2a8
+Engine output: bestmove c4b3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 151: 8/5P1k/8/7K/8/8/8/8 w - - (BM: f8=R) ---
+Engine output: info string Best Move: f7e6 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): f7f6 f7g6 f7e7 f7g7 f7e8 f7f8 f7g8 a1b1 a1c1 a1d1 a1e1 a1f1 a1g1 a1h1 a1a2 a1a3 a1a4 a1a5 a1a6 a1a7 a1a8
+Engine output: bestmove f7e6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 152: 8/5p2/1p6/1P2K2k/8/8/8/8 w - - (BM: Kf5) ---
+Engine output: info string Best Move: f7f8r (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (7 total): h5g4 h5h4 h5g5 f7f8q f7f8n f7f8b
+Engine output: bestmove f7f8r
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 153: 8/5p2/2k5/K7/8/1P6/8/8 b - - (BM: Kd5) ---
+Engine output: info string Best Move: e5f5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (7 total): e5d4 e5e4 e5f4 e5d5 e5d6 e5f6
+Engine output: bestmove e5f5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 154: 8/5q2/1Q5K/8/4k3/8/3B4/8 w - - (BM: Qe3+) ---
+Engine output: info string Best Move: c6d5 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): c6c5 c6d6 c6b7 c6c7 c6d7 f7f5 f7f6
+Engine output: bestmove c6d5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 155: 8/5q2/1Q6/4k3/1N6/8/3K4/8 w - - (BM: Nc6+) ---
+Engine output: info string Best Move: b6e3 (Win in 16 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (31 total): h6g5 b6b1 b6g1 b6b2 b6f2 b6b3 b6b4 b6d4 b6a5 b6b5 b6c5 b6a6 b6c6 b6d6 b6e6 b6f6 b6g6 b6a7 b6b7 b6c7 b6b8 b6d8 d2c1 d2e1 d2c3 d2e3 d2b4 d2f4 d2a5 d2g5
+Engine output: bestmove b6e3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 156: 8/5R2/8/8/8/2kp4/3p1K2/8 w - - (BM: Rc7+) ---
+Engine output: info string Best Move: b4c6 (Win in 16 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (33 total): d2c1 d2d1 d2e1 d2c2 d2e2 d2c3 d2d3 d2e3 b6g1 b6f2 b6e3 b6d4 b6a5 b6b5 b6c5 b6a6 b6c6 b6d6 b6e6 b6f6 b6g6 b6h6 b6a7 b6b7 b6c7 b6b8 b6d8 b4a2 b4c2 b4d3 b4d5 b4a6
+Engine output: bestmove b4c6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 157: 8/5R2/8/8/8/2kp4/3p3K/8 w - - (BM: Rc7+) ---
+Engine output: info string Best Move: f7c7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (18 total): f2f1 f2g1 f2g2 f2e3 f2f3 f2g3 f7f3 f7f4 f7f5 f7f6 f7a7 f7b7 f7d7 f7e7 f7g7 f7h7 f7f8
+Engine output: bestmove f7c7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 158: 8/6b1/5k2/8/P3K1P1/8/8/8 w - - (BM: a5) ---
+Engine output: info string Best Move: f7c7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): h2g1 h2h1 h2g2 h2g3 h2h3 f7f1 f7f2 f7f3 f7f4 f7f5 f7f6 f7a7 f7b7 f7d7 f7e7 f7g7 f7h7 f7f8
+Engine output: bestmove f7c7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 159: 8/6B1/8/8/3N4/4k3/8/2b1K3 w - - (BM: Kd1) ---
+Engine output: info string Best Move: a4a5 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): e4d3 e4e3 e4f3 e4d4 e4f4 e4d5 g4g5
+Engine output: bestmove a4a5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 160: 8/6k1/1B6/4n3/8/7p/8/3K4 w - - (BM: Bg1) ---
+Engine output: info string Best Move: e1d1 (Win in 8 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): e1f1 g7e5 g7f6 g7h6 g7f8 g7h8 d4c2 d4e2 d4b3 d4f3 d4b5 d4f5 d4c6 d4e6
+Engine output: bestmove e1d1
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 161: 8/6k1/3R4/8/5K1n/8/8/8 w - - (BM: Kg5) ---
+Engine output: info string Best Move: b6g1 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (14 total): d1c1 d1e1 d1c2 d1d2 d1e2 b6f2 b6e3 b6d4 b6a5 b6c5 b6a7 b6c7 b6d8
+Engine output: bestmove b6g1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 162: 8/6KQ/8/8/8/2p5/8/k7 w - - (BM: Qh6) ---
+Engine output: info string Best Move: f4g5 (Win in 24 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): f4e3 f4g3 f4e4 f4g4 f4e5 d6d1 d6d2 d6d3 d6d4 d6d5 d6a6 d6b6 d6c6 d6e6 d6f6 d6g6 d6h6 d6d7 d6d8
+Engine output: bestmove f4g5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 163: 8/6P1/4KP2/8/4k3/8/8/6r1 b - - (BM: Rg6) ---
+Engine output: info string Best Move: h7h6 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (21 total): g7f6 g7g6 g7h6 g7f7 g7f8 g7g8 g7h8 h7b1 h7h1 h7c2 h7h2 h7d3 h7h3 h7e4 h7h4 h7f5 h7h5 h7g6 h7g8 h7h8
+Engine output: bestmove h7h6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 164: 8/6P1/4KP2/8/4k3/8/8/6r1 w - - (BM: Kd6) ---
+Engine output: info string Best Move: g1g6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (18 total): e4d3 e4e3 e4f3 e4d4 e4f4 g1a1 g1b1 g1c1 g1d1 g1e1 g1f1 g1h1 g1g2 g1g3 g1g4 g1g5 g1g7
+Engine output: bestmove g1g6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 165: 8/6p1/7k/8/1K6/8/1P6/8 w - - (BM: Kc5) ---
+Engine output: info string Best Move: e6d6 (Win in 10 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): e6d7 e6e7 e6f7 f6f7 g7g8q g7g8n g7g8r g7g8b
+Engine output: bestmove e6d6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 166: 8/6p1/8/6P1/K7/8/1kB5/8 w - - (BM: Bb1) ---
+Engine output: info string Best Move: b4c5 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): b4a3 b4b3 b4c3 b4a4 b4c4 b4a5 b4b5 b2b3
+Engine output: bestmove b4c5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 167: 8/7k/3P4/3K4/B6r/8/8/8 w - - (BM: d7) ---
+Engine output: info string Best Move: c2b1 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (12 total): a4b4 a4a5 a4b5 c2d1 c2b3 c2d3 c2e4 c2f5 c2g6 c2h7 g5g6
+Engine output: bestmove c2b1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 168: 8/7N/1k2PK2/7r/8/8/8/8 w - - (BM: e7) ---
+Engine output: info string Best Move: d6d7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (12 total): d5c5 d5e5 d5c6 d5e6 a4d1 a4c2 a4b3 a4b5 a4c6 a4d7 a4e8
+Engine output: bestmove d6d7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 169: 8/7p/8/3K3P/8/8/8/5k2 b - - (BM: Ke2) ---
+Engine output: info string Best Move: e6e7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (7 total): f6g6 f6e7 f6f7 f6g7 h7g5 h7f8
+Engine output: bestmove e6e7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 170: 8/7R/1k6/1p4K1/p7/8/8/8 b - - (BM: b4) ---
+Engine output: info string Best Move: f1e2 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (6 total): f1e1 f1g1 f1f2 f1g2 h7h6
+Engine output: bestmove f1e2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 171: 8/7r/7P/5KP1/2k5/8/8/8 b - - (BM: Kd4) ---
+Engine output: info string Best Move: b5b4 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (6 total): b6a5 b6c5 b6a6 b6c6 a4a3
+Engine output: bestmove b5b4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 172: 8/7r/7P/6P1/2k5/5K2/8/8 w - - (BM: Kg4) ---
+Engine output: info string Best Move: c4d4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (17 total): c4b3 c4c3 c4d3 c4b4 c4b5 c4c5 c4d5 h7h6 h7a7 h7b7 h7c7 h7d7 h7e7 h7f7 h7g7 h7h8
+Engine output: bestmove c4d4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 173: 8/8/1K6/1R2p3/3k4/8/8/8 w - - (BM: Rb4+) ---
+Engine output: info string Best Move: f3g4 (Win in 4 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): f3e2 f3f2 f3g2 f3e3 f3g3 f3e4 f3f4 g5g6
+Engine output: bestmove f3g4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 174: 8/8/1KP1N3/7r/8/8/8/k7 w - - (BM: c7) ---
+Engine output: info string Best Move: b5b4 (Win in 13 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): b6a5 b6a6 b6c6 b6a7 b6b7 b6c7 b5b1 b5b2 b5b3 b5a5 b5c5 b5d5 b5e5
+Engine output: bestmove b5b4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 175: 8/8/1KP5/3r4/8/8/8/k7 w - - (BM: c7) ---
+Engine output: info string Best Move: c6c7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): b6a6 b6a7 b6b7 b6c7 e6d4 e6f4 e6c5 e6g5 e6c7 e6g7 e6d8 e6f8
+Engine output: bestmove c6c7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 176: 8/8/1kpp4/8/2P5/2K5/8/8 w - - (BM: Kc2) ---
+Engine output: info string Best Move: c6c7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (5 total): b6a6 b6a7 b6b7 b6c7
+Engine output: bestmove c6c7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 177: 8/8/1p6/8/8/P7/8/5k1K w - - (BM: Kh2) ---
+Engine output: info string Best Move: c3c2 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (8 total): c3b2 c3d2 c3b3 c3d3 c3b4 c3d4 c4c5
+Engine output: bestmove c3c2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 178: 8/8/2k5/8/4PK2/8/6R1/4r3 w - - (BM: Rd2) ---
+Engine output: info string Best Move: h1h2 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (2 total): a3a4
+Engine output: bestmove h1h2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 179: 8/8/2R5/8/8/8/k2K4/6b1 w - - (BM: Kc3) ---
+Engine output: info string Best Move: g2d2 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (21 total): f4f3 f4g3 f4g4 f4e5 f4f5 f4g5 g2g1 g2a2 g2b2 g2c2 g2e2 g2f2 g2h2 g2g3 g2g4 g2g5 g2g6 g2g7 g2g8 e4e5
+Engine output: bestmove g2d2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 180: 8/8/3BB3/8/8/5r2/3K4/k7 w - - (BM: Ke2) ---
+Engine output: info string Best Move: d2c3 (Win in 24 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (21 total): d2c1 d2d1 d2e1 d2c2 d2e2 d2d3 c6c1 c6c2 c6c3 c6c4 c6c5 c6a6 c6b6 c6d6 c6e6 c6f6 c6g6 c6h6 c6c7 c6c8
+Engine output: bestmove d2c3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 181: 8/8/3KPr2/8/4P3/8/8/1k6 w - - (BM: Kd7) ---
+Engine output: info string Best Move: d2e2 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (27 total): d2c1 d2d1 d2e1 d2c2 d6h2 d6a3 d6g3 d6b4 d6f4 d6c5 d6e5 d6c7 d6e7 d6b8 d6f8 e6a2 e6b3 e6h3 e6c4 e6g4 e6d5 e6f5 e6d7 e6f7 e6c8 e6g8
+Engine output: bestmove d2e2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 182: 8/8/3n4/8/1P3R2/2k1K3/8/8 b - - (BM: Nb5) ---
+Engine output: info string Best Move: d6d7 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): d6c5 d6d5 d6e5 d6c6 d6c7 d6e7 e4e5
+Engine output: bestmove d6d7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 183: 8/8/3q4/8/1P2K3/8/Q7/7k w - - (BM: Qd5) ---
+Engine output: info string Best Move: d6b5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (11 total): c3b2 c3c2 c3b3 d6c4 d6e4 d6f5 d6b7 d6f7 d6c8 d6e8
+Engine output: bestmove d6b5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 184: 8/8/3R4/8/5K2/7p/7p/6k1 w - - (BM: Rd1+) ---
+Engine output: info string Best Move: a2d5 (Win in 19 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (25 total): e4e3 e4f3 e4f5 a2a1 a2b1 a2b2 a2c2 a2d2 a2e2 a2f2 a2g2 a2h2 a2a3 a2b3 a2a4 a2c4 a2a5 a2a6 a2e6 a2a7 a2f7 a2a8 a2g8 b4b5
+Engine output: bestmove a2d5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 185: 8/8/3rb2R/8/8/K1k5/8/8 w - - (BM: Ka4) ---
+Engine output: info string Best Move: d6d1 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): f4e3 f4f3 f4g3 f4e4 f4g4 f4e5 f4f5 f4g5 d6d2 d6d3 d6d4 d6d5 d6a6 d6b6 d6c6 d6e6 d6f6 d6g6 d6h6 d6d7 d6d8
+Engine output: bestmove d6d1
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 186: 8/8/4K3/4P2p/8/5k2/8/8 w - - (BM: Kf5) ---
+Engine output: info string Best Move: a3a4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (11 total): h6h1 h6h2 h6h3 h6h4 h6h5 h6e6 h6f6 h6g6 h6h7 h6h8
+Engine output: bestmove a3a4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 187: 8/8/4K3/8/4p3/4k3/6R1/8 w - - (BM: Rg5) ---
+Engine output: info string Best Move: e6f5 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (7 total): e6d5 e6d6 e6f6 e6d7 e6e7 e6f7
+Engine output: bestmove e6f5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 188: 8/8/4KBk1/R7/8/8/7p/8 w - - (BM: Rg5+) ---
+Engine output: info string Best Move: g2g5 (Win in 11 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): e6d5 e6e5 e6f5 e6d6 e6f6 e6d7 e6e7 e6f7 g2g1 g2a2 g2b2 g2c2 g2d2 g2e2 g2f2 g2h2 g2g3 g2g4 g2g6 g2g7 g2g8
+Engine output: bestmove g2g5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 189: 8/8/4P1PK/5k2/5r2/8/8/8 w - - (BM: e7) ---
+Engine output: info string Best Move: a5g5 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (30 total): e6d5 e6e5 e6d6 e6d7 e6e7 a5a1 a5a2 a5a3 a5a4 a5b5 a5c5 a5d5 a5e5 a5f5 a5h5 a5a6 a5a7 a5a8 f6a1 f6b2 f6c3 f6d4 f6h4 f6e5 f6g5 f6e7 f6g7 f6d8 f6h8
+Engine output: bestmove a5g5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 190: 8/8/5K2/7k/8/p7/1p6/1R6 w - - (BM: Kf5) ---
+Engine output: info string Best Move: e6e7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (5 total): h6h5 h6g7 h6h7 g6g7
+Engine output: bestmove e6e7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 191: 8/8/5k2/8/3R4/2K5/1n6/8 b - - (BM: Ke5) ---
+Engine output: info string Best Move: f6f5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (14 total): f6e5 f6e6 f6e7 f6f7 f6g7 b1a1 b1c1 b1d1 b1e1 b1f1 b1g1 b1h1 b1b2
+Engine output: bestmove f6f5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 192: 8/8/5KP1/5P2/8/2k4r/8/8 b - - (BM: Rf3) ---
+Engine output: info string Best Move: f6e5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (12 total): f6f5 f6g5 f6e6 f6g6 f6e7 f6f7 f6g7 b2d1 b2d3 b2a4 b2c4
+Engine output: bestmove f6e5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 193: 8/8/5R1P/8/8/8/3r4/K1k5 w - - (BM: h7) ---
+Engine output: info string Best Move: h3f3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): c3b2 c3c2 c3d2 c3b3 c3d3 c3b4 c3c4 c3d4 h3h1 h3h2 h3d3 h3e3 h3g3 h3h4 h3h5 h3h6 h3h7 h3h8
+Engine output: bestmove h3f3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 194: 8/8/6K1/2k4P/8/8/8/7r w - - (BM: h6) ---
+Engine output: info string Best Move: h6h7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): f6f1 f6f2 f6f3 f6f4 f6f5 f6a6 f6b6 f6c6 f6d6 f6e6 f6g6 f6f7 f6f8
+Engine output: bestmove h6h7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 195: 8/8/6p1/1k6/4K3/8/5P2/8 w - - (BM: Kd4) ---
+Engine output: info string Best Move: h5h6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (8 total): g6f5 g6g5 g6f6 g6h6 g6f7 g6g7 g6h7
+Engine output: bestmove h5h6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 196: 8/8/6PP/8/4k1K1/8/8/5r2 w - - (BM: h7) ---
+Engine output: info string Best Move: e4d4 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): e4d3 e4e3 e4f3 e4f4 e4d5 e4e5 f2f3 f2f4
+Engine output: bestmove e4d4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 197: 8/8/7k/8/4R1K1/8/7b/8 w - - (BM: Kf5) ---
+Engine output: info string Best Move: h6h7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (7 total): g4g3 g4h3 g4h4 g4g5 g4h5 g6g7
+Engine output: bestmove h6h7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 198: 8/8/7K/8/6R1/4k3/5p2/8 w - - (BM: Rg3+) ---
+Engine output: info string Best Move: g4f5 (Win in 34 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): g4f3 g4h3 g4h4 e4e1 e4e2 e4e3 e4a4 e4b4 e4c4 e4d4 e4f4 e4e5 e4e6 e4e7 e4e8
+Engine output: bestmove g4f5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 199: 8/8/7N/8/6N1/5K1p/8/7k w - - (BM: Nh2) ---
+Engine output: info string Best Move: g4g3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): h6g5 h6h5 h6g6 h6g7 h6h7 g4g1 g4g2 g4a4 g4b4 g4c4 g4d4 g4e4 g4f4 g4h4 g4g5 g4g6 g4g7 g4g8
+Engine output: bestmove g4g3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 200: 8/8/8/1k1K4/8/2R5/3n4/8 w - - (BM: Rd3) ---
+Engine output: info string Best Move: g4h2 (Win in 6 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): f3e2 f3f2 f3e3 f3g3 f3e4 f3f4 g4f2 g4e3 g4e5 g4f6 h6f5 h6f7 h6g8
+Engine output: bestmove g4h2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 201: 8/8/8/1p6/1K6/8/5R2/nk6 w - - (BM: Kc3) ---
+Engine output: info string Best Move: c3d3 (Win in 20 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): d5d4 d5e5 d5d6 d5e6 c3c1 c3c2 c3a3 c3b3 c3e3 c3f3 c3g3 c3h3 c3c4 c3c5 c3c6 c3c7 c3c8
+Engine output: bestmove c3d3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 202: 8/8/8/1P6/7b/7k/7B/7K w - - (BM: b6) ---
+Engine output: info string Best Move: b4c3 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): b4a3 b4a5 b4b5 b4c5 f2f1 f2a2 f2b2 f2c2 f2d2 f2e2 f2g2 f2h2 f2f3 f2f4 f2f5 f2f6 f2f7 f2f8
+Engine output: bestmove b4c3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 203: 8/8/8/1RKp2p1/4k3/8/8/8 w - - (BM: Rb4+) ---
+Engine output: info string Best Move: b5b6 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): h1g1 h2g1 h2g3 h2f4 h2e5 h2d6 h2c7 h2b8
+Engine output: bestmove b5b6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 204: 8/8/8/2k1K3/8/3R4/4n3/8 w - - (BM: Re3) ---
+Engine output: info string Best Move: b5b4 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (12 total): c5b4 c5b6 c5c6 c5d6 b5b1 b5b2 b5b3 b5a5 b5b6 b5b7 b5b8
+Engine output: bestmove b5b4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 205: 8/8/8/2k2K1P/8/8/8/r7 w - - (BM: h6) ---
+Engine output: info string Best Move: d3e3 (Win in 10 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): e5e4 e5f5 e5e6 e5f6 d3d1 d3d2 d3a3 d3b3 d3c3 d3f3 d3g3 d3h3 d3d4 d3d5 d3d6 d3d7 d3d8
+Engine output: bestmove d3e3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 206: 8/8/8/2k5/8/4K3/3R3p/7r w - - (BM: Kd3) ---
+Engine output: info string Best Move: h5h6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (9 total): f5e4 f5f4 f5g4 f5e5 f5g5 f5e6 f5f6 f5g6
+Engine output: bestmove h5h6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 207: 8/8/8/2k5/p1b5/8/1P1K4/8 w - - (BM: Kc2) ---
+Engine output: info string Best Move: e3d3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (20 total): e3e2 e3f2 e3f3 e3e4 e3f4 d2d1 d2a2 d2b2 d2c2 d2e2 d2f2 d2g2 d2h2 d2d3 d2d4 d2d5 d2d6 d2d7 d2d8
+Engine output: bestmove e3d3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 208: 8/8/8/2P4B/8/5K2/3k4/5b2 w - - (BM: c6) ---
+Engine output: info string Best Move: d2c2 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (8 total): d2c1 d2d1 d2e1 d2c3 d2e3 b2b3 b2b4
+Engine output: bestmove d2c2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 209: 8/8/8/2p5/8/8/1kP5/3K4 w - - (BM: c4) ---
+Engine output: info string Best Move: c5c6 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): f3f2 f3g3 f3e4 f3f4 f3g4 h5g4 h5g6 h5f7 h5e8
+Engine output: bestmove c5c6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 210: 8/8/8/3k3p/7P/7K/4P3/8 w - - (BM: Kg3) ---
+Engine output: info string Best Move: c2c4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (5 total): d1e1 d1d2 d1e2 c2c3
+Engine output: bestmove c2c4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 211: 8/8/8/3k4/8/5pp1/8/3KR3 w - - (BM: Rf1) ---
+Engine output: info string Best Move: h3g3 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (5 total): h3g2 h3h2 e2e3 e2e4
+Engine output: bestmove h3g3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 212: 8/8/8/3R4/2K5/6pp/k7/8 w - - (BM: Rd2+) ---
+Engine output: info string Best Move: e1f1 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (13 total): d1c1 d1c2 d1d2 e1g1 e1h1 e1e2 e1e3 e1e4 e1e5 e1e6 e1e7 e1e8
+Engine output: bestmove e1f1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 213: 8/8/8/4p1p1/8/5P2/6K1/3k4 w - - (BM: Kh1) ---
+Engine output: info string Best Move: d5d2 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): c4c3 c4d3 c4b4 c4d4 c4b5 c4c5 d5d1 d5d3 d5d4 d5a5 d5b5 d5c5 d5e5 d5f5 d5g5 d5h5 d5d6 d5d7 d5d8
+Engine output: bestmove d5d2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 214: 8/8/8/4R3/5K2/pp6/7k/8 w - - (BM: Re2+) ---
+Engine output: info string Best Move: g2h1 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (8 total): g2f1 g2g1 g2f2 g2h2 g2g3 g2h3 f3f4
+Engine output: bestmove g2h1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 215: 8/8/8/4rP2/4P3/5K2/8/4k3 w - - (BM: Kf4) ---
+Engine output: info string Best Move: e5e2 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): f4e3 f4f3 f4e4 f4g4 f4f5 f4g5 e5e1 e5e3 e5e4 e5a5 e5b5 e5c5 e5d5 e5f5 e5g5 e5h5 e5e6 e5e7 e5e8
+Engine output: bestmove e5e2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 216: 8/8/8/5b2/8/8/5K1k/5R2 w - - (BM: Rg1) ---
+Engine output: info string Best Move: f3f4 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (6 total): f3g2 f3e3 f3g3 f3g4 f5f6
+Engine output: bestmove f3f4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 217: 8/8/8/5K2/8/pp6/7k/5R2 w - - (BM: Kf4) ---
+Engine output: info string Best Move: f1g1 (Win in 14 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (11 total): f2e1 f2e2 f2e3 f2f3 f1a1 f1b1 f1c1 f1d1 f1e1 f1h1
+Engine output: bestmove f1g1
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 218: 8/8/8/5P2/r5P1/4K3/1k6/8 w - - (BM: f6) ---
+Engine output: info string Best Move: f5f4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (18 total): f5e4 f5g4 f5e5 f5g5 f5e6 f5f6 f5g6 f1a1 f1b1 f1c1 f1d1 f1e1 f1g1 f1h1 f1f2 f1f3 f1f4
+Engine output: bestmove f5f4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 219: 8/8/8/5R2/4K1k1/pp6/8/8 w - - (BM: Rf1) ---
+Engine output: info string Best Move: f5f6 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (7 total): e3d2 e3e2 e3f2 e3d3 e3f3 g4g5
+Engine output: bestmove f5f6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 220: 8/8/8/6K1/8/4N2p/5n1k/8 w - - (BM: Kh4) ---
+Engine output: info string Best Move: f5f1 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): e4d3 e4e3 e4d4 e4d5 e4e5 f5f2 f5f3 f5f4 f5a5 f5b5 f5c5 f5d5 f5e5 f5g5 f5h5 f5f6 f5f7 f5f8
+Engine output: bestmove f5f1
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 221: 8/8/8/7K/2k5/3pp3/8/5R2 w - - (BM: Kg4) ---
+Engine output: info string Best Move: g5h4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (15 total): g5f4 g5f5 g5h5 g5f6 g5g6 g5h6 e3d1 e3f1 e3c2 e3g2 e3c4 e3g4 e3d5 e3f5
+Engine output: bestmove g5h4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 222: 8/8/8/7K/3Q4/5k2/q1N5/8 w - - (BM: Ne1+) ---
+Engine output: info string Best Move: h5g4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): h5h4 h5g5 h5g6 h5h6 f1a1 f1b1 f1c1 f1d1 f1e1 f1g1 f1h1 f1f2 f1f3 f1f4 f1f5 f1f6 f1f7 f1f8
+Engine output: bestmove h5g4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 223: 8/8/8/7K/7P/8/2r5/1k6 b - - (BM: Rg2) ---
+Engine output: info string Best Move: c2e1 (Win in 16 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (36 total): h5h4 h5g5 h5g6 h5h6 d4a1 d4d1 d4g1 d4b2 d4d2 d4f2 d4c3 d4d3 d4e3 d4a4 d4b4 d4c4 d4e4 d4f4 d4g4 d4h4 d4c5 d4d5 d4e5 d4b6 d4d6 d4f6 d4a7 d4d7 d4g7 d4d8 d4h8 c2a1 c2a3 c2e3 c2b4
+Engine output: bestmove c2e1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 224: 8/8/8/8/1K6/P7/k1r1P3/8 w - - (BM: a4) ---
+Engine output: info string Best Move: c2g2 (Win in 13 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): b1a1 b1c1 b1a2 b1b2 c2c1 c2a2 c2b2 c2d2 c2e2 c2f2 c2h2 c2c3 c2c4 c2c5 c2c6 c2c7 c2c8
+Engine output: bestmove c2g2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 225: 8/8/8/8/1P3k2/7r/1K6/4R3 b - - (BM: Kf5) ---
+Engine output: info string Best Move: a3a4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (6 total): b4a4 b4a5 b4b5 e2e3 e2e4
+Engine output: bestmove a3a4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 226: 8/8/8/8/1P3k2/7r/1K6/4R3 w - - (BM: Kc2) ---
+Engine output: info string Best Move: f4f5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): f4f3 f4g3 f4g4 f4g5 h3h1 h3h2 h3a3 h3b3 h3c3 h3d3 h3e3 h3f3 h3g3 h3h4 h3h5 h3h6 h3h7 h3h8
+Engine output: bestmove f4f5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 227: 8/8/8/8/2p5/1p1k4/4R3/5K2 w - - (BM: Ke1) ---
+Engine output: info string Best Move: b2c2 (Win in 11 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): b2a1 b2b1 b2c1 b2a2 e1a1 e1b1 e1c1 e1d1 e1f1 e1g1 e1h1 e1e2 e1e3 e1e4 e1e5 e1e6 e1e7 e1e8 b4b5
+Engine output: bestmove b2c2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 228: 8/8/8/8/2p5/3pR3/K7/7k b - - (BM: d2) ---
+Engine output: info string Best Move: f1e1 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (18 total): f1g1 f1f2 f1g2 e2e1 e2a2 e2b2 e2c2 e2d2 e2f2 e2g2 e2h2 e2e3 e2e4 e2e5 e2e6 e2e7 e2e8
+Engine output: bestmove f1e1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 229: 8/8/8/8/3p4/4k3/3p4/R4K2 b - - (BM: Kd3) ---
+Engine output: info string Best Move: d3d2 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (5 total): h1g1 h1g2 h1h2 c4c3
+Engine output: bestmove d3d2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 230: 8/8/8/8/3p4/4k3/3p4/R4K2 w - - (BM: Ra3+) ---
+Engine output: info string Best Move: e3d3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (9 total): e3f3 e3e4 e3f4 d2d1q d2d1n d2d1r d2d1b d4d3
+Engine output: bestmove e3d3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 231: 8/8/8/8/3R4/5K2/2r4k/3N4 w - - (BM: Ne3) ---
+Engine output: info string Best Move: a1a3 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): f1g1 f1g2 a1b1 a1c1 a1d1 a1e1 a1a2 a1a4 a1a5 a1a6 a1a7 a1a8
+Engine output: bestmove a1a3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 232: 8/8/8/8/4p3/7K/5k2/R7 w - - (BM: Ra2+) ---
+Engine output: info string Best Move: d1e3 (Win in 12 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (21 total): f3e3 f3e4 f3f4 f3g4 d4d2 d4d3 d4a4 d4b4 d4c4 d4e4 d4f4 d4g4 d4h4 d4d5 d4d6 d4d7 d4d8 d1b2 d1f2 d1c3
+Engine output: bestmove d1e3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 233: 8/8/8/8/4p3/8/K2k4/R7 w - - (BM: Kb1) ---
+Engine output: info string Best Move: a1a2 (Win in 13 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (17 total): h3h2 h3g4 h3h4 a1b1 a1c1 a1d1 a1e1 a1f1 a1g1 a1h1 a1a3 a1a4 a1a5 a1a6 a1a7 a1a8
+Engine output: bestmove a1a2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 234: 8/8/8/8/5k2/2pP4/2P5/4K3 b - - (BM: Kf3) ---
+Engine output: info string Best Move: a2b1 (Win in 13 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (11 total): a2b2 a2a3 a2b3 a1b1 a1c1 a1d1 a1e1 a1f1 a1g1 a1h1
+Engine output: bestmove a2b1
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 235: 8/8/8/8/8/1p1p3K/7R/6k1 b - - (BM: Kf1) ---
+Engine output: info string Best Move: f4f3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (7 total): f4e3 f4g3 f4g4 f4e5 f4f5 f4g5
+Engine output: bestmove f4f3
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 236: 8/8/8/8/8/3K1kp1/8/R7 w - - (BM: Rf1+) ---
+Engine output: info string Best Move: g1f1 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (3 total): b3b2 d3d2
+Engine output: bestmove g1f1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 237: 8/8/8/8/8/3k4/1Kp1p3/6R1 w - - (BM: Kc1) ---
+Engine output: info string Best Move: a1f1 (Win in 11 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): d3c2 d3d2 d3c3 d3c4 d3d4 a1b1 a1c1 a1d1 a1e1 a1g1 a1h1 a1a2 a1a3 a1a4 a1a5 a1a6 a1a7 a1a8
+Engine output: bestmove a1f1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 238: 8/8/8/8/8/4B2k/6rp/7K w - - (BM: Bf2) ---
+Engine output: info string Best Move: b2c1 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): b2a1 b2a2 b2a3 b2b3 g1a1 g1b1 g1c1 g1d1 g1e1 g1f1 g1h1 g1g2 g1g3 g1g4 g1g5 g1g6 g1g7 g1g8
+Engine output: bestmove b2c1
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 239: 8/8/8/8/8/7k/r4p1B/5K2 w - - (BM: Bc7) ---
+Engine output: info string Best Move: e3f2 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (11 total): e3c1 e3g1 e3d2 e3d4 e3f4 e3c5 e3g5 e3b6 e3h6 e3a7
+Engine output: bestmove e3f2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 240: 8/8/8/8/8/B6r/3Kp3/1k6 w - - (BM: Bc5) ---
+Engine output: info string Best Move: h2c7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (7 total): h2g1 h2g3 h2f4 h2e5 h2d6 h2b8
+Engine output: bestmove h2c7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 241: 8/8/8/8/8/kpK5/p7/5R2 b - - (BM: b2) ---
+Engine output: info string Best Move: a3c5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (9 total): d2e1 d2e2 a3c1 a3b2 a3b4 a3d6 a3e7 a3f8
+Engine output: bestmove a3c5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 242: 8/8/8/8/8/p2N4/k1K5/8 w - - (BM: Nb4+) ---
+Engine output: info string Best Move: b3b2 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (6 total): a3a4 a2a1q a2a1n a2a1r a2a1b
+Engine output: bestmove b3b2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 243: 8/8/8/8/8/P4p2/k6K/8 w - - (BM: a4) ---
+Engine output: info string Best Move: d3b4 (Win in 4 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (12 total): c2c1 c2d1 c2d2 c2c3 d3c1 d3e1 d3b2 d3f2 d3f4 d3c5 d3e5
+Engine output: bestmove d3b4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 244: 8/8/8/8/K3B3/8/k5p1/6r1 w - - (BM: Bf3) ---
+Engine output: info string Best Move: a3a4 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (5 total): h2g1 h2h1 h2g3 h2h3
+Engine output: bestmove a3a4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 245: 8/8/8/8/N7/P7/2k5/7K w - - (BM: Nb2) ---
+Engine output: info string Best Move: e4f3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (15 total): a4b4 a4a5 a4b5 e4b1 e4c2 e4g2 e4d3 e4d5 e4f5 e4c6 e4g6 e4b7 e4h7 e4a8
+Engine output: bestmove e4f3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 246: 8/8/8/8/pN6/8/2K5/k7 w - - (BM: Kc1) ---
+Engine output: info string Best Move: a4b2 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (7 total): h1g1 h1g2 h1h2 a4c3 a4c5 a4b6
+Engine output: bestmove a4b2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 247: 8/8/8/k1K5/3R4/4p3/3p4/8 w - - (BM: Rd6) ---
+Engine output: info string Best Move: c2c1 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): c2d1 c2d2 c2c3 c2d3 b4a2 b4d3 b4d5 b4a6 b4c6
+Engine output: bestmove c2c1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 248: 8/8/8/K7/4p3/8/5k2/7R w - - (BM: Kb4) ---
+Engine output: info string Best Move: d4d6 (Win in 11 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (17 total): c5c4 c5d5 c5c6 c5d6 d4d2 d4d3 d4a4 d4b4 d4c4 d4e4 d4f4 d4g4 d4h4 d4d5 d4d7 d4d8
+Engine output: bestmove d4d6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 249: 8/8/8/PK6/1P6/8/7k/r7 w - - (BM: Ka6) ---
+Engine output: info string Best Move: a5b4 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): a5a4 a5b5 a5a6 a5b6 h1a1 h1b1 h1c1 h1d1 h1e1 h1f1 h1g1 h1h2 h1h3 h1h4 h1h5 h1h6 h1h7 h1h8
+Engine output: bestmove a5b4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 250: 8/8/8/R7/7p/2K5/6k1/8 w - - (BM: Rg5+) ---
+Engine output: info string Best Move: b5a6 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (6 total): b5c4 b5c5 b5b6 b5c6 a5a6
+Engine output: bestmove b5a6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 251: 8/8/B7/3K4/8/6p1/7k/5R2 w - - (BM: Rf3) ---
+Engine output: info string Best Move: a5g5 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): c3b2 c3c2 c3d2 c3b3 c3d3 c3b4 c3c4 c3d4 a5a1 a5a2 a5a3 a5a4 a5b5 a5c5 a5d5 a5e5 a5f5 a5h5 a5a6 a5a7 a5a8
+Engine output: bestmove a5g5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 252: 8/8/k1r1NPK1/8/8/8/8/8 w - - (BM: f7) ---
+Engine output: info string Best Move: f1f3 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (28 total): d5c4 d5d4 d5e4 d5c5 d5e5 d5c6 d5d6 d5e6 f1a1 f1b1 f1c1 f1d1 f1e1 f1g1 f1h1 f1f2 f1f4 f1f5 f1f6 f1f7 f1f8 a6e2 a6d3 a6c4 a6b5 a6b7 a6c8
+Engine output: bestmove f1f3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 253: 8/8/P7/4k3/7B/8/1K6/6r1 w - - (BM: a7) ---
+Engine output: info string Best Move: f6f7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): g6f5 g6g5 g6h5 g6h6 g6f7 g6g7 g6h7 e6d4 e6f4 e6c5 e6g5 e6c7 e6g7 e6d8 e6f8
+Engine output: bestmove f6f7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 254: 8/BK6/3p4/8/8/8/k7/5r2 w - - (BM: Kc6) ---
+Engine output: info string Best Move: a6a7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): b2a2 b2c2 b2a3 b2b3 b2c3 h4e1 h4f2 h4g3 h4g5 h4f6 h4e7 h4d8
+Engine output: bestmove a6a7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 255: 8/Bpk5/8/P2K4/8/8/8/8 w - - (BM: Kd4) ---
+Engine output: info string Best Move: b7c6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (14 total): b7a6 b7b6 b7c7 b7a8 b7b8 b7c8 a7g1 a7f2 a7e3 a7d4 a7c5 a7b6 a7b8
+Engine output: bestmove b7c6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 256: 8/k1K5/b7/8/8/4R3/3p4/8 w - - (BM: Rb3) ---
+Engine output: info string Best Move: d5d4 (Win in 23 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): d5c4 d5e4 d5c5 d5e5 d5e6 a7g1 a7f2 a7e3 a7d4 a7c5 a7b6 a7b8 a5a6
+Engine output: bestmove d5d4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 257: 8/K1k5/R7/8/5p2/6p1/8/8 w - - (BM: Rg6) ---
+Engine output: info string Best Move: e3b3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (18 total): c7c6 c7d6 c7d7 c7d8 e3e1 e3e2 e3a3 e3c3 e3d3 e3f3 e3g3 e3h3 e3e4 e3e5 e3e6 e3e7 e3e8
+Engine output: bestmove e3b3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 258: 8/K2k4/R7/8/5p2/6p1/8/8 w - - (BM: Rg6) ---
+Engine output: info string Best Move: a6g6 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): a7a8 a6a1 a6a2 a6a3 a6a4 a6a5 a6b6 a6c6 a6d6 a6e6 a6f6 a6h6
+Engine output: bestmove a6g6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 259: 8/K4k2/1Pp4r/8/8/8/8/8 w - - (BM: b7) ---
+Engine output: info string Best Move: a6g6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (16 total): a7b6 a7b7 a7a8 a7b8 a6a1 a6a2 a6a3 a6a4 a6a5 a6b6 a6c6 a6d6 a6e6 a6f6 a6h6
+Engine output: bestmove a6g6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 260: 8/K5p1/8/8/7p/7k/8/6R1 w - - (BM: Rg5) ---
+Engine output: info string Best Move: b6b7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (5 total): a7a6 a7b7 a7a8 a7b8
+Engine output: bestmove b6b7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 261: 8/k7/2K5/3R4/8/8/8/5b2 w - - (BM: Rd2) ---
+Engine output: info string Best Move: g1g5 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): a7a6 a7b6 a7b7 a7a8 a7b8 g1a1 g1b1 g1c1 g1d1 g1e1 g1f1 g1h1 g1g2 g1g3 g1g4 g1g6 g1g7
+Engine output: bestmove g1g5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 262: 8/k7/2K5/8/8/8/6pp/1R6 w - - (BM: Ra1+) ---
+Engine output: info string Best Move: d5d2 (Win in 22 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): c6c5 c6d6 c6c7 c6d7 d5d1 d5d3 d5d4 d5a5 d5b5 d5c5 d5e5 d5f5 d5g5 d5h5 d5d6 d5d7 d5d8
+Engine output: bestmove d5d2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 263: 8/k7/2P5/2KB4/r7/8/8/8 w - - (BM: c7) ---
+Engine output: info string Best Move: b1a1 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (20 total): c6b5 c6c5 c6d5 c6d6 c6c7 c6d7 b1c1 b1d1 b1e1 b1f1 b1g1 b1h1 b1b2 b1b3 b1b4 b1b5 b1b6 b1b7 b1b8
+Engine output: bestmove b1a1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 264: 8/K7/2P5/8/2R5/8/1k6/7q w - - (BM: c7) ---
+Engine output: info string Best Move: c6c7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): c5b5 c5d6 d5h1 d5a2 d5g2 d5b3 d5f3 d5c4 d5e4 d5e6 d5f7 d5g8
+Engine output: bestmove c6c7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 265: 8/k7/3p4/6K1/2P1P3/8/8/8 w - - (BM: Kg6) ---
+Engine output: info string Best Move: c6c7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (17 total): a7a6 a7b6 a7b7 a7a8 a7b8 c4c1 c4c2 c4c3 c4a4 c4b4 c4d4 c4e4 c4f4 c4g4 c4h4 c4c5
+Engine output: bestmove c6c7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 266: 8/k7/8/2R5/8/4q3/8/4B2K w - - (BM: Bg3) ---
+Engine output: info string Best Move: g5g6 (Win in 21 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): g5f4 g5g4 g5h4 g5f5 g5h5 g5f6 g5h6 c4c5 e4e5
+Engine output: bestmove g5g6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 267: 8/K7/8/8/4pk2/8/8/R7 w - - (BM: Kb6) ---
+Engine output: info string Best Move: e1g3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (23 total): h1g2 h1h2 c5c1 c5c2 c5c3 c5c4 c5a5 c5b5 c5d5 c5e5 c5f5 c5g5 c5h5 c5c6 c5c7 c5c8 e1d2 e1f2 e1c3 e1b4 e1h4 e1a5
+Engine output: bestmove e1g3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 268: 8/K7/8/pk6/8/8/8/R7 w - - (BM: Rb1+) ---
+Engine output: info string Best Move: a7b6 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (17 total): a7a6 a7b7 a7a8 a7b8 a1b1 a1c1 a1d1 a1e1 a1f1 a1g1 a1h1 a1a2 a1a3 a1a4 a1a5 a1a6
+Engine output: bestmove a7b6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 269: 8/k7/b7/8/1K6/5R2/8/8 w - - (BM: Ka5) ---
+Engine output: info string Best Move: a1b1 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): a7b7 a7a8 a7b8 a1c1 a1d1 a1e1 a1f1 a1g1 a1h1 a1a2 a1a3 a1a4 a1a5
+Engine output: bestmove a1b1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 270: 8/n7/8/8/R7/8/p7/1k1K4 w - - (BM: Rb4+) ---
+Engine output: info string Best Move: b4a5 (Win in 30 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): b4a3 b4b3 b4c3 b4a4 b4c5 f3f1 f3f2 f3a3 f3b3 f3c3 f3d3 f3e3 f3g3 f3h3 f3f4 f3f5 f3f6 f3f7 f3f8
+Engine output: bestmove b4a5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 271: 8/P7/1P6/8/3k4/8/r7/2K5 b - - (BM: Kc3) ---
+Engine output: info string Best Move: a4b4 (Win in 18 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): d1e1 d1d2 d1e2 a4a2 a4a3 a4c4 a4d4 a4e4 a4f4 a4g4 a4h4 a4a5 a4a6 a4a7
+Engine output: bestmove a4b4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 272: 8/p7/P7/8/8/4k3/4P3/4K3 w - - (BM: Kf1) ---
+Engine output: info string Best Move: d4c3 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (21 total): d4d3 d4e3 d4c4 d4e4 d4c5 d4d5 d4e5 a2a1 a2b2 a2c2 a2d2 a2e2 a2f2 a2g2 a2h2 a2a3 a2a4 a2a5 a2a6 a2a7
+Engine output: bestmove d4c3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 273: 8/R7/3P4/6r1/8/8/8/1k5K w - - (BM: d7) ---
+Engine output: info string Best Move: e1f1 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (2 total): e1d1
+Engine output: bestmove e1f1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 274: 8/R7/6q1/8/8/7k/8/2KR4 w - - (BM: Ra3+) ---
+Engine output: info string Best Move: d6d7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): h1h2 a7a1 a7a2 a7a3 a7a4 a7a5 a7a6 a7b7 a7c7 a7d7 a7e7 a7f7 a7g7 a7h7 a7a8
+Engine output: bestmove d6d7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 275: 8/r7/8/8/5K2/8/6P1/1k6 b - - (BM: Rf7+) ---
+Engine output: info string Best Move: a7a3 (Win in 12 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (27 total): c1b2 c1d2 d1e1 d1f1 d1g1 d1h1 d1d2 d1d3 d1d4 d1d5 d1d6 d1d7 d1d8 a7a1 a7a2 a7a4 a7a5 a7a6 a7b7 a7c7 a7d7 a7e7 a7f7 a7g7 a7h7 a7a8
+Engine output: bestmove a7a3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 276: B7/8/K7/2k5/8/2P5/8/8 w - - (BM: Bd5) ---
+Engine output: info string Best Move: a7f7 (Win in 15 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): b1a1 b1c1 b1a2 b1b2 b1c2 a7a1 a7a2 a7a3 a7a4 a7a5 a7a6 a7b7 a7c7 a7d7 a7e7 a7g7 a7h7 a7a8
+Engine output: bestmove a7f7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 277: K1k5/7p/8/2P5/8/8/P7/8 w - - (BM: c6) ---
+Engine output: info string Best Move: a8d5 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (11 total): a6a5 a6a7 a6b7 a8h1 a8g2 a8f3 a8e4 a8c6 a8b7 c3c4
+Engine output: bestmove a8d5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 278: k1N5/2p5/8/1P6/8/8/7K/8 w - - (BM: Nb6+) ---
+Engine output: info string Best Move: c5c6 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (4 total): a8a7 a2a3 a2a4
+Engine output: bestmove c5c6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 279: K2n4/8/P7/8/2k5/8/2N5/8 w - - (BM: Ka7) ---
+Engine output: info string Best Move: c8b6 (Win in 21 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): h2g1 h2h1 h2g2 h2g3 h2h3 c8d6 c8a7 c8e7 b5b6
+Engine output: bestmove c8b6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 280: K2R4/8/8/8/8/p2p4/3k4/8 w - - (BM: Rd4) ---
+Engine output: info string Best Move: a8a7 (Win in 13 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): a8b8 c2a1 c2e1 c2a3 c2e3 c2b4 c2d4 a6a7
+Engine output: bestmove a8a7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 281: k3K3/8/8/8/8/8/1rp5/2R5 w - - (BM: Ke7) ---
+Engine output: info string Best Move: d8d4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (14 total): a8a7 a8b7 a8b8 d8d3 d8d5 d8d6 d8d7 d8b8 d8c8 d8e8 d8f8 d8g8 d8h8
+Engine output: bestmove d8d4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 282: K4kr1/1P6/8/8/8/8/8/7B w - - (BM: Bd5) ---
+Engine output: info string Best Move: e8e7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (13 total): e8d7 e8f7 e8d8 e8f8 c1a1 c1b1 c1d1 c1e1 c1f1 c1g1 c1h1 c1c2
+Engine output: bestmove e8e7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 283: K5R1/8/8/8/8/8/pP5k/8 w - - (BM: Rh8+) ---
+Engine output: info string Best Move: h1d5 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (11 total): a8a7 a8b8 h1g2 h1f3 h1e4 h1c6 b7b8q b7b8n b7b8r b7b8b
+Engine output: bestmove h1d5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 284: K6R/p7/8/8/p7/8/k7/8 w - - (BM: Rb8) ---
+Engine output: info string Best Move: g8h8 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (18 total): a8a7 a8b7 a8b8 g8g1 g8g2 g8g3 g8g4 g8g5 g8g6 g8g7 g8b8 g8c8 g8d8 g8e8 g8f8 b2b3 b2b4
+Engine output: bestmove g8h8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 285: K7/1P6/k1q5/8/8/1Q6/8/8 w - - (BM: Qb4) ---
+Engine output: info string Best Move: h8b8 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): a8a7 a8b7 a8b8 h8h1 h8h2 h8h3 h8h4 h8h5 h8h6 h8h7 h8c8 h8d8 h8e8 h8f8 h8g8
+Engine output: bestmove h8b8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 286: K7/1R6/5k2/8/4p3/8/8/8 w - - (BM: Rb5) ---
+Engine output: info string Best Move: b3b4 (Win in 13 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): a8b8 b3b1 b3d1 b3a2 b3b2 b3c2 b3a3 b3c3 b3d3 b3e3 b3f3 b3g3 b3h3 b3a4 b3c4 b3b5 b3d5 b3b6 b3e6 b3f7 b3g8
+Engine output: bestmove b3b4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 287: K7/1R6/5p2/8/4k3/8/8/8 w - - (BM: Re7+) ---
+Engine output: info string Best Move: b7b5 (Win in 13 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): a8a7 a8b8 b7b1 b7b2 b7b3 b7b4 b7b6 b7a7 b7c7 b7d7 b7e7 b7f7 b7g7 b7h7 b7b8
+Engine output: bestmove b7b5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 288: k7/3p1r2/3K4/2B5/8/8/8/8 w - - (BM: Kc7) ---
+Engine output: info string Best Move: b7e7 (Win in 21 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): a8a7 a8b8 b7b1 b7b2 b7b3 b7b4 b7b5 b7b6 b7a7 b7c7 b7d7 b7f7 b7g7 b7h7 b7b8
+Engine output: bestmove b7e7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 289: k7/6R1/2K5/8/2B5/8/8/7r w - - (BM: Bd3) ---
+Engine output: info string Best Move: d6c7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (11 total): d6d5 d6e5 c5g1 c5f2 c5a3 c5e3 c5b4 c5d4 c5b6 c5a7
+Engine output: bestmove d6c7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 290: k7/7R/7P/8/8/8/2K5/7r w - - (BM: Kd2) ---
+Engine output: info string Best Move: c4d3 (Win in 97 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (32 total): c6b5 c6c5 c6d5 c6b6 c6d6 c6c7 c6d7 g7g1 g7g2 g7g3 g7g4 g7g5 g7g6 g7a7 g7b7 g7c7 g7d7 g7e7 g7f7 g7h7 g7g8 c4f1 c4a2 c4e2 c4b3 c4b5 c4d5 c4a6 c4e6 c4f7 c4g8
+Engine output: bestmove c4d3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 291: K7/8/1k6/1p6/8/2P5/1P6/8 w - - (BM: b3) ---
+Engine output: info string Best Move: c2d2 (Win in 31 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): c2b2 c2b3 c2c3 c2d3 h7a7 h7b7 h7c7 h7d7 h7e7 h7f7 h7g7 h7h8
+Engine output: bestmove c2d2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 292: K7/8/3P3k/8/1r6/6N1/8/8 w - - (BM: Nf5+) ---
+Engine output: info string Best Move: b2b3 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): a8b8 b2b4 c3c4
+Engine output: bestmove b2b3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 293: K7/8/6kp/1R5p/8/8/8/8 b - - (BM: h4) ---
+Engine output: info string Best Move: g3f5 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): a8a7 g3f1 g3h1 g3e2 g3e4 g3h5 d6d7
+Engine output: bestmove g3f5
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 294: k7/n7/K7/8/8/8/8/1R6 b - - (BM: Nc8) ---
+Engine output: info string Best Move: h5h4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (5 total): g6f6 g6f7 g6g7 g6h7
+Engine output: bestmove h5h4
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 295: K7/P2k4/8/8/8/8/8/6N1 b - - (BM: Kc7) ---
+Engine output: info string Best Move: a7c8 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (3 total): a7b5 a7c6
+Engine output: bestmove a7c8
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 296: K7/P2k4/8/8/8/8/8/7N b - - (BM: Kc8) ---
+Engine output: info string Best Move: d7c7 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (8 total): d7c6 d7d6 d7e6 d7e7 d7c8 d7d8 d7e8
+Engine output: bestmove d7c7
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 297: K7/P3k3/8/8/8/8/2R5/1r6 w - - (BM: Rc8) ---
+Engine output: info string Best Move: d7c8 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (8 total): d7c6 d7d6 d7e6 d7c7 d7e7 d7d8 d7e8
+Engine output: bestmove d7c8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 298: K7/R7/p7/1k6/8/8/8/8 w - - (BM: Rb7+) ---
+Engine output: info string Best Move: c2c8 (Win in 23 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): c2c1 c2a2 c2b2 c2d2 c2e2 c2f2 c2g2 c2h2 c2c3 c2c4 c2c5 c2c6 c2c7
+Engine output: bestmove c2c8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 299: n6k/8/8/6P1/3K4/3B4/8/8 w - - (BM: Kc5) ---
+Engine output: info string Best Move: a7b7 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): a8b7 a8b8 a7a6 a7c7 a7d7 a7e7 a7f7 a7g7 a7h7
+Engine output: bestmove a7b7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 300: n7/8/8/8/8/2K5/7R/nk6 w - - (BM: Rb2+) ---
+Engine output: info string Best Move: d4c5 (Win in 21 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): d4c3 d4e3 d4c4 d4e4 d4d5 d4e5 d3b1 d3f1 d3c2 d3e2 d3c4 d3e4 d3b5 d3f5 d3a6 d3g6 d3h7 g5g6
+Engine output: bestmove d4c5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 301: r3k3/8/8/4PK2/8/8/8/1R6 w - - (BM: Kf6) ---
+Engine output: info string Best Move: h2b2 (Win in 4 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): c3d2 c3d3 c3b4 c3c4 c3d4 h2h1 h2a2 h2c2 h2d2 h2e2 h2f2 h2g2 h2h3 h2h4 h2h5 h2h6 h2h7 h2h8
+Engine output: bestmove h2b2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 302: R7/8/3K4/8/4p3/5k2/8/8 w - - (BM: Rf8+) ---
+Engine output: info string Best Move: f5f6 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): f5e4 f5f4 f5g4 f5g5 f5e6 f5g6 b1a1 b1c1 b1d1 b1e1 b1f1 b1g1 b1h1 b1b2 b1b3 b1b4 b1b5 b1b6 b1b7 b1b8 e5e6
+Engine output: bestmove f5f6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 303: R7/8/8/8/6K1/8/6kp/8 w - - (BM: Ra2+) ---
+Engine output: info string Best Move: a8f8 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): d6c5 d6d5 d6e5 d6c6 d6e6 d6c7 d6d7 d6e7 a8a1 a8a2 a8a3 a8a4 a8a5 a8a6 a8a7 a8b8 a8c8 a8d8 a8e8 a8g8 a8h8
+Engine output: bestmove a8f8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 304: r7/P3K3/8/8/1k6/8/8/R7 b - - (BM: Kc5) ---
+Engine output: info string Best Move: a8a2 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): g4f4 g4h4 g4f5 g4g5 g4h5 a8a1 a8a3 a8a4 a8a5 a8a6 a8a7 a8b8 a8c8 a8d8 a8e8 a8f8 a8g8 a8h8
+Engine output: bestmove a8a2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 305: R7/P4k2/8/8/8/8/r7/6K1 w - - (BM: Rh8) ---
+Engine output: info string Best Move: b4c5 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (13 total): b4b3 b4c3 b4c4 b4b5 a8a7 a8b8 a8c8 a8d8 a8e8 a8f8 a8g8 a8h8
+Engine output: bestmove b4c5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 306: 8/8/8/8/1p2P3/4P3/1k6/3K4 w - - (BM: e5) ---
+Engine output: info string Best Move: a8h8 (Win in 13 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): g1f1 g1h1 a8b8 a8c8 a8d8 a8e8 a8f8 a8g8
+Engine output: bestmove a8h8
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 307: 3n4/5P2/8/8/3K2P1/8/k7/8 w - - (BM: f8=N) ---
+Engine output: info string Best Move: e4e5 (Win in 101 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (4 total): d1e1 d1d2 d1e2
+Engine output: bestmove e4e5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 308: 8/6P1/7k/8/6P1/1K6/8/1b6 w - - (BM: g8=R) ---
+Engine output: info string Best Move: f7f8n (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): d4c3 d4d3 d4e3 d4c4 d4e4 d4c5 d4d5 d4e5 g4g5 f7f8q f7f8r f7f8b
+Engine output: bestmove f7f8n
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 309: 5R2/8/8/8/4K1n1/8/3k4/8 w - - (BM: Rf4) ---
+Engine output: info string Best Move: g7g8r (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (11 total): b3b2 b3a3 b3c3 b3a4 b3b4 b3c4 g4g5 g7g8q g7g8n g7g8b
+Engine output: bestmove g7g8r
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 310: 3K4/8/8/4P3/8/2r5/5P2/2k5 w - - (BM: e6) ---
+Engine output: info string Best Move: f8f4 (Win in 14 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): e4f3 e4d4 e4f4 e4d5 e4f5 f8f1 f8f2 f8f3 f8f5 f8f6 f8f7 f8a8 f8b8 f8c8 f8d8 f8e8 f8g8 f8h8
+Engine output: bestmove f8f4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 311: 8/4P3/7q/8/8/8/k1K1P3/8 w - - (BM: e8=Q) ---
+Engine output: info string Best Move: e5e6 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (6 total): d8d7 d8e7 d8e8 f2f3 f2f4
+Engine output: bestmove e5e6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 312: N7/8/K7/8/4p3/8/6P1/k7 w - - (BM: Nc7) ---
+Engine output: info string Best Move: e7e8q (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): c2d1 c2c3 c2d3 e2e3 e2e4 e7e8n e7e8r e7e8b
+Engine output: bestmove e7e8q
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 313: 8/8/8/8/2K5/b7/1k5P/2N5 w - - (BM: Nd3+) ---
+Engine output: info string Best Move: a8c7 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): a6a5 a6b5 a6b6 a6a7 a6b7 a8b6 g2g3 g2g4
+Engine output: bestmove a8c7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 314: 1N6/8/8/PK6/3r4/3k4/8/8 w - - (BM: a6) ---
+Engine output: info string Best Move: c1d3 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): c4d3 c4d4 c4b5 c4d5 c1a2 c1e2 c1b3 h2h3 h2h4
+Engine output: bestmove c1d3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 315: 8/4P3/8/N1K5/k7/8/7q/8 w - - (BM: e8=Q+) ---
+Engine output: info string Best Move: a5a6 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): b5c5 b5a6 b5b6 b5c6 b8a6 b8c6 b8d7
+Engine output: bestmove a5a6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 316: 1N6/8/p7/8/8/8/2k1N3/K7 w - - (BM: Ka2) ---
+Engine output: info string Best Move: e7e8q (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): c5c4 c5d4 c5d5 c5b6 c5c6 a5b3 a5c4 a5c6 a5b7 e7e8n e7e8r e7e8b
+Engine output: bestmove e7e8q
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 317: 7n/8/8/8/8/8/2NK4/1kN5 w - - (BM: Na3+) ---
+Engine output: info string Best Move: a1a2 (Win in 132 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (10 total): e2c1 e2g1 e2c3 e2g3 e2d4 e2f4 b8a6 b8c6 b8d7
+Engine output: bestmove a1a2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 318: 8/8/8/8/1N6/8/1b6/k1NK4 w - - (BM: Nb3+) ---
+Engine output: info string Best Move: c2a3 (Win in 12 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): d2d1 d2e1 d2e2 d2c3 d2d3 d2e3 c1a2 c1e2 c1b3 c1d3 c2a1 c2e1 c2e3 c2b4 c2d4
+Engine output: bestmove c2a3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 319: 8/8/8/8/3N4/r7/8/k1K1N3 w - - (BM: Nec2+) ---
+Engine output: info string Best Move: c1b3 (Win in 6 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): d1e1 d1c2 d1d2 d1e2 c1a2 c1e2 c1d3 b4a2 b4c2 b4d3 b4d5 b4a6 b4c6
+Engine output: bestmove c1b3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 320: 8/8/8/8/8/4N3/3N4/K1k1q3 w - - (BM: Nb3#) ---
+Engine output: info string Best Move: e1c2 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): c1d1 c1c2 c1d2 e1g2 e1d3 e1f3 d4c2 d4e2 d4b3 d4f3 d4b5 d4f5 d4c6 d4e6
+Engine output: bestmove e1c2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 321: 8/7p/8/8/8/1B6/K6P/2k5 w - - (BM: Ka3) ---
+Engine output: info string Best Move: d2b3 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): a1a2 d2b1 d2f1 d2f3 d2c4 d2e4 e3d1 e3f1 e3c2 e3g2 e3c4 e3g4 e3d5 e3f5
+Engine output: bestmove d2b3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 322: 1n6/3P4/8/8/1K6/7B/8/k7 w - - (BM: d8=N) ---
+Engine output: info string Best Move: a2a3 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (12 total): a2a1 b3d1 b3c2 b3a4 b3c4 b3d5 b3e6 b3f7 b3g8 h2h3 h2h4
+Engine output: bestmove a2a3
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 323: 8/8/6B1/8/2P5/8/2K5/k4b2 w - - (BM: c5) ---
+Engine output: info string Best Move: d7d8n (Win in 101 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (17 total): b4a3 b4b3 b4c3 b4a4 b4c4 b4a5 b4b5 b4c5 h3f1 h3g2 h3g4 h3f5 h3e6 d7d8q d7d8r d7d8b
+Engine output: bestmove d7d8n
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 324: 8/r1k5/5P2/3K4/B7/8/8/8 w - - (BM: f7) ---
+Engine output: info string Best Move: c4c5 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (13 total): c2c1 c2d1 c2d2 c2b3 c2c3 g6d3 g6e4 g6f5 g6h5 g6f7 g6h7 g6e8
+Engine output: bestmove c4c5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 325: 8/3P1q2/2k5/6B1/8/8/8/K7 w - - (BM: d8=N+) ---
+Engine output: info string Best Move: f6f7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (14 total): d5c4 d5d4 d5e4 d5c5 d5e5 d5e6 a4d1 a4c2 a4b3 a4b5 a4c6 a4d7 a4e8
+Engine output: bestmove f6f7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 326: 8/8/8/8/8/8/1n5B/2K1N2k w - - (BM: Bg3) ---
+Engine output: info string Best Move: d7d8n (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): a1b1 a1b2 g5c1 g5d2 g5e3 g5f4 g5h4 g5f6 g5h6 g5e7 g5d8 d7d8q d7d8r d7d8b
+Engine output: bestmove d7d8n
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 327: 8/7B/8/4N3/8/8/3k4/K1b5 w - - (BM: Kb1) ---
+Engine output: info string Best Move: h2g3 (Win in 152 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (15 total): c1b1 c1b2 c1c2 c1d2 h2g1 h2f4 h2e5 h2d6 h2c7 h2b8 e1c2 e1g2 e1d3 e1f3
+Engine output: bestmove h2g3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 328: 8/8/8/2r5/3B4/8/3N4/K3k3 w - - (BM: Nf3+) ---
+Engine output: info string Best Move: a1b1 (Win in 14 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (17 total): a1a2 h7b1 h7c2 h7d3 h7e4 h7f5 h7g6 h7g8 e5d3 e5f3 e5c4 e5g4 e5c6 e5g6 e5d7 e5f7
+Engine output: bestmove a1b1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 329: 8/8/8/2q5/3B4/8/3N4/K3k3 w - - (BM: Nf3+) ---
+Engine output: info string Best Move: d2f3 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): a1b1 a1a2 a1b2 d4g1 d4b2 d4f2 d4c3 d4e3 d4c5 d4e5 d4f6 d4g7 d4h8 d2b1 d2f1 d2b3 d2c4 d2e4
+Engine output: bestmove d2f3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 330: 8/8/8/8/4k1B1/1p2B3/2K5/8 w - - (BM: Kd2) ---
+Engine output: info string Best Move: d2f3 (Win in 4 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): a1b1 a1a2 a1b2 d4g1 d4b2 d4f2 d4c3 d4e3 d4c5 d4e5 d4f6 d4g7 d4h8 d2b1 d2f1 d2b3 d2c4 d2e4
+Engine output: bestmove d2f3
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 331: 8/8/8/2B5/8/8/3k4/K1b4B w - - (BM: Kb1) ---
+Engine output: info string Best Move: c2d2 (Win in 101 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (7 total): c2b1 c2c1 c2d1 c2b2 c2b3 c2c3
+Engine output: bestmove c2d2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 332: 4r3/8/8/8/8/8/8/k1K3BB w - - (BM: Bd4+) ---
+Engine output: info string Best Move: a1b1 (Win in 6 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): a1a2 h1g2 h1f3 h1e4 h1d5 h1c6 h1b7 h1a8 c5g1 c5f2 c5a3 c5e3 c5b4 c5d4 c5b6 c5d6 c5a7 c5e7 c5f8
+Engine output: bestmove a1b1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 333: 8/8/8/1q4B1/8/3k4/6B1/K7 w - - (BM: Bf1+) ---
+Engine output: info string Best Move: g1d4 (Win in 9 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (17 total): c1d1 c1c2 c1d2 g1f2 g1h2 g1e3 g1c5 g1b6 g1a7 h1g2 h1f3 h1e4 h1d5 h1c6 h1b7 h1a8
+Engine output: bestmove g1d4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 334: 8/5n2/8/8/8/7k/7P/3K3R w - - (BM: Rf1) ---
+Engine output: info string Best Move: g2f1 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): a1a2 g2h1 g2f3 g2h3 g2e4 g2d5 g2c6 g2b7 g2a8 g5c1 g5d2 g5e3 g5f4 g5h4 g5f6 g5h6 g5e7 g5d8
+Engine output: bestmove g2f1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 335: 8/8/R7/8/8/1k1P4/6b1/K7 w - - (BM: Rg6) ---
+Engine output: info string Best Move: h1f1 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): d1c1 d1e1 d1c2 d1d2 d1e2 h1e1 h1g1
+Engine output: bestmove h1f1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 336: k7/8/8/8/8/4R3/6P1/1K5r w - - (BM: Kc2) ---
+Engine output: info string Best Move: a6g6 (Win in 25 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (15 total): a1b1 a6a2 a6a3 a6a4 a6a5 a6b6 a6c6 a6d6 a6e6 a6f6 a6h6 a6a7 a6a8 d3d4
+Engine output: bestmove a6g6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 337: 8/P1k5/8/8/8/1q6/R7/K7 w - - (BM: a8=Q) ---
+Engine output: info string Best Move: b1c2 (Win in 65 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): b1a2 b1b2 e3e1
+Engine output: bestmove b1c2
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 338: 8/8/8/4R3/8/2k3N1/3p4/K7 w - - (BM: Rd5) ---
+Engine output: info string Best Move: a7a8q (Win in 101 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (15 total): a2b2 a2c2 a2d2 a2e2 a2f2 a2g2 a2h2 a2a3 a2a4 a2a5 a2a6 a7a8n a7a8r a7a8b
+Engine output: bestmove a7a8q
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 339: 8/8/8/8/RN6/1k6/8/3K1n2 w - - (BM: Ra6) ---
+Engine output: info string Best Move: e5d5 (Win in 13 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): a1b1 a1a2 e5e1 e5e2 e5e3 e5e4 e5a5 e5b5 e5c5 e5f5 e5g5 e5h5 e5e6 e5e7 e5e8 g3f1 g3h1 g3e2 g3e4 g3f5 g3h5
+Engine output: bestmove e5d5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 340: 8/8/8/8/4b3/8/2R5/3K1Nk1 w - - (BM: Rc4) ---
+Engine output: info string Best Move: a4a6 (Win in 23 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): d1c1 d1e1 d1e2 a4a1 a4a2 a4a3 a4a5 a4a7 a4a8 b4a2 b4c2 b4d3 b4d5 b4a6 b4c6
+Engine output: bestmove a4a6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 341: 8/8/8/8/N2K4/R7/8/2k1r3 w - - (BM: Ra1+) ---
+Engine output: info string Best Move: c2c4 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (22 total): d1c1 d1e1 d1d2 d1e2 c2c1 c2a2 c2b2 c2d2 c2e2 c2f2 c2g2 c2h2 c2c3 c2c5 c2c6 c2c7 c2c8 f1d2 f1h2 f1e3 f1g3
+Engine output: bestmove c2c4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 342: 8/8/8/8/R7/6q1/5N2/K1k5 w - - (BM: Rc4+) ---
+Engine output: info string Best Move: a3a1 (Win in 64 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): d4c3 d4d3 d4c4 d4c5 d4d5 a3a2 a3b3 a3c3 a3d3 a3e3 a3f3 a3g3 a3h3 a4b2 a4c3 a4c5 a4b6
+Engine output: bestmove a3a1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 343: 8/8/8/8/8/1R1K4/kB1p4/8 w - - (BM: Kc3) ---
+Engine output: info string Best Move: a4c4 (Win in 6 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (20 total): a1a2 a4a2 a4a3 a4b4 a4d4 a4e4 a4f4 a4g4 a4h4 a4a5 a4a6 a4a7 a4a8 f2d1 f2h1 f2d3 f2h3 f2e4 f2g4
+Engine output: bestmove a4c4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 344: 8/2R5/8/8/7k/4n3/6B1/3K4 w - - (BM: Ke2) ---
+Engine output: info string Best Move: d3c3 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (24 total): d3c2 d3d2 d3e2 d3e3 d3c4 d3d4 d3e4 b3a3 b3c3 b3b4 b3b5 b3b6 b3b7 b3b8 b2a1 b2c1 b2a3 b2c3 b2d4 b2e5 b2f6 b2g7 b2h8
+Engine output: bestmove d3c3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 345: 8/8/8/8/8/3R4/6k1/3K1bB1 w - - (BM: Rc3) ---
+Engine output: info string Best Move: d1e2 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): d1c1 d1e1 d1d2
+Engine output: bestmove d1e2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 346: 8/3B4/8/1R6/5r2/8/3K4/5k2 w - - (BM: Ke3) ---
+Engine output: info string Best Move: d3c3 (Win in 15 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (24 total): d1c1 d1e1 d1c2 d1d2 d3d2 d3a3 d3b3 d3e3 d3f3 d3g3 d3h3 d3d4 d3d5 d3d6 d3d7 d3d8 g1f2 g1h2 g1e3 g1d4 g1c5 g1b6 g1a7
+Engine output: bestmove d3c3
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 347: 1q6/8/8/8/8/8/8/k1KR2B1 w - - (BM: Bd4+) ---
+Engine output: info string Best Move: d2e3 (Win in 116 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (27 total): d2c1 d2d1 d2c2 d2c3 d2d3 b5b1 b5b2 b5b3 b5b4 b5a5 b5c5 b5d5 b5e5 b5f5 b5g5 b5h5 b5b6 b5b7 b5b8 d7h3 d7g4 d7f5 d7c6 d7e6 d7c8 d7e8
+Engine output: bestmove d2e3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 348: 8/8/6R1/8/8/8/4p1R1/3K1k2 w - - (BM: Kc2) ---
+Engine output: info string Best Move: g1d4 (Win in 11 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): c1c2 c1d2 d1e1 d1f1 d1d2 d1d3 d1d4 d1d5 d1d6 d1d7 d1d8 g1f2 g1h2 g1e3 g1c5 g1b6 g1a7
+Engine output: bestmove g1d4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 349: 8/2R5/8/8/7k/4n3/6R1/3K4 w - - (BM: Ke2) ---
+Engine output: info string Best Move: d1c2 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): d1c1 d1d2 g2e2
+Engine output: bestmove d1c2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 350: 8/8/8/8/3P2Q1/8/1p6/K1k5 w - - (BM: Ka2) ---
+Engine output: info string Best Move: d1e2 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): d1c1 d1e1 d1d2
+Engine output: bestmove d1e2
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 351: 8/Q7/2n5/1k6/3K4/8/7P/8 w - - (BM: Kd5) ---
+Engine output: info string Best Move: a1a2 (Win in 101 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (1 total):
+Engine output: bestmove a1a2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 352: 8/8/P7/3k4/r7/8/8/KQ6 w - - (BM: Kb2) ---
+Engine output: info string Best Move: d4d5 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (5 total): d4c3 d4d3 d4e3 d4e4
+Engine output: bestmove d4d5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 353: 4Q3/8/7q/8/8/8/k3P3/2K5 w - - (BM: Kc2) ---
+Engine output: info string Best Move: a1b2 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (2 total): b1a2
+Engine output: bestmove a1b2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 354: k7/2Q5/8/8/8/8/3r4/1N1K4 w - - (BM: Ke1) ---
+Engine output: info string Best Move: c1c2 (Win in 49 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): c1d1 e8e3 e2e3
+Engine output: bestmove c1c2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 355: 6q1/8/8/Q7/8/2K5/8/3Nk3 w - - (BM: Kd3+) ---
+Engine output: info string Best Move: d1e1 (Win in 29 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): d1c1 d1d2 b1d2
+Engine output: bestmove d1e1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 356: 8/8/8/4k3/3b4/8/5Q2/K3B3 w - - (BM: Bc3) ---
+Engine output: info string Best Move: c3d3 (Win in 68 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (26 total): c3b2 c3c2 c3b4 c3d4 a5a1 a5a2 a5a3 a5a4 a5b4 a5b5 a5c5 a5d5 a5e5 a5f5 a5g5 a5h5 a5a6 a5b6 a5a7 a5c7 a5a8 a5d8 d1b2 d1f2 d1e3
+Engine output: bestmove c3d3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 357: 8/7B/8/7k/5Q2/8/8/Kr6 w - - (BM: Ka2) ---
+Engine output: info string Best Move: e1c3 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (5 total): a1b1 a1a2 f2b2 f2d4
+Engine output: bestmove e1c3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 358: 7q/8/8/k7/8/7B/3K4/4Q3 w - - (BM: Kd3+) ---
+Engine output: info string Best Move: a1a2 (Win in 27 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (3 total): a1b1 h7b1
+Engine output: bestmove a1a2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 359: 8/2R5/8/8/7k/4n3/6Q1/3K4 w - - (BM: Ke2) ---
+Engine output: info string Best Move: d2d3 (Win in 58 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (30 total): d2c1 d2d1 d2c2 d2e2 d2e3 e1a1 e1b1 e1c1 e1d1 e1f1 e1g1 e1h1 e1e2 e1f2 e1e3 e1g3 e1e4 e1h4 e1e5 e1e6 e1e7 e1e8 h3f1 h3g2 h3g4 h3f5 h3e6 h3d7 h3c8
+Engine output: bestmove d2d3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 360: 8/8/8/5b2/8/R2K4/6k1/1Q6 w - - (BM: Ke3) ---
+Engine output: info string Best Move: d1e2 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): d1c1 d1e1 d1d2
+Engine output: bestmove d1e2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 361: 8/8/8/3Q4/7Q/2k5/1p6/K7 w - - (BM: Ka2) ---
+Engine output: info string Best Move: d3e3 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (6 total): d3d2 d3e2 d3c3 d3c4 d3d4
+Engine output: bestmove d3e3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 362: 8/8/8/6Q1/5Q2/7k/r7/K7 w - - (BM: Kb1) ---
+Engine output: info string Best Move: a1a2 (Win in 3 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (2 total): a1b1
+Engine output: bestmove a1a2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 363: 1Q6/Q7/8/8/8/8/2k5/K4q2 w - - (BM: Ka2) ---
+Engine output: info string Best Move: a1b1 (Win in 19 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (2 total): a1a2
+Engine output: bestmove a1b1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 364: 8/8/7P/3K4/5p2/4p3/8/7k w - - (BM: h7) ---
+Engine output: info string Best Move: a1a2 (Win in 47 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (2 total): b8b1
+Engine output: bestmove a1a2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 365: 8/3K4/8/6p1/P7/8/6n1/7k w - - (BM: a5) ---
+Engine output: info string Best Move: h6h7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): d5c4 d5d4 d5e4 d5c5 d5e5 d5c6 d5d6 d5e6
+Engine output: bestmove h6h7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 366: 8/8/7P/8/4n3/1k6/8/3K3n w - - (BM: h7) ---
+Engine output: info string Best Move: a4a5 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): d7c6 d7d6 d7e6 d7c7 d7e7 d7c8 d7d8 d7e8
+Engine output: bestmove a4a5
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 367: 3K4/8/1P6/8/6p1/8/4b3/7k w - - (BM: b7) ---
+Engine output: info string Best Move: h6h7 (Win in 101 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (4 total): d1c1 d1e1 d1e2
+Engine output: bestmove h6h7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 368: 8/8/3P4/8/8/2k5/8/1K2n2b w - - (BM: d7) ---
+Engine output: info string Best Move: b6b7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (6 total): d8c7 d8d7 d8e7 d8c8 d8e8
+Engine output: bestmove b6b7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 369: 8/8/7P/8/4k3/b7/8/1K3b2 w - - (BM: h7) ---
+Engine output: info string Best Move: d6d7 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): b1a1 b1c1 b1a2
+Engine output: bestmove d6d7
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 370: K7/7P/4r3/8/5p2/8/2k5/8 w - - (BM: h8=Q) ---
+Engine output: info string Best Move: h6h7 (Win in 101 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (4 total): b1a1 b1a2 b1c2
+Engine output: bestmove h6h7
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 371: 1n6/1K1P4/8/8/8/8/4r3/1k6 w - - (BM: d8=Q) ---
+Engine output: info string Best Move: h7h8q (Win in 101 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (7 total): a8a7 a8b7 a8b8 h7h8n h7h8r h7h8b
+Engine output: bestmove h7h8q
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 372: 8/4P3/b7/r7/8/8/8/1K4k1 w - - (BM: e8=Q) ---
+Engine output: info string Best Move: d7d8q (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): b7b6 b7a7 b7c7 b7a8 b7b8 b7c8 d7d8n d7d8r d7d8b
+Engine output: bestmove d7d8q
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 373: 3K4/4P3/1r2k3/8/8/8/8/7r w - - (BM: e8=Q+) ---
+Engine output: info string Best Move: e7e8q (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (7 total): b1c1 b1b2 b1c2 e7e8n e7e8r e7e8b
+Engine output: bestmove e7e8q
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 374: k1q5/2K5/7p/8/8/8/6P1/8 w - - (BM: Kxc8) ---
+Engine output: info string Best Move: e7e8q (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (7 total): d8c7 d8c8 d8e8 e7e8n e7e8r e7e8b
+Engine output: bestmove e7e8q
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 375: 8/n7/8/1k1q4/3K3P/8/8/8 w - - (BM: Kxd5) ---
+Engine output: info string Best Move: c7c8 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (3 total): c7b6 c7d6
+Engine output: bestmove c7c8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 376: qk6/6P1/6b1/1K6/8/8/8/8 w - - (BM: g8=Q+) ---
+Engine output: info string Best Move: d4d5 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (3 total): d4c3 d4e3
+Engine output: bestmove d4d5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 377: 8/2P2k2/3q4/2K2r2/8/8/8/8 w - - (BM: Kxd6) ---
+Engine output: info string Best Move: g7g8q (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): b5b4 b5c4 b5c5 b5b6 g7g8n g7g8r g7g8b
+Engine output: bestmove g7g8q
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 378: qk4q1/5P2/8/1K6/8/8/8/8 w - - (BM: fxg8=Q+) ---
+Engine output: info string Best Move: c5d6 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (2 total): c5c4
+Engine output: bestmove c5d6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 379: 8/p1p5/8/8/8/8/8/kNK5 w - - (BM: Nc3) ---
+Engine output: info string Best Move: f7g8q (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (12 total): b5b4 b5c4 b5c5 b5b6 f7f8q f7f8n f7f8r f7f8b f7g8n f7g8r f7g8b
+Engine output: bestmove f7g8q
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 380: 8/8/8/8/pn6/8/N7/k1K5 w - - (BM: Nxb4) ---
+Engine output: info string Best Move: b1c3 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (6 total): c1d1 c1c2 c1d2 b1d2 b1a3
+Engine output: bestmove b1c3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 381: 8/8/8/8/n7/kn6/8/NK6 w - - (BM: Nc2#) ---
+Engine output: info string Best Move: a2b4 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): c1d1 c1d2 a2c3
+Engine output: bestmove a2b4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 382: 8/8/8/b7/8/p7/3N4/k1K5 w - - (BM: Nb3+) ---
+Engine output: info string Best Move: a1c2 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (3 total): b1c2 a1b3
+Engine output: bestmove a1c2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 383: 8/8/8/8/b7/kn6/8/NK6 w - - (BM: Nc2#) ---
+Engine output: info string Best Move: d2b3 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): c1d1 c1c2 d2b1 d2f1 d2f3 d2c4 d2e4
+Engine output: bestmove d2b3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 384: 8/8/8/8/3N4/p7/3r4/k1K5 w - - (BM: Nb3+) ---
+Engine output: info string Best Move: a1c2 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (3 total): b1c2 a1b3
+Engine output: bestmove a1c2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 385: 8/8/8/q7/8/p7/3N4/k1K5 w - - (BM: Nb3+) ---
+Engine output: info string Best Move: d4b3 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (9 total): c1d2 d4c2 d4e2 d4f3 d4b5 d4f5 d4c6 d4e6
+Engine output: bestmove d4b3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 386: 1B6/8/8/8/8/8/p7/k2K2n1 w - - (BM: Kc2) ---
+Engine output: info string Best Move: d2b3 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (8 total): c1d1 c1c2 d2b1 d2f1 d2f3 d2c4 d2e4
+Engine output: bestmove d2b3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 387: 8/8/8/8/8/8/p7/kbBK4 w - - (BM: Ba3) ---
+Engine output: info string Best Move: d1c2 (Win in 16 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (11 total): d1c1 d1e1 d1d2 b8h2 b8g3 b8f4 b8e5 b8d6 b8a7 b8c7
+Engine output: bestmove d1c2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 388: 2K5/8/3pR3/5p2/7k/8/8/8 w - - (BM: Rf6) ---
+Engine output: info string Best Move: c1a3 (Win in 4 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): d1e1 d1d2 d1e2 c1b2 c1d2 c1e3 c1f4 c1g5 c1h6
+Engine output: bestmove c1a3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 389: 2K4k/7p/8/8/8/8/3R4/n7 w - - (BM: Kd7) ---
+Engine output: info string Best Move: e6f6 (Win in 15 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): c8b7 c8c7 c8d7 c8b8 c8d8 e6e1 e6e2 e6e3 e6e4 e6e5 e6d6 e6g6 e6h6 e6e7 e6e8
+Engine output: bestmove e6f6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 390: 8/5R2/8/8/k7/4n3/3K1n2/8 w - - (BM: Kxe3) ---
+Engine output: info string Best Move: c8d7 (Win in 24 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (19 total): c8b7 c8c7 c8b8 c8d8 d2d1 d2a2 d2b2 d2c2 d2e2 d2f2 d2g2 d2h2 d2d3 d2d4 d2d5 d2d6 d2d7 d2d8
+Engine output: bestmove c8d7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 391: 8/6bp/8/8/k1K5/8/8/2R5 w - - (BM: Rg1) ---
+Engine output: info string Best Move: d2e3 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (18 total): d2c1 d2e1 d2e2 d2c3 f7f2 f7f3 f7f4 f7f5 f7f6 f7a7 f7b7 f7c7 f7d7 f7e7 f7g7 f7h7 f7f8
+Engine output: bestmove d2e3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 392: 8/5R2/8/8/k7/4b3/3K1n2/8 w - - (BM: Kxe3) ---
+Engine output: info string Best Move: c1g1 (Win in 36 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (12 total): c4d3 c4c5 c4d5 c1a1 c1b1 c1d1 c1e1 c1f1 c1h1 c1c2 c1c3
+Engine output: bestmove c1g1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 393: 8/8/8/b1R5/8/3K4/8/1k4b1 w - - (BM: Rb5+) ---
+Engine output: info string Best Move: d2e3 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (5 total): d2e1 d2c2 d2e2 d2c3
+Engine output: bestmove d2e3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 394: 7R/8/8/k7/8/r7/Kp6/8 w - - (BM: Kxa3) ---
+Engine output: info string Best Move: c5b5 (Win in 2 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (17 total): d3e2 d3c4 d3e4 c5c1 c5c2 c5c3 c5c4 c5a5 c5d5 c5e5 c5f5 c5g5 c5h5 c5c6 c5c7 c5c8
+Engine output: bestmove c5b5
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 395: 8/5R2/8/8/k7/4r3/3K1n2/8 w - - (BM: Kxe3) ---
+Engine output: info string Best Move: a2a3 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (3 total): a2b1 a2b2
+Engine output: bestmove a2a3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 396: 8/8/8/8/Rr6/3K4/8/1k4b1 w - - (BM: Rxb4+) ---
+Engine output: info string Best Move: d2e3 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (16 total): d2c1 d2c2 f7f2 f7f3 f7f4 f7f5 f7f6 f7a7 f7b7 f7c7 f7d7 f7e7 f7g7 f7h7 f7f8
+Engine output: bestmove d2e3
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 397: 8/8/R2r4/8/8/3k4/1r6/K7 w - - (BM: Rxd6+) ---
+Engine output: info string Best Move: a4b4 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (11 total): d3d2 d3e2 d3c3 a4a1 a4a2 a4a3 a4a5 a4a6 a4a7 a4a8
+Engine output: bestmove a4b4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 398: 8/8/8/2K5/5p2/8/1Q2pk2/8 w - - (BM: Kd5) ---
+Engine output: info string Best Move: a6d6 (Win in 1 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): a1b2 a6a2 a6a3 a6a4 a6a5 a6b6 a6c6 a6a7 a6a8
+Engine output: bestmove a6d6
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 399: 8/8/8/8/4n2Q/3k4/8/3K3n w - - (BM: Qd8+) ---
+Engine output: info string Best Move: c5d5 (Win in 17 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (28 total): c5b4 c5c4 c5d4 c5b5 c5b6 c5c6 c5d6 b2a1 b2b1 b2c1 b2a2 b2c2 b2d2 b2e2 b2a3 b2b3 b2c3 b2b4 b2d4 b2b5 b2e5 b2b6 b2f6 b2b7 b2g7 b2b8 b2h8
+Engine output: bestmove c5d5
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 400: 3K4/8/8/8/8/1Q6/4b1pk/8 w - - (BM: Qb8+) ---
+Engine output: info string Best Move: h4d8 (Win in 125 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (19 total): d1c1 d1e1 h4e1 h4h1 h4f2 h4h2 h4g3 h4h3 h4e4 h4f4 h4g4 h4g5 h4h5 h4f6 h4h6 h4e7 h4h7 h4h8
+Engine output: bestmove h4d8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 401: 8/8/8/8/3b4/1Q6/3kn3/K7 w - - (BM: Kb1) ---
+Engine output: info string Best Move: b3b8 (Win in 83 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (28 total): d8c7 d8d7 d8e7 d8c8 d8e8 b3b1 b3d1 b3a2 b3b2 b3c2 b3a3 b3c3 b3d3 b3e3 b3f3 b3g3 b3h3 b3a4 b3b4 b3c4 b3b5 b3d5 b3b6 b3e6 b3b7 b3f7 b3g8
+Engine output: bestmove b3b8
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 402: 8/1Q6/8/8/2bb4/8/3k4/K7 w - - (BM: Kb1) ---
+Engine output: info string Best Move: a1b1 (Win in 83 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (4 total): a1a2 b3b2 b3c3
+Engine output: bestmove a1b1
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 403: 8/Q7/K7/5r2/5p2/8/6k1/8 w - - (BM: Qg7+) ---
+Engine output: info string Best Move: a1b1 (Win in 141 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (2 total): b7b2
+Engine output: bestmove a1b1
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 404: 8/4Q3/b7/r7/8/8/8/K5k1 w - - (BM: Kb1) ---
+Engine output: info string Best Move: a7g7 (Win in 151 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (17 total): a6b6 a6b7 a7g1 a7f2 a7e3 a7d4 a7c5 a7b6 a7b7 a7c7 a7d7 a7e7 a7f7 a7h7 a7a8 a7b8
+Engine output: bestmove a7g7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 405: 4r3/8/5Q2/8/5r2/1k6/8/1K6 w - - (BM: Qb2+) ---
+Engine output: info string Best Move: a1b1 (Win in 80 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (3 total): a1b2 e7a3
+Engine output: bestmove a1b1
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 406: 8/5P2/2n1k3/8/3K4/1P6/1P6/8 w - - (BM: Kc5) ---
+Failed to probe WDL for FEN '8/5P2/2n1k3/8/3K4/1P6/1P6/8 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/5P2/2n1k3/8/3K4/1P6/1P6/8 w - -'
+
+--- Test 407: 8/4k1P1/8/3K4/8/8/2bP3P/8 w - - (BM: g8=N+) ---
+Failed to probe WDL for FEN '8/4k1P1/8/3K4/8/8/2bP3P/8 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/4k1P1/8/3K4/8/8/2bP3P/8 w - -'
+
+--- Test 408: 8/2P5/2P1r3/k7/8/2K5/5P2/8 w - - (BM: c8=R) ---
+Failed to probe WDL for FEN '8/2P5/2P1r3/k7/8/2K5/5P2/8 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/2P5/2P1r3/k7/8/2K5/5P2/8 w - -'
+
+--- Test 409: 7N/8/8/5k2/8/1P6/1P6/1K4n1 w - - (BM: Nf7) ---
+Failed to probe WDL for FEN '7N/8/8/5k2/8/1P6/1P6/1K4n1 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '7N/8/8/5k2/8/1P6/1P6/1K4n1 w - -'
+
+--- Test 410: 8/8/N1b5/8/k7/8/2P1P3/K7 w - - (BM: e3) ---
+Failed to probe WDL for FEN '8/8/N1b5/8/k7/8/2P1P3/K7 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/8/N1b5/8/k7/8/2P1P3/K7 w - -'
+
+--- Test 411: 8/k1PN1r2/8/8/8/1P6/8/K7 w - - (BM: c8=B) ---
+Failed to probe WDL for FEN '8/k1PN1r2/8/8/8/1P6/8/K7 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/k1PN1r2/8/8/8/1P6/8/K7 w - -'
+
+--- Test 412: N2n4/1P6/k7/4N3/3K4/8/8/8 w - - (BM: b8=B) ---
+Failed to probe WDL for FEN 'N2n4/1P6/k7/4N3/3K4/8/8/8 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN 'N2n4/1P6/k7/4N3/3K4/8/8/8 w - -'
+
+--- Test 413: 1b6/8/2k5/3N4/8/6N1/3P4/K7 w - - (BM: Ne7+) ---
+Failed to probe WDL for FEN '1b6/8/2k5/3N4/8/6N1/3P4/K7 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '1b6/8/2k5/3N4/8/6N1/3P4/K7 w - -'
+
+--- Test 414: 8/8/4PN2/K7/8/7N/1r6/1k6 w - - (BM: Nf4) ---
+Failed to probe WDL for FEN '8/8/4PN2/K7/8/7N/1r6/1k6 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/8/4PN2/K7/8/7N/1r6/1k6 w - -'
+
+--- Test 415: 8/p7/8/8/8/4NN2/K3k3/7N w - - (BM: Ng1+) ---
+Failed to probe WDL for FEN '8/p7/8/8/8/4NN2/K3k3/7N w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/p7/8/8/8/4NN2/K3k3/7N w - -'
+
+--- Test 416: 6bN/8/8/8/8/1N6/2k5/K6N w - - (BM: Nc5) ---
+Failed to probe WDL for FEN '6bN/8/8/8/8/1N6/2k5/K6N w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '6bN/8/8/8/8/1N6/2k5/K6N w - -'
+
+--- Test 417: k7/3P4/2n5/K7/8/8/3N4/8 w - - (BM: Kb6) ---
+Engine output: info string Best Move: f6b2 (Win in 31 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (24 total): b1a1 b1c1 f6a1 f6c3 f6d4 f6f4 f6h4 f6e5 f6f5 f6g5 f6a6 f6b6 f6c6 f6d6 f6e6 f6g6 f6h6 f6e7 f6f7 f6g7 f6d8 f6f8 f6h8
+Engine output: bestmove f6b2
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 418: 8/8/3K4/8/8/1p6/k7/5B1N w - - (BM: Bc4) ---
+Engine output: info string Best Move: a5b6 (Win in 103 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (4 total): a5a4 a5b5 a5a6
+Engine output: bestmove a5b6
+Engine output: info string WDL Probe Result: Draw: Win (cursed) (Code: 3)
+PASS: Expected WDL Cursed Win (1), got Cursed Win (1)
+
+--- Test 419: 8/7R/1R6/8/4b3/8/2K5/5k2 w - - (BM: Kd2) ---
+Engine output: info string Best Move: f1c4 (Win in 103 moves (DTZ), WDL: Draw: Win (cursed))
+Engine output: info string Additional moves (17 total): d6c5 d6d5 d6e5 d6c6 d6e6 d6c7 d6d7 d6e7 f1e2 f1g2 f1d3 f1h3 f1b5 f1a6 h1f2 h1g3
+Engine output: bestmove f1c4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 420: k2q4/7R/8/8/8/8/8/2K3R1 w - - (BM: Rgg7) ---
+Engine output: info string Best Move: c2d2 (Win in 7 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (6 total): c2c1 c2d1 c2b2 c2b3 c2c3
+Engine output: bestmove c2d2
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 421: 8/7Q/8/K7/8/8/3p4/n1k5 w - - (BM: Qh6) ---
+Engine output: info string Best Move: g1g7 (Win in 30 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (28 total): c1b1 c1b2 c1c2 g1d1 g1e1 g1f1 g1h1 g1g2 g1g3 g1g4 g1g5 g1g6 g1g8 h7h1 h7h2 h7h3 h7h4 h7h5 h7h6 h7a7 h7b7 h7c7 h7d7 h7e7 h7f7 h7g7 h7h8
+Engine output: bestmove g1g7
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 422: 8/7P/6k1/5n2/3K3B/8/7P/8 w - - (BM: Ke5) ---
+Failed to probe WDL for FEN '8/7P/6k1/5n2/3K3B/8/7P/8 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/7P/6k1/5n2/3K3B/8/7P/8 w - -'
+
+--- Test 423: 1k6/8/8/1P4B1/8/1K6/4P3/7b w - - (BM: Kc4) ---
+Failed to probe WDL for FEN '1k6/8/8/1P4B1/8/1K6/4P3/7b w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '1k6/8/8/1P4B1/8/1K6/4P3/7b w - -'
+
+--- Test 424: 8/4P3/1r6/8/5B2/8/P7/K2k4 w - - (BM: e8=B) ---
+Failed to probe WDL for FEN '8/4P3/1r6/8/5B2/8/P7/K2k4 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/4P3/1r6/8/5B2/8/P7/K2k4 w - -'
+
+--- Test 425: 8/8/3K4/8/8/1P6/1pk5/5B1N w - - (BM: Nf2) ---
+Failed to probe WDL for FEN '8/8/3K4/8/8/1P6/1pk5/5B1N w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/8/3K4/8/8/1P6/1pk5/5B1N w - -'
+
+--- Test 426: 5n2/8/8/2KN4/8/7k/B6P/8 w - - (BM: Kd6) ---
+Failed to probe WDL for FEN '5n2/8/8/2KN4/8/7k/B6P/8 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '5n2/8/8/2KN4/8/7k/B6P/8 w - -'
+
+--- Test 427: 8/8/8/8/7b/8/1K1k1P2/N5B1 w - - (BM: Nb3+) ---
+Failed to probe WDL for FEN '8/8/8/8/7b/8/1K1k1P2/N5B1 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/8/8/8/7b/8/1K1k1P2/N5B1 w - -'
+
+--- Test 428: 3k4/8/r7/7N/8/8/K4BP1/8 w - - (BM: Kb3) ---
+Failed to probe WDL for FEN '3k4/8/r7/7N/8/8/K4BP1/8 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '3k4/8/r7/7N/8/8/K4BP1/8 w - -'
+
+--- Test 429: 3N4/3P4/2K5/8/1k1q4/8/7B/8 w - - (BM: Bd6+) ---
+Failed to probe WDL for FEN '3N4/3P4/2K5/8/1k1q4/8/7B/8 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '3N4/3P4/2K5/8/1k1q4/8/7B/8 w - -'
+
+--- Test 430: 8/8/8/p3kB2/1K3N2/8/8/7N w - - (BM: Ka4) ---
+Failed to probe WDL for FEN '8/8/8/p3kB2/1K3N2/8/8/7N w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/8/8/p3kB2/1K3N2/8/8/7N w - -'
+
+--- Test 431: 5N2/8/3b4/8/8/8/8/K1Bk3N w - - (BM: Bh6) ---
+Failed to probe WDL for FEN '5N2/8/3b4/8/8/8/8/K1Bk3N w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '5N2/8/3b4/8/8/8/8/K1Bk3N w - -'
+
+--- Test 432: 4B3/8/5r2/8/3N1N2/8/3K4/7k w - - (BM: Ke3) ---
+Failed to probe WDL for FEN '4B3/8/5r2/8/3N1N2/8/3K4/7k w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '4B3/8/5r2/8/3N1N2/8/3K4/7k w - -'
+
+--- Test 433: 8/8/K6P/6B1/8/4B3/1p4k1/8 w - - (BM: h7) ---
+Failed to probe WDL for FEN '8/8/K6P/6B1/8/4B3/1p4k1/8 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/8/K6P/6B1/8/4B3/1p4k1/8 w - -'
+
+--- Test 434: b7/8/6B1/3K4/8/8/2P5/Bk6 w - - (BM: Kd4) ---
+Failed to probe WDL for FEN 'b7/8/6B1/3K4/8/8/2P5/Bk6 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN 'b7/8/6B1/3K4/8/8/2P5/Bk6 w - -'
+
+--- Test 435: 8/1k6/1p1r4/5K2/8/8/8/2R5 w - - (BM: Ke4) ---
+Engine output: info string Best Move: h7h6 (Win in 77 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (26 total): a5a4 a5b4 a5b5 a5a6 a5b6 h7b1 h7h1 h7c2 h7h2 h7d3 h7h3 h7e4 h7h4 h7f5 h7h5 h7g6 h7a7 h7b7 h7c7 h7d7 h7e7 h7f7 h7g7 h7g8 h7h8
+Engine output: bestmove h7h6
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 436: 8/8/8/8/5kp1/P7/8/1K1N4 w - - (BM: Kc2) ---
+Engine output: info string Best Move: f5e4 (Draw (DTZ=0), WDL: Draw)
+Engine output: info string Additional moves (19 total): f5f4 f5g4 f5e5 f5g5 c1a1 c1b1 c1d1 c1e1 c1f1 c1g1 c1h1 c1c2 c1c3 c1c4 c1c5 c1c6 c1c7 c1c8
+Engine output: bestmove f5e4
+Engine output: info string WDL Probe Result: Win (Code: 4)
+PASS: Expected WDL Win (2), got Win (2)
+
+--- Test 437: 8/k7/8/2R5/8/4q3/8/4B2K w - - (BM: Bg3) ---
+Engine output: info string Best Move: b1c2 (Win in 5 moves (DTZ), WDL: Win)
+Engine output: info string Additional moves (10 total): b1a1 b1c1 b1a2 b1b2 d1b2 d1f2 d1c3 d1e3 a3a4
+Engine output: bestmove b1c2
+Engine output: info string WDL Probe Result: Draw (Code: 2)
+PASS: Expected WDL Draw (0), got Draw (0)
+
+--- Test 438: 5Q1K/8/8/4B3/8/8/1rp5/1k6 w - - (BM: Bf4) ---
+Failed to probe WDL for FEN '5Q1K/8/8/4B3/8/8/1rp5/1k6 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '5Q1K/8/8/4B3/8/8/1rp5/1k6 w - -'
+
+--- Test 439: 8/6Q1/8/8/3r4/2B5/k1p5/5K2 w - - (BM: Qg2) ---
+Failed to probe WDL for FEN '8/6Q1/8/8/3r4/2B5/k1p5/5K2 w - -': position not in tablebase
+SKIP: Cannot probe expected WDL for FEN '8/6Q1/8/8/3r4/2B5/k1p5/5K2 w - -'
+
+--- Summary ---
+Passed: 413/439
+Failed: 0
+Skipped: 26 (positions with too many pieces or invalid)
+All valid WDL probing tests passed!

@@ -33,7 +33,7 @@ pub const Badpromotion = -QueenPromotionWithCapture;
 // pawns, knights, bishops, rooks, queens, kings
 pub const piece_val = [7]i32{ 100, 300, 300, 500, 900, 20000, 0 };
 
-pub inline fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_list: *ScoreList, hash_move: Move, comptime color: Color) void {
+pub fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_list: *ScoreList, hash_move: Move, comptime color: Color) void {
     for (0..move_list.count) |i| {
         const move = move_list.moves[i];
         var score: i32 = 0;
@@ -43,8 +43,8 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *MoveList, 
             const captured = if (move.flags == MoveFlags.EN_PASSANT) 0 else pos.board[move.to].type_of().toU3();
             const capturer = pos.board[move.from].type_of().toU3();
             //score = 10 * piece_val[captured] - piece_val[capturer] + SortCapture;
-            const see_val = see_value(pos, move, false);
-            if (see_val > -98) {
+            const see_val = see_value(pos, move, true);
+            if (see_val >= 0) {
                 score = 10 * piece_val[captured] - piece_val[capturer] + SortCapture;
             } else {
                 score = 10 * piece_val[captured] - piece_val[capturer] + SortBadCapture;
@@ -87,23 +87,21 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *MoveList, 
     }
 }
 
-pub inline fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usize) Move {
+pub fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usize) Move {
     // Use local variables for better register allocation
     var best_j = i;
     var max_score = score_list.scores[i];
-    const scores = score_list.scores;
-    const count = score_list.count;
 
     // Unroll the loop manually for better performance
     var j = i + 1;
-    const loop_end = count - (count - j) % 4;
+    const loop_end = score_list.count - (score_list.count - j) % 4;
 
     // Process 4 elements at a time
     while (j < loop_end) : (j += 4) {
-        const score0 = scores[j];
-        const score1 = scores[j + 1];
-        const score2 = scores[j + 2];
-        const score3 = scores[j + 3];
+        const score0 = score_list.scores[j];
+        const score1 = score_list.scores[j + 1];
+        const score2 = score_list.scores[j + 2];
+        const score3 = score_list.scores[j + 3];
 
         if (score0 > max_score) {
             max_score = score0;
@@ -124,8 +122,8 @@ pub inline fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usi
     }
 
     // Process remaining elements
-    while (j < count) : (j += 1) {
-        const score = scores[j];
+    while (j < score_list.count) : (j += 1) {
+        const score = score_list.scores[j];
         if (score > max_score) {
             max_score = score;
             best_j = j;
@@ -148,8 +146,8 @@ pub inline fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usi
     return move_list.moves[i];
 }
 
-pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
-    _ = prune_positive; // Unused parameter, but kept for compatibility
+pub fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
+    //_ = prune_positive; // Unused parameter, but kept for compatibility
     var gain: [32]i32 = undefined;
 
     const from = move.from;
@@ -164,6 +162,9 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
 
     if (captured != Piece.NO_PIECE) {
         captured_value = piece_val[captured.type_of().toU3()];
+        if (prune_positive and pv <= captured_value) {
+            return 0;
+        }
     }
 
     var pqv: i32 = 0;

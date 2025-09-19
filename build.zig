@@ -20,18 +20,33 @@ pub fn build(b: *std.Build) void {
     // Standard optimization options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
-    const optimize = b.standardOptimizeOption(.{});
+
+    //const optimize = b.standardOptimizeOption(.{});
+    const optimize = .ReleaseFast;
+    //const optimize = .Debug;
+    const use_tb = true;
 
     const exe = b.addExecutable(.{
         .name = "lambergar",
-        // In this case the main source file is merely a path, however, in more
-        // complicated build scripts, this could be a generated file.
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        //.optimize = optimize,
-        //.optimize = .Debug,
-        .optimize = .ReleaseFast,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
+    const options = b.addOptions();
+    options.addOption(bool, "use_tb", use_tb);
+    exe.root_module.addOptions("config", options);
+
+    if (use_tb) {
+        exe.addCSourceFile(.{
+            .file = b.path("src/fathom/tbprobe.c"),
+            //.flags = &.{ "-std=c99", "-I{d}" }, // -I{d} includes the directory of tbprobe.c, which should contain tbconfig.h
+            .flags = &.{"-O3"}, // -I{d} includes the directory of tbprobe.c, which should contain tbconfig.h
+            .language = .c,
+        });
+        exe.addIncludePath(b.path("src/fathom"));
+    }
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
@@ -66,9 +81,11 @@ pub fn build(b: *std.Build) void {
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
     const unit_tests = b.addTest(.{
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     const run_unit_tests = b.addRunArtifact(unit_tests);
