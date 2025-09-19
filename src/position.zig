@@ -264,6 +264,16 @@ pub const Piece = enum(u4) {
     pub inline fn toU4(self: Piece) u4 {
         return @as(u4, @intFromEnum(self));
     }
+
+    pub inline fn mass(self: Piece) u4 {
+        if (self == Piece.WHITE_PAWN or self == Piece.BLACK_PAWN) return 0;
+        if (self == Piece.WHITE_KNIGHT or self == Piece.BLACK_KNIGHT) return 1;
+        if (self == Piece.WHITE_BISHOP or self == Piece.BLACK_BISHOP) return 1;
+        if (self == Piece.WHITE_ROOK or self == Piece.BLACK_ROOK) return 2;
+        if (self == Piece.WHITE_QUEEN or self == Piece.BLACK_QUEEN) return 2;
+        if (self == Piece.WHITE_KING or self == Piece.BLACK_KING) return 3;
+        return 0;
+    }
 };
 
 pub const File = enum(u3) {
@@ -574,6 +584,10 @@ pub const Position = struct {
     side_to_play: Color = undefined,
     game_ply: u16 = undefined,
     hash: u64 = undefined,
+    pawn_hash: u64 = undefined, // for correction history
+    non_pawn_hash: [2]u64 = undefined, // for correction history
+    major_hash: u64 = undefined, // for correction history
+    minor_hash: u64 = undefined, // for correction history
 
     history: [2048]UndoInfo = undefined,
     checkers: u64 = undefined,
@@ -590,6 +604,10 @@ pub const Position = struct {
         pos.game_ply = 0;
         @memset(pos.board[0..64], Piece.NO_PIECE);
         pos.hash = 0;
+        pos.pawn_hash = 0;
+        pos.non_pawn_hash = .{0} ** 2;
+        pos.major_hash = 0;
+        pos.minor_hash = 0;
         pos.pinned = 0;
         pos.checkers = 0;
         pos.history[0] = UndoInfo.new();
@@ -608,6 +626,10 @@ pub const Position = struct {
             .side_to_play = from.side_to_play,
             .game_ply = from.game_ply,
             .hash = from.hash,
+            .pawn_hash = from.pawn_hash,
+            .non_pawn_hash = from.non_pawn_hash,
+            .major_hash = from.major_hash,
+            .minor_hash = from.minor_hash,
             .history = from.history,
             .checkers = from.checkers,
             .pinned = from.pinned,
@@ -623,6 +645,22 @@ pub const Position = struct {
         self.piece_bb[pc_idx] |= SQUARE_BB[s_idx];
 
         self.hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        if (pc.type_of() == PieceType.Pawn) {
+            self.pawn_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        } else {
+            self.non_pawn_hash[pc.color().toU4()] ^= zobrist.zobrist_table[pc_idx][s_idx];
+        }
+        if (pc.type_of() == PieceType.Rook or pc.type_of() == PieceType.Queen) {
+            self.major_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        } else if (pc.type_of() == PieceType.Bishop or pc.type_of() == PieceType.Knight) {
+            self.minor_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        }
+        // if (pc.type_of() == PieceType.King) {
+        //     self.pawn_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        //     self.major_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        //     self.minor_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        // }
+
         self.eval.put_piece(pc, s_idx);
     } 
 
@@ -633,9 +671,25 @@ pub const Position = struct {
         self.piece_bb[pc_idx] |= SQUARE_BB[s_idx];
 
         self.hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        if (pc.type_of() == PieceType.Pawn) {
+            self.pawn_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        } else {
+            self.non_pawn_hash[pc.color().toU4()] ^= zobrist.zobrist_table[pc_idx][s_idx];
+        }         
+        if (pc.type_of() == PieceType.Rook or pc.type_of() == PieceType.Queen) {
+            self.major_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        } else if (pc.type_of() == PieceType.Bishop or pc.type_of() == PieceType.Knight) {
+            self.minor_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        }
+        // if (pc.type_of() == PieceType.King) {
+        //     self.pawn_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        //     self.major_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        //     self.minor_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        // }
 
         if (nnue.engine_using_nnue) {        
             self.eval.put_piece_update_phase(pc);
+            //self.eval.put_piece(pc, s_idx);
         } else {
             self.eval.put_piece(pc, s_idx);
         } 
@@ -649,9 +703,25 @@ pub const Position = struct {
         self.board[s_idx] = Piece.NO_PIECE;
 
         self.hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        if (pc.type_of() == PieceType.Pawn) {
+            self.pawn_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        } else {
+            self.non_pawn_hash[pc.color().toU4()] ^= zobrist.zobrist_table[pc_idx][s_idx];
+        }         
+        if (pc.type_of() == PieceType.Rook or pc.type_of() == PieceType.Queen) {
+            self.major_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        } else if (pc.type_of() == PieceType.Bishop or pc.type_of() == PieceType.Knight) {
+            self.minor_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        }
+        // if (pc.type_of() == PieceType.King) {
+        //     self.pawn_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        //     self.major_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        //     self.minor_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
+        // }
 
         if (nnue.engine_using_nnue) {        
             self.eval.remove_piece_update_phase(pc);
+            //self.eval.remove_piece(pc, s_idx);
         } else {
             self.eval.remove_piece(pc, s_idx);
         }    
@@ -665,6 +735,35 @@ pub const Position = struct {
         const to_idx = to_pc.toU4();
 
         self.hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to] ^ zobrist.zobrist_table[to_idx][to];
+
+        if (from_pc.type_of() == PieceType.Pawn) {
+            self.pawn_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        } else {
+            self.non_pawn_hash[from_pc.color().toU4()] ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        } 
+        if (from_pc.type_of() == PieceType.Rook or from_pc.type_of() == PieceType.Queen) {
+            self.major_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        } else if (from_pc.type_of() == PieceType.Bishop or from_pc.type_of() == PieceType.Knight) {
+            self.minor_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        }  
+
+        if (to_pc.type_of() == PieceType.Pawn) {
+            self.pawn_hash ^= zobrist.zobrist_table[to_idx][to];
+        } else {
+            self.non_pawn_hash[to_pc.color().toU4()] ^= zobrist.zobrist_table[to_idx][to];
+        } 
+        if (to_pc.type_of() == PieceType.Rook or to_pc.type_of() == PieceType.Queen) {
+            self.major_hash ^= zobrist.zobrist_table[to_idx][to];
+        } else if (to_pc.type_of() == PieceType.Bishop or to_pc.type_of() == PieceType.Knight) {
+            self.minor_hash ^= zobrist.zobrist_table[to_idx][to];
+        }  
+
+        // if (from_pc.type_of() == PieceType.King) {
+        //     self.pawn_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to] ^ zobrist.zobrist_table[to_idx][to];
+        //     self.major_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to] ^ zobrist.zobrist_table[to_idx][to];
+        //     self.minor_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to] ^ zobrist.zobrist_table[to_idx][to];
+        // }      
+
         const mask = SQUARE_BB[from] | SQUARE_BB[to];
         self.piece_bb[from_idx] ^= mask;
         self.piece_bb[to_idx] &= ~mask;
@@ -673,6 +772,7 @@ pub const Position = struct {
 
         if (nnue.engine_using_nnue) {        
             self.eval.move_piece_update_phase(to_pc);
+            //self.eval.move_piece(from_pc, to_pc, from, to);
         } else {
             self.eval.move_piece(from_pc, to_pc, from, to);
         }           
@@ -684,12 +784,29 @@ pub const Position = struct {
         
         self.hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
 
+        if (from_pc.type_of() == PieceType.Pawn) {
+            self.pawn_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        } else {
+            self.non_pawn_hash[from_pc.color().toU4()] ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        } 
+        if (from_pc.type_of() == PieceType.Rook or from_pc.type_of() == PieceType.Queen) {
+            self.major_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        } else if (from_pc.type_of() == PieceType.Bishop or from_pc.type_of() == PieceType.Knight) {
+            self.minor_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        } 
+        // if (from_pc.type_of() == PieceType.King) {
+        //     self.pawn_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        //     self.major_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        //     self.minor_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
+        // }
+
         self.piece_bb[from_idx] ^= (SQUARE_BB[from] | SQUARE_BB[to]);
         self.board[to] = self.board[from];
         self.board[from] = Piece.NO_PIECE;
 
         if (nnue.engine_using_nnue) {        
              //self.delta.move_piece_quiet(from_pc, from, to);
+             //self.eval.move_piece_quiet(from_pc, from, to);
         } else {
             self.eval.move_piece_quiet(from_pc, from, to);
         } 
@@ -860,21 +977,91 @@ pub const Position = struct {
         return bb.pop_count(pieces);
     }
 
+    // pub inline fn is_insufficient_material(self: *Position) bool {
+    //     const remaining_pieces = self.all_pieces(Color.White) | self.all_pieces(Color.Black);
+    //     const white_bishop = self.piece_bb[Piece.WHITE_BISHOP.toU4()];
+    //     const black_bishop = self.piece_bb[Piece.BLACK_BISHOP.toU4()];
+    //     const white_knight = self.piece_bb[Piece.WHITE_KNIGHT.toU4()];
+    //     const black_knight = self.piece_bb[Piece.BLACK_KNIGHT.toU4()];
+
+    //     const piece_cnt = bb.pop_count(remaining_pieces);
+
+    //     if (piece_cnt == 2) {
+    //         return true;
+    //     }
+
+    //     return (piece_cnt == 3 and ((remaining_pieces & (white_bishop | black_bishop | white_knight | black_knight)) != 0));
+
+    // }
+
     pub inline fn is_insufficient_material(self: *Position) bool {
-        const remaining_pieces = self.all_pieces(Color.White) | self.all_pieces(Color.Black);
-        const white_bishop = self.piece_bb[Piece.WHITE_BISHOP.toU4()];
-        const black_bishop = self.piece_bb[Piece.BLACK_BISHOP.toU4()];
-        const white_knight = self.piece_bb[Piece.WHITE_KNIGHT.toU4()];
-        const black_knight = self.piece_bb[Piece.BLACK_KNIGHT.toU4()];
+        const white_king_sq = self.bitboard_of_pt(Color.White, PieceType.King);
+        const black_king_sq = self.bitboard_of_pt(Color.Black, PieceType.King);
 
-        const piece_cnt = bb.pop_count(remaining_pieces);
+        if (white_king_sq == 0 or black_king_sq == 0) return false;
 
-        if (piece_cnt == 2) {
+        // Count all pieces on both sides
+        const total_pieces = bb.pop_count(self.all_pieces(Color.White) | self.all_pieces(Color.Black));
+        if (total_pieces == 2) return true; // K vs K
+
+        const white_pawns = self.bitboard_of_pt(Color.White, PieceType.Pawn);
+        const black_pawns = self.bitboard_of_pt(Color.Black, PieceType.Pawn);
+        const white_knights = self.bitboard_of_pt(Color.White, PieceType.Knight);
+        const black_knights = self.bitboard_of_pt(Color.Black, PieceType.Knight);
+        const white_bishops = self.bitboard_of_pt(Color.White, PieceType.Bishop);
+        const black_bishops = self.bitboard_of_pt(Color.Black, PieceType.Bishop);
+
+        // If any pawns exist, not insufficient material
+        if (white_pawns != 0 or black_pawns != 0) return false;
+
+        // K vs K + N/B
+        if (total_pieces == 3) {
+            const minor_present = (white_knights | black_knights | white_bishops | black_bishops) != 0;
+            return minor_present;
+        }
+
+        // K + N vs K + N
+        if (total_pieces == 4 and white_knights != 0 and black_knights != 0 and
+            white_bishops == 0 and black_bishops == 0)
+        {
             return true;
         }
 
-        return (piece_cnt == 3 and ((remaining_pieces & (white_bishop | black_bishop | white_knight | black_knight)) != 0));
+        // K + B vs K + B (same color bishops)
+        if (white_bishops != 0 and black_bishops != 0 and
+            white_knights == 0 and black_knights == 0 and
+            white_pawns == 0 and black_pawns == 0)
+        {
+            const white_bishop_square = bb.get_ls1b_index(white_bishops);
+            const black_bishop_square = bb.get_ls1b_index(black_bishops);
 
+            // Check if both bishops are on the same color square
+            const white_bishop_color = (white_bishop_square % 8) + (white_bishop_square / 8);
+            const black_bishop_color = (black_bishop_square % 8) + (black_bishop_square / 8);
+
+            if ((white_bishop_color % 2) == (black_bishop_color % 2)) {
+                return true;
+            }
+        }
+
+        // K + B vs K + N
+        if (total_pieces == 4 and
+            ((white_bishops != 0 and black_knights != 0) or
+            (black_bishops != 0 and white_knights != 0)) and
+            white_pawns == 0 and black_pawns == 0)
+        {
+            return true;
+        }
+
+        // K + 2N vs K
+        if (total_pieces == 4 and
+            ((white_knights != 0 and bb.pop_count(white_knights) == 2 and black_knights == 0) or
+            (black_knights != 0 and bb.pop_count(black_knights) == 2 and white_knights == 0)))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     pub inline fn is_draw(self: *Position) bool {
@@ -1079,6 +1266,7 @@ pub const Position = struct {
 
         self.history[self.game_ply].hash_key = self.hash;
 
+
     }
 
     pub fn play_null_move(self: *Position) void {
@@ -1177,10 +1365,23 @@ pub const Position = struct {
         var hash: u64 = 0;
 
         for (0..64) |s_idx| {
-            const pc_idx = self.board[s_idx].toU4();
+            const pc = self.board[s_idx];
+            const pc_idx = pc.toU4();
             const zh = zobrist.zobrist_table[pc_idx][s_idx];
             if (zh != 0) {
                 hash ^= zh;
+
+                if (pc.type_of() == PieceType.Pawn) {
+                    self.pawn_hash ^= zh;
+                } else {
+                    self.non_pawn_hash[pc.color().toU4()] ^= zh;
+                }         
+                if (pc.type_of() == PieceType.Rook or pc.type_of() == PieceType.Queen) {
+                    self.major_hash ^= zh;
+                } else if (pc.type_of() == PieceType.Bishop or pc.type_of() == PieceType.Knight) {
+                    self.minor_hash ^= zh;
+                }
+
             }
         }
 
@@ -1216,6 +1417,10 @@ pub const Position = struct {
         std.debug.print("{s}\n", .{t});
 
         std.debug.print("Hash: 0x{x}\n", .{self.hash});
+        std.debug.print("Pawn hash: 0x{x}\n", .{self.pawn_hash});
+        std.debug.print("Non-pawn hash: 0x{x}, 0x{x}\n", .{self.non_pawn_hash[0], self.non_pawn_hash[1]});
+        std.debug.print("Major hash: 0x{x}\n", .{self.major_hash});
+        std.debug.print("Minor hash: 0x{x}\n", .{self.minor_hash});
     }
 
     /// To use unicode print, you have use command "chcp 65001" in terminal to switch to 
@@ -1245,6 +1450,10 @@ pub const Position = struct {
         std.debug.print("Entry: 0x{x}\n", .{self.history[self.game_ply].entry});
         std.debug.print("Castling: 0b{b:0>4}\n", .{self.history[self.game_ply].castling});
         std.debug.print("Hash: 0x{x}\n", .{self.hash});
+        std.debug.print("Pawn hash: 0x{x}\n", .{self.pawn_hash});
+        std.debug.print("Non-pawn hash: 0x{x}, 0x{x}\n", .{self.non_pawn_hash[0], self.non_pawn_hash[1]});
+        std.debug.print("Major hash: 0x{x}\n", .{self.major_hash});
+        std.debug.print("Minor hash: 0x{x}\n", .{self.minor_hash});        
         std.debug.print("Position eval: {}\n", .{self.eval.eval(self, Color.White)});
         std.debug.print("Phase white: {}, phase black: {}\n", .{self.eval.phase[Color.White.toU4()], self.eval.phase[Color.Black.toU4()]});
     }    
@@ -1346,7 +1555,7 @@ pub const Position = struct {
 
         self.hash ^= zobrist.castling_keys[self.history[self.game_ply].castling];
         self.history[self.game_ply].hash_key = self.hash;
-
+  
         // Tole je novo
         self.delta.reset();
         self.history[0].accumulator = nnue.refresh_accumulator(self.*);

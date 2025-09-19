@@ -15,6 +15,7 @@ const L2 = 16;
 const L3 = 16;
 
 const NNUE_FILE = "cop.nnue";
+
 const fileNNUE = @embedFile(NNUE_FILE);
 
 pub var engine_loaded_net: bool = true;
@@ -38,9 +39,6 @@ pub const DeltaPieces = struct {
     }
 
     pub inline fn move_piece_quiet(self: *DeltaPieces, pc: Piece, from: u6, to: u6) void {
-        // if (pc == Piece.NO_PIECE) {
-        //     @panic("DeltaPieces is Piece.NO_PIECE.");
-        // }
         self.pieces[self.count] = pc.toU4();
         self.from[self.count] = from;
         self.to[self.count] = to;
@@ -48,12 +46,6 @@ pub const DeltaPieces = struct {
     }
 
     pub inline fn remove_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
-        // if (pc == Piece.NO_PIECE) {
-        //     @panic("remove_piece: DeltaPieces is Piece.NO_PIECE.");
-        // }
-        // if (self.count >= 3) {
-        //     @panic("DeltaPieces can track only up to 3 changes.");
-        // }
         self.pieces[self.count] = pc.toU4();
         self.from[self.count] = sq;
         self.to[self.count] = null;
@@ -61,12 +53,6 @@ pub const DeltaPieces = struct {
     }
 
     pub inline fn put_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
-        // if (pc == Piece.NO_PIECE) {
-        //     @panic("put_piece: DeltaPieces is Piece.NO_PIECE.");
-        // }
-        // if (self.count >= 3) {
-        //     @panic("DeltaPieces can track only up to 3 changes.");
-        // }
         self.pieces[self.count] = pc.toU4();
         self.from[self.count] = null;
         self.to[self.count] = sq;
@@ -154,12 +140,12 @@ var ft_ws: [FT_HALF_DIM * FT_IN_DIM]i16 = undefined;
 const L1_DIM = L2;
 const L1_SIZE = L1 * 2;
 var l1_biases: [L1_DIM]i32 = undefined;
-var l1_weights: [L1_DIM * L1_SIZE]i8 = undefined;
+var l1_weights: [L1_DIM * L1_SIZE]i8 align(32) = undefined;
 
 const L2_DIM = L2;
 const L2_SIZE = L2;
 var l2_biases: [L2_DIM]i32 = undefined;
-var l2_weights: [L2_DIM * L2_SIZE]i8 = undefined;
+var l2_weights: [L2_DIM * L2_SIZE]i8 align(32) = undefined;
 
 const OUT_DIM = 1;
 const OUT_SIZE = L3;
@@ -221,37 +207,6 @@ pub fn load_feature_layer(nnue_data: []u8) !void {
     }
 }
 
-pub fn load_layer1(nnue_data: []u8) !void {
-    var offset: usize = NN_START + 4;
-    for (0..l1_biases.len) |i| {
-        l1_biases[i] = read_bias(nnue_data, offset);
-        offset += @sizeOf(i32);
-    }
-
-    for (0..L1_DIM) |d| {
-        for (0..L1_SIZE) |s| {
-            l1_weights[s * L1_DIM + d] = read_weight(nnue_data, offset);
-            offset += @sizeOf(i8);
-        }
-    }
-}
-
-pub fn load_layer2(nnue_data: []u8) !void {
-    var offset: usize = NN_START + 4 + L1_DIM * @sizeOf(i32) +
-        L1_DIM * L1_SIZE * @sizeOf(i8);
-    for (0..l2_biases.len) |i| {
-        l2_biases[i] = read_bias(nnue_data, offset);
-        offset += @sizeOf(i32);
-    }
-
-    for (0..L2_DIM) |d| {
-        for (0..L2_SIZE) |s| {
-            l2_weights[s * L2_DIM + d] = read_weight(nnue_data, offset);
-            offset += @sizeOf(i8);
-        }
-    }
-}
-
 pub fn load_output_layer(nnue_data: []u8) !void {
     const OUTPUT_START = NN_START + 4 +
         L1_DIM * @sizeOf(i32) +
@@ -278,12 +233,12 @@ pub fn init_specific_net(allocator: std.mem.Allocator, nnue_file_name: []const u
 
     std.debug.print("NNUE file loaded: {s}\n", .{nnue_file_name});
 
-    const nnue_data = try allocator.alloc(u8, 22 << 20);
+    const NNUE_FILESIZE: usize = 10_507_097;
+    const nnue_data = try allocator.alloc(u8, NNUE_FILESIZE);
     defer allocator.free(nnue_data);
 
     const read_bytes = try file.readAll(nnue_data);
 
-    const NNUE_FILESIZE: usize = 10_507_097;
     try std.testing.expectEqual(NNUE_FILESIZE, read_bytes);
 
     try verify_integrity(nnue_data);
@@ -308,13 +263,12 @@ pub fn init(allocator: std.mem.Allocator) !void {
     defer file.close();
 
     std.debug.print("NNUE file loaded: {s}\n", .{NNUE_FILE});
-
-    const nnue_data = try allocator.alloc(u8, 22 << 20);
+    const NNUE_FILESIZE: usize = 10_507_097; //10_507_097; //21_024_768;
+    const nnue_data = try allocator.alloc(u8, NNUE_FILESIZE);
     defer allocator.free(nnue_data);
 
     const read_bytes = try file.readAll(nnue_data);
 
-    const NNUE_FILESIZE: usize = 10_507_097;
     try std.testing.expectEqual(NNUE_FILESIZE, read_bytes);
 
     try verify_integrity(nnue_data);
@@ -335,87 +289,16 @@ inline fn make_index(sq: u6, pc: u4, ksq: u6, color: Color) usize {
     return @as(usize, @intCast(ret));
 }
 
-fn affine(
-    input: []u8,
-    output: []u8,
-    biases: []i32,
-    weights: []i8,
-) void {
-    const Vec = @Vector(16, i32);
-    const SHIFT: @Vector(16, u5) = @splat(6);
-    const C0: Vec = @splat(0);
-    const C127: Vec = @splat(127);
-    std.debug.assert(biases.len == L2);
-    std.debug.assert(output.len == L2);
-
-    var tmp0: Vec = biases[0..16].*;
-
-    for (0..input.len) |idx| {
-        //if (input[idx] == 0) continue; // performance boost
-
-        const input_vec: Vec = @splat(@as(i32, @intCast(input[idx])));
-
-        const start = output.len * idx;
-        //const end = start + 16;
-
-        //const chunk: []const i8 = weights[start..end];
-        //const w_vec: @Vector(16, i8) = chunk[0..16].*;
-        const w_vec: @Vector(16, i8) = weights[start..][0..16].*;
-        tmp0 += input_vec * w_vec;
-    }
-
-    tmp0 = tmp0 >> SHIFT;
-    tmp0 = std.math.clamp(tmp0, C0, C127);
-
-    for (0..16) |i| {
-        output[i] = @as(u8, @intCast(tmp0[i]));
-    }
-}
-
-// fn affine(
-//     input: []u8,
-//     output: []u8,
-//     biases: []i32,
-//     weights: []i8,
-// ) void {
-//     const SHIFT = 6;
-//     std.debug.assert(biases.len == L2);
-//     std.debug.assert(output.len == L2);
-
-//     var tmp: [L2]i32 = undefined;
-//     for (0..L2) |i| {
-//         tmp[i] = biases[i];
-//     }
-
-//     for (0..input.len) |idx| {
-//         if (input[idx] == 0) continue; // performance boost
-//         for (0..L2) |i| {
-//             const t = @as(i32, @intCast(input[idx])) * weights[output.len * idx + i];
-//             tmp[i] += t;
-//         }
-//     }
-
-//     for (0..output.len) |i| {
-//         output[i] = @as(u8, @intCast(std.math.clamp(tmp[i] >> SHIFT, 0, 127)));
-//     }
-// }
-
 fn propagate(
     input: []u8,
-    biases: []i32,
-    weights: []i8,
+    biases: []const i32,
+    weights: []const i8,
 ) i32 {
     var sum: i32 = biases[0];
-
-    const inpVec: @Vector(16, i32) = input[0..16].*;
-    const weightsVec: @Vector(16, i8) = weights[0..16].*;
-    const tmp: @Vector(16, i32) = @as(@Vector(16, i32), inpVec) * @as(@Vector(16, i32), weightsVec);
-    sum += @reduce(.Add, tmp);
-    // for (0..weights.len) |i| {
-    //     const tmp = @as(i32, @intCast(weights[i])) * input[i];
-    //     sum += tmp;
-    // }
-
+    comptime var i = 0;
+    inline while (i < 16) : (i += 1) {
+        sum += @as(i32, input[i]) * @as(i32, weights[i]);
+    }
     return sum;
 }
 
@@ -425,18 +308,19 @@ fn transform(
     output: []u8,
 ) void {
     std.debug.assert(output.len == FT_OUT_DIM);
-
+    const Vec = @Vector(16, i16);
+    const VecU8 = @Vector(16, u8);
     const accumulation = &(curr_accu.accumulation);
 
-    const perspectives: [2]u4 = .{ player.toU4(), player.change_side().toU4() };
-    for (0..2) |p| {
-        const offset: usize = FT_HALF_DIM * p;
+    var i: usize = 0;
+    while (i + 16 <= FT_HALF_DIM) : (i += 16) {
+        var sum_vec: Vec = accumulation[player.toU4()][i..][0..16].*;
+        var clamped_vec: Vec = @min(@max(sum_vec, @as(Vec, @splat(@as(i16, 0)))), @as(Vec, @splat(@as(i16, 127))));
+        output[i..][0..16].* = @as(VecU8, @intCast(clamped_vec));
 
-        for (0..FT_HALF_DIM) |i| {
-            const sum: i16 = accumulation[perspectives[p]][i];
-            const tmp = @as(u8, @intCast(std.math.clamp(sum, 0, 127)));
-            output[offset + i] = tmp;
-        }
+        sum_vec = accumulation[player.change_side().toU4()][i..][0..16].*;
+        clamped_vec = @min(@max(sum_vec, @as(Vec, @splat(@as(i16, 0)))), @as(Vec, @splat(@as(i16, 127))));
+        output[FT_HALF_DIM + i ..][0..16].* = @as(VecU8, @intCast(clamped_vec));
     }
 }
 
@@ -490,10 +374,15 @@ pub fn incremental_update(pos: *Position) void {
         return;
     }
 
-    var prev_accu: Accumulator = undefined;
-    if (pos.game_ply > 0)
-        prev_accu = pos.history[pos.game_ply - 1].accumulator;
-    if (prev_accu.computed_accumulation == false) { // or dp.pieces[0] == king_index[0] or dp.pieces[0] == king_index[1]
+    if (pos.game_ply == 0) {
+        // No history available, perform full refresh
+        accumulator.* = refresh_accumulator(pos.*);
+        return;
+    }
+
+    const prev_accu = &pos.history[pos.game_ply - 1].accumulator;
+    if (!prev_accu.computed_accumulation) {
+        // Previous accumulator invalid, fallback to full refresh
         accumulator.* = refresh_accumulator(pos.*);
         return;
     }
@@ -560,6 +449,72 @@ pub fn incremental_update(pos: *Position) void {
     accumulator.computed_accumulation = true;
 }
 
+pub fn load_layer1(nnue_data: []u8) !void {
+    var offset: usize = NN_START + 4;
+    for (0..l1_biases.len) |i| {
+        l1_biases[i] = read_bias(nnue_data, offset);
+        offset += @sizeOf(i32);
+    }
+
+    // Transpose weights[input][output] => weights[output][input]
+    const L1_INPUTS = L1_SIZE; // typically 16 * 2 = 32
+    const L1_OUTPUTS = L1_DIM; // 16
+    for (0..L1_OUTPUTS) |d| {
+        for (0..L1_INPUTS) |s| {
+            l1_weights[d * L1_INPUTS + s] = read_weight(nnue_data, offset);
+            offset += @sizeOf(i8);
+        }
+    }
+}
+
+pub fn load_layer2(nnue_data: []u8) !void {
+    var offset: usize = NN_START + 4 +
+        L1_DIM * @sizeOf(i32) +
+        L1_DIM * L1_SIZE * @sizeOf(i8);
+
+    for (0..l2_biases.len) |i| {
+        l2_biases[i] = read_bias(nnue_data, offset);
+        offset += @sizeOf(i32);
+    }
+
+    const L2_INPUTS = L2_SIZE; // 16
+    const L2_OUTPUTS = L2_DIM; // 16
+    for (0..L2_OUTPUTS) |d| {
+        for (0..L2_INPUTS) |s| {
+            l2_weights[d * L2_INPUTS + s] = read_weight(nnue_data, offset);
+            offset += @sizeOf(i8);
+        }
+    }
+}
+
+inline fn affine(
+    input: []const u8,
+    output: []u8,
+    biases: []const i32,
+    weights: []const i8,
+    input_len: usize,
+    output_len: usize,
+) void {
+    std.debug.assert(output.len == output_len);
+    std.debug.assert(weights.len == output_len * input_len);
+
+    comptime var out_idx = 0;
+    inline while (out_idx < output_len) : (out_idx += 1) {
+        var sum = biases[out_idx];
+        var vec_sum: @Vector(16, i32) = @splat(@as(i32, 0));
+        var i: usize = 0;
+        while (i + 16 <= input_len) : (i += 16) {
+            const w_base = out_idx * input_len + i;
+            const w_vec: @Vector(16, i32) = @as(@Vector(16, i32), weights[w_base..][0..16].*);
+            const x_vec: @Vector(16, i32) = input[i..][0..16].*;
+            vec_sum += x_vec * w_vec;
+        }
+        sum += @reduce(.Add, vec_sum);
+        sum = std.math.clamp(sum >> 6, 0, 127);
+        output[out_idx] = @intCast(sum);
+    }
+}
+
 pub fn evaluate(curr_accu: Accumulator, player: Color) i32 {
     const FV_SCALE = 16;
 
@@ -568,14 +523,10 @@ pub fn evaluate(curr_accu: Accumulator, player: Color) i32 {
     var l2_out: [L2]u8 = undefined;
 
     transform(curr_accu, player, &input);
-
-    affine(&input, &l1_out, &l1_biases, &l1_weights);
-
-    affine(&l1_out, &l2_out, &l2_biases, &l2_weights);
+    affine(&input, &l1_out, &l1_biases, &l1_weights, FT_OUT_DIM, L1_DIM);
+    affine(&l1_out, &l2_out, &l2_biases, &l2_weights, L1_DIM, L2_DIM);
 
     const out_value = propagate(&l2_out, &out_biases, &out_weights);
-
     const ret = @divTrunc(out_value, FV_SCALE);
-
     return @as(i32, @intCast(ret));
 }

@@ -18,8 +18,9 @@ const MoveList = lists.MoveList;
 const ScoreList = lists.ScoreList;
 
 pub const SortHash = 9000000;
-pub const QueenPromotionWithCapture = 1500000;
-pub const KnightPromotionWithCapture = 1400000;
+pub const QueenPromotionWithCapture = 1600000;
+pub const KnightPromotionWithCapture = 1500000;
+pub const SortBestCapture = 1300000;
 pub const SortCapture = 1200000;
 pub const QueenPromotion = 1100000;
 pub const KnightPromotion = 1000000;
@@ -38,21 +39,17 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *MoveList, 
         var score: i32 = 0;
         if (move.equal(hash_move)) {
             score = SortHash;
-        } else if (move.is_promotion_with_capture()) {
-            switch (move.flags) {
-                MoveFlags.PC_QUEEN => score = QueenPromotionWithCapture,
-                MoveFlags.PC_KNIGHT => score = KnightPromotionWithCapture,
-                else => score = Badpromotion,
-            }
         } else if (move.is_capture()) {
             const captured = if (move.flags == MoveFlags.EN_PASSANT) 0 else pos.board[move.to].type_of().toU3();
             const capturer = pos.board[move.from].type_of().toU3();
-            if (see(pos, move, -98)) {
+            //score = 10 * piece_val[captured] - piece_val[capturer] + SortCapture;
+            const see_val = see_value(pos, move, false);
+            if (see_val > -98) {
                 score = 10 * piece_val[captured] - piece_val[capturer] + SortCapture;
             } else {
                 score = 10 * piece_val[captured] - piece_val[capturer] + SortBadCapture;
             }
-        } else if (move.is_promotion_no_capture()) {
+        } else if (move.is_promotion()) {
             switch (move.flags) {
                 MoveFlags.PR_QUEEN => score = QueenPromotion,
                 MoveFlags.PR_KNIGHT => score = KnightPromotion,
@@ -63,8 +60,8 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *MoveList, 
                 score = SortKiller1;
             } else if (move.equal(search.mv_killer[search.ply][1])) {
                 score = SortKiller2;
-            } else if (move.equal(history.get_counter_move(search))) {
-                score = sortCounter;
+                // } else if (move.equal(history.get_counter_move(search))) {
+                //     score = sortCounter;
             } else {
                 const side: u4 = if (color == Color.White) Color.White.toU4() else Color.Black.toU4();
                 var piece = pos.board[move.from];
@@ -80,7 +77,7 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *MoveList, 
                     var gparent = search.ns_stack[search.ply - 2].move;
                     var gp_piece = search.ns_stack[search.ply - 2].piece;
                     if (!gparent.is_empty()) {
-                        score += search.get_fh(gp_piece.toU4(), gparent.to, piece.toU4(), move.to);
+                        score += search.get_ch(gp_piece.toU4(), gparent.to, piece.toU4(), move.to);
                     }
                 }
             }
@@ -91,20 +88,55 @@ pub inline fn score_move(pos: *Position, search: *Search, move_list: *MoveList, 
 }
 
 pub inline fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usize) Move {
+    // Use local variables for better register allocation
     var best_j = i;
     var max_score = score_list.scores[i];
+    const scores = score_list.scores;
+    const count = score_list.count;
 
-    // Start from i+1 and iterate over the remaining elements
-    for ((i + 1)..score_list.count) |j| {
-        const score = score_list.scores[j];
-        if (score > max_score) {
+    // Unroll the loop manually for better performance
+    var j = i + 1;
+    const loop_end = count - (count - j) % 4;
+
+    // Process 4 elements at a time
+    while (j < loop_end) : (j += 4) {
+        const score0 = scores[j];
+        const score1 = scores[j + 1];
+        const score2 = scores[j + 2];
+        const score3 = scores[j + 3];
+
+        if (score0 > max_score) {
+            max_score = score0;
             best_j = j;
-            max_score = score;
+        }
+        if (score1 > max_score) {
+            max_score = score1;
+            best_j = j + 1;
+        }
+        if (score2 > max_score) {
+            max_score = score2;
+            best_j = j + 2;
+        }
+        if (score3 > max_score) {
+            max_score = score3;
+            best_j = j + 3;
         }
     }
 
-    // Swap if a better move is found
+    // Process remaining elements
+    while (j < count) : (j += 1) {
+        const score = scores[j];
+        if (score > max_score) {
+            max_score = score;
+            best_j = j;
+        }
+    }
+
+    // Swap if needed
     if (best_j != i) {
+        // Use swap functions that might be optimized better
+        // std.mem.swap(Move, &move_list.moves[best_j], &move_list.moves[i]);
+        // std.mem.swap(i32, &score_list.scores[best_j], &score_list.scores[i]);
         const best_move = move_list.moves[best_j];
         const best_score = score_list.scores[best_j];
         move_list.moves[best_j] = move_list.moves[i];
@@ -116,84 +148,8 @@ pub inline fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usi
     return move_list.moves[i];
 }
 
-pub inline fn see(pos: *Position, move: Move, thr: i32) bool {
-    if (move.is_promotion()) {
-        return true;
-    }
-
-    const from = move.from;
-    const to = move.to;
-
-    var target = pos.board[to];
-    var value: i32 = piece_val[target.type_of().toU3()] - thr;
-
-    if (value < 0) {
-        return false;
-    }
-
-    var attacker = pos.board[from];
-
-    value -= piece_val[attacker.type_of().toU3()];
-
-    if (value >= 0) {
-        return true;
-    }
-
-    var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ bb.SQUARE_BB[from] ^ bb.SQUARE_BB[to];
-    var attackers: u64 = pos.all_attackers(to, occupied);
-
-    const bishops: u64 = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
-    const rooks: u64 = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
-
-    var side = attacker.color().change_side();
-
-    while (true) {
-        attackers &= occupied;
-
-        var occ_side = if (side == Color.White) pos.all_pieces(Color.White) else pos.all_pieces(Color.Black);
-        const my_attackers: u64 = attackers & occ_side;
-
-        if (my_attackers == 0) {
-            break;
-        }
-
-        var pt: u4 = undefined;
-        for (PieceType.Pawn.toU3()..(PieceType.King.toU3() + 1)) |pc| {
-            pt = @as(u4, @intCast(pc));
-            if ((my_attackers & (pos.piece_bb[pt] | pos.piece_bb[pt + 8])) != 0) {
-                break;
-            }
-        }
-
-        side = side.change_side();
-
-        value = -value - 1 - piece_val[pt];
-
-        if (value >= 0) {
-            occ_side = if (side == Color.White) pos.all_pieces(Color.White) else pos.all_pieces(Color.Black);
-            if ((PieceType.King.toU3() == pt) and ((attackers & occ_side) != 0)) {
-                side = side.change_side();
-            }
-            break;
-        }
-
-        occupied ^= bb.SQUARE_BB[bb.get_ls1b_index(my_attackers & (pos.piece_bb[pt] | pos.piece_bb[pt + 8]))];
-
-        if (pt == PieceType.Pawn.toU3() or pt == PieceType.Bishop.toU3() or pt == PieceType.Queen.toU3()) {
-            attackers |= (attacks.piece_attacks(to, occupied, PieceType.Bishop) & bishops);
-        }
-        if (pt == PieceType.Rook.toU3() or pt == PieceType.Queen.toU3()) {
-            attackers |= (attacks.piece_attacks(to, occupied, PieceType.Rook) & rooks);
-        }
-    }
-
-    return (side != attacker.color());
-}
-
 pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
-    // if (move.is_promotion()) {
-    //     return true;
-    // }
+    _ = prune_positive; // Unused parameter, but kept for compatibility
     var gain: [32]i32 = undefined;
 
     const from = move.from;
@@ -208,21 +164,27 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
 
     if (captured != Piece.NO_PIECE) {
         captured_value = piece_val[captured.type_of().toU3()];
-        if (prune_positive and pv <= captured_value) {
-            return 0;
-        }
     }
 
-    const pqv = piece_val[move.flags.promote_type().toU3()] - piece_val[0];
+    var pqv: i32 = 0;
+    var promote_to: u3 = PieceType.Pawn.toU3();
+    if (move.is_promotion()) {
+        promote_to = move.flags.promote_type().toU3();
+        pqv = piece_val[promote_to] - piece_val[PieceType.Pawn.toU3()];
+    }
+
     var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ bb.SQUARE_BB[from];
 
     gain[0] = captured_value;
+    var pt: u4 = @as(u4, @intCast(p.type_of().toU3()));
+
     if (move.is_promotion()) {
         pv += pqv;
         gain[0] += pqv;
+        pt = @as(u4, @intCast(promote_to)); // Update to promoted piece
     } else if (move.flags == MoveFlags.EN_PASSANT) {
         occupied ^= (@as(u64, 1) << (to ^ 8));
-        gain[0] = piece_val[0];
+        gain[0] = piece_val[PieceType.Pawn.toU3()];
     }
 
     const bq: u64 = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
@@ -232,17 +194,11 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
 
     var cnt: u5 = 1;
 
-    var pt: u4 = @as(u4, @intCast(p.type_of().toU3()));
-
     while (attackers != 0 and cnt < 32) {
         attackers &= occupied;
         side = side.change_side();
         const occ_side = if (side == Color.White) pos.all_pieces(Color.White) else pos.all_pieces(Color.Black);
         const side_att = attackers & occ_side;
-
-        if (attackers == 0 or cnt >= 32) {
-            break;
-        }
 
         if (side_att == 0) {
             break;
@@ -262,6 +218,17 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
 
         occupied ^= bb.SQUARE_BB[bb.get_ls1b_index(pb)];
 
+        // Check for pawn promotion (8th rank for White, 1st rank for Black)
+        var is_promotion = false;
+        if (pt == PieceType.Pawn.toU3()) {
+            const rank = to >> 3;
+            if ((side == Color.White and rank == 7) or (side == Color.Black and rank == 0)) {
+                is_promotion = true;
+                pt = PieceType.Queen.toU3(); // Assume queen for recaptures
+                pqv = piece_val[PieceType.Queen.toU3()] - piece_val[PieceType.Pawn.toU3()];
+            }
+        }
+
         if (pt == PieceType.Pawn.toU3() or pt == PieceType.Bishop.toU3() or pt == PieceType.Queen.toU3()) {
             attackers |= (attacks.piece_attacks(to, occupied, PieceType.Bishop) & bq);
         }
@@ -270,11 +237,10 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
         }
 
         gain[cnt] = pv - gain[cnt - 1];
-        pv = piece_val[pt];
-        if (move.is_promotion() and pt == 0) {
-            pv += pqv;
-            gain[cnt] += pqv;
+        if (is_promotion) {
+            gain[cnt] += pqv; // Add promotion value
         }
+        pv = piece_val[pt];
         cnt += 1;
     }
 

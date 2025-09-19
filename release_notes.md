@@ -1,5 +1,42 @@
 # Release notes
 
+## Lambergar 1.3
+
+### Builds
+
+Currently, there are five builds:
+
+- x86-64-v3: AVX2 support, best for using with NNUE evaluation and should be a preferred choice for best performance.
+- x86-64-v2: popcount support, suitable for modern computers.
+- x86-64-v1: vintage version is for really old computers.
+- aarch64-linux: version for Raspberry Pi 5,
+- x86-64-v4: AVX-512 support.
+
+### Release Notes
+
+- Optimized SIMD code for NNUE evaluation, improving NPS by **20%**.
+- Merged counter history and follow history into continuation history.
+- Introduced Static Evaluation Correction History.
+- Added promotion into the Static Exchange Evaluation (SEE) function.
+- Reordered promotion moves to be scored after captures in move ordering.
+- Now using SEE scores for ordering capture moves.
+- Removed countermove from the move ordering scoring function.
+- Removed countermove from history score calculations.
+- Slightly improved the speed of the insertion sort function for next move selection.
+- Added beta cutoff percentage to the info score output.
+- Enhanced the insufficient material detection to cover more cases.
+- Fixed bugs (with the help of Eric Lang).
+
+```sh
+Time controls 10s+0.1s
+
+Score of Lambergar-1.3 vs Lambergar-1.2: 109 - 32 - 201  [0.613] 342
+...      Lambergar-1.3 playing White: 77 - 7 - 87  [0.705] 171
+...      Lambergar-1.3 playing Black: 32 - 25 - 114  [0.520] 171
+...      White vs Black: 102 - 39 - 201  [0.592] 342
+Elo difference: 79.6 +/- 23.3, LOS: 100.0 %, DrawRatio: 58.8 %
+```
+
 ## Lambergar 1.2
 
 ### Builds

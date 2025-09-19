@@ -25,19 +25,19 @@ Inspiration was drawn from:
 - Kaola Chess Engine by Wuelle (<https://github.com/Wuelle/Kaola/tree/main>),
 - Avalanche Chess Engine by SnowballSH (<https://github.com/SnowballSH/Avalanche/tree/master>),
 - surge, fast bitboard-based legal chess move generator written in C++ (<https://github.com/nkarve/surge>)
-- Several open source chess engines written in C and C++ (igel, xipos, ...).
+- Several open source chess engines written in C and C++ (Igel, Xipos, Ethereal, Alexandria, ...).
 
 The name "Lambergar" is a nod to the Slovenian folk romance, Pegam and Lambergar, which recounts the epic struggle between Jan Vitovec and Krištof Lambergar (Lamberg). This narrative of fortitude and rivalry provided a fitting namesake for this chess engine.
 
 ## Compilation
 
-If you want to compile code yourself, code can be compiled with zig compiler version 0.13.0 (latest zig version at the date of last release of the engine) (<https://ziglang.org/download/>).
+If you want to compile code yourself, code can be compiled with Zig compiler version 0.13.0 (latest Zig version at the date of last release of the engine) (<https://ziglang.org/download/>).
 
 Compile with command `zig build`. You can run python script `build_versions.py` which will compile different versions for windows and Linux. Currently, there are three basic build: *vintage*, *popcnt* and *AVX2*. Vintage version is for really old computers, popcnt is for modern computers, but for best performance use AVX2 release.
 
 ## Features and implemented algorithms
 
-- Move generator is a translation of surge move generator in zig with several bug fixes.
+- Move generator is a translation of surge move generator in Zig with several bug fixes.
 - Perft testing
 - UCI protocol
 - Evaluation using PSQT tables
@@ -63,7 +63,7 @@ Compile with command `zig build`. You can run python script `build_versions.py` 
 
 Tuning was introduced in version v0.4.0 for tuning HCE evaluation parameters (material values and PSQT values). Version v0.6.0 introduced evaluation based on neural network and newer version use NNUE as a default option for evaluation. However, HCE evaluation is still an option with setting `setoption name UseNNue value false`, so code for tuning of HCE parameters has been kept as part of the project. 
 
-Go into directory `tuner`. Run python script `python tuner.py --mode on` which will change the mode of the zig code of the Lamberger engine for tuning. Compile the engine with `zig build` command. In `tuner.zig` line `var file = try std.fs.cwd().openFile("quiet-labeled.epd", .{});` write the name of the file with position and results of the game. File with positions should have fen position followed with either `[1.0]` for white won, `[0.5]` draw or `[0.0]` for black won.
+Go into directory `tuner`. Run python script `python tuner.py --mode on` which will change the mode of the Zig code of the Lamberger engine for tuning. Compile the engine with `zig build` command. In `tuner.zig` line `var file = try std.fs.cwd().openFile("quiet-labeled.epd", .{});` write the name of the file with position and results of the game. File with positions should have fen position followed with either `[1.0]` for white won, `[0.5]` draw or `[0.0]` for black won.
 Example:
 
 ```bash
@@ -72,9 +72,9 @@ Example:
 rnb1k2r/2p1bppp/1p2pn2/pP6/3NP3/P1NB4/5PPP/R1BQK2R b KQkq - [1.0]
 ```
 
-Output file `data.csv` will contain flags which evaluation parameters contribute to position evaluation. When conversion ends, you can quit the engine and run command `python tuner.py --mode off`, which will change the mode of the zig code of the Lamberger engine into normal mode. Compile the engine with `zig build` command.
+Output file `data.csv` will contain flags which evaluation parameters contribute to position evaluation. When conversion ends, you can quit the engine and run command `python tuner.py --mode off`, which will change the mode of the Zig code of the Lamberger engine into normal mode. Compile the engine with `zig build` command.
 
-Now run python script `convert_to_pickle.py` which will convert `data.csv` into pickle files. Then you can open Jupyter notebook `tune_parameters.ipynb`, which contains the code for optimization which finds the best evaluation parameters. Code saves the parameters into file `merged_parameters.txt`, which can be directly copied into `evaluation.zig`. Of course then you need to compile the zig code with `zig build` so that new evaluation values are used in newly compiled engine.
+Now run python script `convert_to_pickle.py` which will convert `data.csv` into pickle files. Then you can open Jupyter notebook `tune_parameters.ipynb`, which contains the code for optimization which finds the best evaluation parameters. Code saves the parameters into file `merged_parameters.txt`, which can be directly copied into `evaluation.zig`. Of course then you need to compile the Zig code with `zig build` so that new evaluation values are used in newly compiled engine.
 
 ## Strength
 
@@ -90,9 +90,12 @@ In late 2024 version v0.6.0 was listed on CCRL 40/15 list and CCRL Blitz list wi
 
 In January 2025 version 1.0 was listed on CCRL 40/15 list and CCRL Blitz list with score 3209 &plusmn; 19 Elo and 3208 &plusmn; 17 Elo.
 
-On 27th of March 2025 version 1.1 was released, estimated strength is 3340 Elo blitz.
+On 27th of March 2025 version 1.1 was released, listed on CCRL 40/15 list and CCRL Blitz list with score 3308 &plusmn; 17 Elo and 3338 &plusmn; 16 Elo.
 
-On 21th of 2025 version 1.2 was released, slightly stronger than previous version.
+On 21th of May 2025 version 1.2 was released, listed on CCRL 40/15 list and CCRL Blitz list with score 3355 &plusmn; 18 Elo and 3364 &plusmn; 15 Elo.
+
+On 19th of September 2025 version 1.3 was released, estimated at around 3420 Elo.
+
 
 ## Credits
 
@@ -102,13 +105,13 @@ On 21th of 2025 version 1.2 was released, slightly stronger than previous versio
 
 - [Programming A Chess Engine in C](https://www.youtube.com/watch?v=bGAfaepBco4&list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg&index=2&ab_channel=BluefeverSoftware) by Bluefever Software in which the authors explain the development of Vice engine
 
-- [surge](https://github.com/nkarve/surge) by [nkarve](https://github.com/nkarve). Move generator is a translation of surge move generator in zig with several bug fixes.
+- [surge](https://github.com/nkarve/surge) by [nkarve](https://github.com/nkarve). Move generator is a translation of surge move generator in Zig with several bug fixes.
 
-- [Kaola Chess Engine](https://github.com/Wuelle/Kaola/tree/main) by [Wuelle](https://github.com/Wuelle). The UCI protocol implementation and FEN string parsing are directly derived from the Kaola chess engine and slightly updated.
+- [Kaola Chess Engine](https://github.com/Wuelle/Kaola/tree/main) by [Wuelle](https://github.com/Wuelle). The UCI protocol implementation and FEN string parsing are directly derived from the Kaola chess engine. UCI protocol was later refractored, but it still retains a lot of code from Kaola chess engine.
 
 - [Avalanche Chess Engine](https://github.com/SnowballSH/Avalanche/tree/master) by [SnowballSH](https://github.com/SnowballSH). Useful examples hot to program chess engine in Zig language.
 
-- [Delilah Chess Engine](https://git.sr.ht/~voroskoi/delilah) by [VÖRÖSKŐI András](https://git.sr.ht/~voroskoi/). Useful example how to implement NNUE in zig.
+- [Delilah Chess Engine](https://git.sr.ht/~voroskoi/delilah) by [VÖRÖSKŐI András](https://git.sr.ht/~voroskoi/). Useful example how to implement NNUE in Zig.
 
 ## License
 

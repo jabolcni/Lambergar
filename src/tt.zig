@@ -69,7 +69,7 @@ const SpinLock = struct {
     }
 };
 
-pub const BUCKET_SIZE = 4; // Number of entries per bucket
+pub const BUCKET_SIZE = 2; // Number of entries per bucket
 
 pub const TranspositionTable = struct {
     ttArray: [][BUCKET_SIZE]scoreEntry, // Array of buckets, each holding BUCKET_SIZE entries
@@ -91,7 +91,7 @@ pub const TranspositionTable = struct {
             std.debug.print("Hash size in MB: {}\n", .{size * BUCKET_SIZE * @sizeOf(scoreEntry) / MB});
         }
         self.ttArray = try tt_allocator.alloc([BUCKET_SIZE]scoreEntry, size);
-        self.bucket_size = 0x80; // Lock granularity (buckets per lock)
+        self.bucket_size = 4096; // Lock granularity (buckets per lock)
         const num_locks = (size + self.bucket_size - 1) / self.bucket_size;
         self.locks = try tt_allocator.alloc(SpinLock, num_locks);
         for (self.locks) |*lock| lock.* = SpinLock{};
@@ -183,7 +183,7 @@ pub const TranspositionTable = struct {
                 if (entry.move.is_empty()) e.move = e.move else e.move = entry.move;
                 if (entry.bound == Bound.BOUND_EXACT or
                     key != e.hash_key or
-                    entry.depth + 3 > e.depth or
+                    entry.depth + 5 > e.depth or
                     e.age != current_age)
                 {
                     e.* = entry;
@@ -193,7 +193,7 @@ pub const TranspositionTable = struct {
 
             // Calculate "value" of this entry (lower is less valuable)
             const age_diff = @as(i32, MAX_AGE + current_age - e.age) & MAX_AGE;
-            const value = @as(i32, e.depth) - age_diff * 3;
+            const value = @as(i32, e.depth) - age_diff * 4;
             if (value < best_value) {
                 best_value = value;
                 replace_idx = i;
@@ -210,7 +210,7 @@ pub const TranspositionTable = struct {
         // Overwrite if new entry is more valuable
         if (entry.bound == Bound.BOUND_EXACT or
             key != bucket[replace_idx].hash_key or
-            entry.depth + 3 > bucket[replace_idx].depth or
+            entry.depth + 5 > bucket[replace_idx].depth or
             bucket[replace_idx].age != current_age)
         {
             bucket[replace_idx] = entry;

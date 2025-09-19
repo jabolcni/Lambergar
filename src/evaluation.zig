@@ -135,6 +135,17 @@ const CENTER = [64]i32{
     // zig fmt: on
 };
 
+const KING_CENTER = [64]i32{
+    -90, -80, -70, -60, -60, -70, -80, -90,
+    -80, -60, -50, -40, -40, -50, -60, -80,
+    -70, -50, -30, -20, -20, -30, -50, -70,
+    -60, -40, -20,   0,   0, -20, -40, -60,
+    -60, -40, -20,   0,   0, -20, -40, -60,
+    -70, -50, -30, -20, -20, -30, -50, -70,
+    -80, -60, -50, -40, -40, -50, -60, -80,
+    -90, -80, -70, -60, -60, -70, -80, -90,
+};
+
 const MATE_ON_A1_H8 = [64]i32{
     // zig fmt: off
     0, 10, 20, 30, 40, 50, 60, 70,
@@ -179,7 +190,7 @@ pub inline fn distance(sq1: u6, sq2: u6) u4 {
         // zig fmt: on       
     };
 
-    const drank:i8 = @as(i8,@intCast(position.rank_of_u6(sq1)))-@as(i8,@intCast(position.rank_of_u6(sq2)));
+    const drank = @as(i8,@intCast(position.rank_of_u6(sq1)))-@as(i8,@intCast(position.rank_of_u6(sq2)));
     const dfile = @as(i8,@intCast(position.file_of_u6(sq1)))-@as(i8,@intCast(position.file_of_u6(sq2)));
     return dist[@as(u7, (@intCast(drank*drank + dfile*dfile)))];
 
@@ -459,11 +470,19 @@ pub const Evaluation = struct {
         return e * perspective;
     }
 
+    pub fn adjust_eval(self: *Evaluation, pos: *Position, score: i32) i32 {
+
+            const phase_bounded = @min(self.phase[Color.White.toU4()]+self.phase[Color.Black.toU4()], 64);
+            const scale: i32 = 320 + 2 * @as(i32,@intCast(phase_bounded));
+            var e = @divTrunc(score * scale, 448);
+            e = @divTrunc(e * (150 - pos.history[pos.game_ply].fifty), 150);
+            //curr_accu.eval = e;
+            return e;
+    }
+
     pub fn eval(self: *Evaluation, pos: *Position, comptime perspective_color: Color) i32 {
 
         if (nnue.engine_using_nnue) {
-
-            //const curr_accu = nnue.refresh_accumulator(pos.*);
 
             const curr_accu: *nnue.Accumulator = &pos.history[pos.game_ply].accumulator;
             if (curr_accu.computed_score) {
@@ -471,13 +490,11 @@ pub const Evaluation = struct {
             }
 
             nnue.incremental_update(pos);
-            curr_accu.eval = nnue.evaluate(curr_accu.*, perspective_color)+20;
+            curr_accu.eval = nnue.evaluate(curr_accu.*, perspective_color);
             curr_accu.computed_score = true;
+            
             return curr_accu.eval;
 
-            //var e =  nnue.evaluate(curr_accu, perspective_color);
-            //e = @min(@max(e, -2000), 2000);
-            //return e;// + self.end_game_eval(pos, perspective_color);
         } else {
             return self.evalHCE(pos, perspective_color);
         }
@@ -1475,5 +1492,252 @@ pub inline fn get_queen_mobility_score(index: u7) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] = mg_queen_mobility[index];
     score[1] = eg_queen_mobility[index];
+    return score;
+}
+
+
+pub fn passed_pawn_support_bonus(pos: *Position, comptime color: Color) i32 {
+    var score: i32 = 0;
+
+    const their_color = color.change_side();
+    const king_sq = bb.get_ls1b_index(pos.bitboard_of_pt(color, PieceType.King));
+    //const all_pieces = pos.all_pieces(Color.White) | pos.all_pieces(Color.Black);
+
+    // Select passed pawn mask and direction based on color
+    const passed_mask = if (color == Color.White)
+        WhitePassedPawnMask
+    else
+        BlackPassedPawnMask;
+
+    const pawns = pos.bitboard_of_pt(color, PieceType.Pawn);
+    var b = pawns;
+
+    while (b != 0) {
+        const sq = bb.pop_lsb(&b);
+        // Check if it's a passed pawn
+        if ((passed_mask[sq] & pos.bitboard_of_pt(their_color, PieceType.Pawn)) == 0) {
+            // Distance from king to pawn
+            const pawn_rank = position.rank_of_u6(sq);
+            const pawn_file = position.file_of_u6(sq);
+            const king_rank = position.rank_of_u6(king_sq);
+            const king_file = position.file_of_u6(king_sq);
+
+            const dist = @abs(king_rank - pawn_rank) + @abs(king_file - pawn_file);
+
+            // Closer king gets more bonus
+            const bonus: i32 = switch (dist) {
+                1 => 40,
+                2 => 30,
+                3 => 20,
+                4 => 10,
+                else => 0,
+            };
+
+            score += bonus;
+        }
+    }
+
+    return score;
+}
+
+
+pub fn evaluate_pawn_race(pos: *Position, perspective: Color) i32 {
+    var score: i32 = 0;
+
+    const white_king_sq = bb.get_ls1b_index(pos.bitboard_of_pt(Color.White, PieceType.King));
+    const black_king_sq = bb.get_ls1b_index(pos.bitboard_of_pt(Color.Black, PieceType.King));
+
+    // Find closest white and black pawns to promotion
+    var min_white_dist: i32 = 8;
+    var min_black_dist: i32 = 8;
+
+    // Evaluate white pawns
+    var w_pawns = pos.bitboard_of_pt(Color.White, PieceType.Pawn);
+    while (w_pawns != 0) {
+        const sq = bb.pop_lsb(&w_pawns);
+        const r = position.rank_of_u6(sq);
+        const dist = 7 - r; // distance to 8th rank
+        if (dist < min_white_dist) {
+            min_white_dist = dist;
+        }
+    }
+
+    // Evaluate black pawns
+    var b_pawns = pos.bitboard_of_pt(Color.Black, PieceType.Pawn);
+    while (b_pawns != 0) {
+        const sq = bb.pop_lsb(&b_pawns);
+        const r = position.rank_of_u6(sq);
+        const dist = r; // distance to 1st rank
+        if (dist < min_black_dist) {
+            min_black_dist = dist;
+        }
+    }
+
+    // If no pawns on one or both sides, not a pawn race
+    if (min_white_dist == 8 or min_black_dist == 8) return 0;
+
+    // Tempo matters: side to move gets +1 advantage
+    const tempo: i32 = if (pos.side_to_play == perspective) 1 else 0;
+
+    // Calculate effective distances (king support)
+    const wk_rank = position.rank_of_u6(white_king_sq);
+    const wk_file = position.file_of_u6(white_king_sq);
+    const bk_rank = position.rank_of_u6(black_king_sq);
+    const bk_file = position.file_of_u6(black_king_sq);
+
+    // Distance from kings to the target squares
+    const white_king_to_target = @abs(wk_rank - 7) + @abs(wk_file - position.file_of_u6(bb.get_ls1b_index(pos.bitboard_of_pt(Color.White, PieceType.Pawn))));
+    const black_king_to_target = @abs(bk_rank - 0) + @abs(bk_file - position.file_of_u6(bb.get_ls1b_index(pos.bitboard_of_pt(Color.Black, PieceType.Pawn))));
+
+    // Adjusted race formula:
+    // Positive score favors white, negative favors black
+    const white_score = min_white_dist - ((white_king_to_target + 1) / 2) + tempo;
+    const black_score = min_black_dist - ((black_king_to_target + 1) / 2);
+
+    if (white_score < black_score) {
+        score += 50; // White is ahead in race
+    } else if (black_score < white_score) {
+        score -= 50; // Black is ahead
+    }
+
+    return score;
+}
+
+fn distance_to_center(sq: u6) i32 {
+    return @as(i32, distance(sq, @as(u6, 27)));
+}
+
+fn king_activity_in_bishop_knight_endings(pos: *Position) i32 {
+    var score: i32 = 0;
+
+    const white_king = bb.get_ls1b_index(pos.bitboard_of_pt(Color.White, PieceType.King));
+    const black_king = bb.get_ls1b_index(pos.bitboard_of_pt(Color.Black, PieceType.King));
+
+    const white_bishop = pos.bitboard_of_pt(Color.White, PieceType.Bishop);
+    const black_bishop = pos.bitboard_of_pt(Color.Black, PieceType.Bishop);
+    const white_knight = pos.bitboard_of_pt(Color.White, PieceType.Knight);
+    const black_knight = pos.bitboard_of_pt(Color.Black, PieceType.Knight);
+
+    // Helper to calculate king activity advantage
+    const calc_king_activity = struct {
+        fn eval(_white_king: u6, _black_king: u6, is_white_bishop_side: bool) i32 {
+            const white_dist = distance_to_center(_white_king);
+            const black_dist = distance_to_center(_black_king);
+            const diff = if (is_white_bishop_side)
+                black_dist - white_dist
+            else
+                white_dist - black_dist;
+            return diff * 5;
+        }
+    }.eval;
+
+    // Case 1: White has bishop, Black has knight
+    if (white_bishop != 0 and black_knight != 0) {
+        score += calc_king_activity(white_king, black_king, true);
+    }
+
+    // Case 2: Black has bishop, White has knight
+    if (black_bishop != 0 and white_knight != 0) {
+        score += calc_king_activity(white_king, black_king, false);
+    }
+
+    return score;
+}
+
+fn bishop_knight_pawn_evaluation(pos: *Position) i32 {
+    var score: i32 = 0;
+
+    const white_bishop = pos.bitboard_of_pt(Color.White, PieceType.Bishop);
+    const black_bishop = pos.bitboard_of_pt(Color.Black, PieceType.Bishop);
+    const white_knight = pos.bitboard_of_pt(Color.White, PieceType.Knight);
+    const black_knight = pos.bitboard_of_pt(Color.Black, PieceType.Knight);
+
+    // White bishop vs black knight scenario
+    if (white_bishop != 0 and black_knight != 0) {
+        const bishop_sq = bb.get_ls1b_index(white_bishop);
+        const bishop_color = (position.rank_of_u6(bishop_sq) + position.file_of_u6(bishop_sq)) % 2;
+
+        var pawns = pos.bitboard_of_pt(Color.Black, PieceType.Pawn);
+        while (pawns != 0) {
+            const sq = bb.pop_lsb(&pawns);
+            const pawn_color = (position.rank_of_u6(sq) + position.file_of_u6(sq)) % 2;
+            
+            // Penalize bishop if enemy pawns are on same color
+            if (pawn_color == bishop_color) {
+                score += 40;
+            }
+        }
+    }
+
+    // Black bishop vs white knight scenario
+    if (black_bishop != 0 and white_knight != 0) {
+        const bishop_sq = bb.get_ls1b_index(black_bishop);
+        const bishop_color = (position.rank_of_u6(bishop_sq) + position.file_of_u6(bishop_sq)) % 2;
+
+        var pawns = pos.bitboard_of_pt(Color.White, PieceType.Pawn);
+        while (pawns != 0) {
+            const sq = bb.pop_lsb(&pawns);
+            const pawn_color = (position.rank_of_u6(sq) + position.file_of_u6(sq)) % 2;
+            
+            if (pawn_color == bishop_color) {
+                score -= 40;
+            }
+        }
+    }
+
+    return score;
+}
+
+
+fn compare_bishop_knight_mobility(pos: *Position) i32 {
+    var score: i32 = 0;
+
+    const white_bishop = pos.bitboard_of_pt(Color.White, PieceType.Bishop);
+    const black_bishop = pos.bitboard_of_pt(Color.Black, PieceType.Bishop);
+    const white_knight = pos.bitboard_of_pt(Color.White, PieceType.Knight);
+    const black_knight = pos.bitboard_of_pt(Color.Black, PieceType.Knight);
+
+    const white_king = pos.bitboard_of_pt(Color.White, PieceType.King);
+    const black_king = pos.bitboard_of_pt(Color.Black, PieceType.King);
+
+    // Helper to compute mobility difference in bishop vs knight scenario
+    const bishop_knight_compare = struct {
+        fn eval(
+            pos2: *Position,
+            bishop: u64,
+            knight: u64,
+            is_white: bool,
+        ) i32 {
+            const occ = pos2.all_pieces(Color.White) | pos2.all_pieces(Color.Black);
+            const bishop_sq = bb.get_ls1b_index(bishop);
+            const knight_sq = bb.get_ls1b_index(knight);
+
+            const bishop_moves = attacks.get_bishop_attacks(bishop_sq, occ);
+            const knight_moves = attacks.piece_attacks(knight_sq, occ, PieceType.Knight);
+
+            const bishop_mob = bb.pop_count(bishop_moves);
+            const knight_mob = bb.pop_count(knight_moves);
+
+            const mobility_diff: i32 = @as(i32,bishop_mob) - @as(i32,knight_mob);
+            return if (is_white) mobility_diff else -mobility_diff;
+        }
+    }.eval;
+
+    // Case 1: White Bishop vs Black Knight
+    if (white_bishop != 0 and black_knight != 0 and
+        (pos.all_pieces(Color.White) == white_bishop | white_king) and
+        (pos.all_pieces(Color.Black) == black_knight | black_king))
+    {
+        score += bishop_knight_compare(pos, white_bishop, black_knight, true) * 8;
+    }
+
+    // Case 2: Black Bishop vs White Knight
+    if (black_bishop != 0 and white_knight != 0 and
+        (pos.all_pieces(Color.White) == white_knight | white_king) and
+        (pos.all_pieces(Color.Black) == black_bishop | black_king))
+    {
+        score += bishop_knight_compare(pos, black_bishop, white_knight, false) * 8;
+    }
+
     return score;
 }

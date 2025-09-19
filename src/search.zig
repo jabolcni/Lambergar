@@ -187,14 +187,18 @@ pub const Search = struct {
     dextension: [MAX_PLY + 1]i8 = undefined,
     mv_counter: [position.NPIECES][64]Move = undefined,
     sc_history: [2][64][64]i32 = undefined,
-    sc_counter_table: [position.NPIECES][64][position.NPIECES][64]i32 = undefined,
-    sc_follow_table: [position.NPIECES][64][position.NPIECES][64]i32 = undefined,
+    sc_hist_table: [position.NPIECES][64][position.NPIECES][64]i32 = undefined,
+    pawn_corr: [history.CORRHIST_SIZE][2]i32 = undefined,
+    major_corr: [history.CORRHIST_SIZE][2]i32 = undefined,
+    minor_corr: [history.CORRHIST_SIZE][2]i32 = undefined,
+    non_pawn_corr: [history.CORRHIST_SIZE][2][2]i32 = undefined,
 
     ns_stack: [MAX_PLY + 4]NodeState = undefined,
 
     manager: SearchManager = undefined,
 
     non_terminal_nodes: u64 = 0, // Nodes with legal moves
+    beta_cutoffs: u64 = 0, // New counter for beta cutoffs
 
     pub fn new() Search {
         return Search{};
@@ -234,6 +238,21 @@ pub const Search = struct {
         }
     }
 
+    inline fn clear_corr_history(self: *Search) void {
+        for (0..history.CORRHIST_SIZE) |i| {
+            self.pawn_corr[i][0] = 0;
+            self.pawn_corr[i][1] = 0;
+            self.major_corr[i][0] = 0;
+            self.major_corr[i][1] = 0;
+            self.minor_corr[i][0] = 0;
+            self.minor_corr[i][1] = 0;
+            self.non_pawn_corr[i][0][0] = 0;
+            self.non_pawn_corr[i][0][1] = 0;
+            self.non_pawn_corr[i][1][0] = 0;
+            self.non_pawn_corr[i][1][1] = 0;
+        }
+    }
+
     inline fn age_sc_history(self: *Search) void {
         for (0..2) |pc| {
             for (0..64) |sq1| {
@@ -249,8 +268,7 @@ pub const Search = struct {
             for (0..64) |j| {
                 for (0..position.NPIECES) |k| {
                     for (0..64) |l| {
-                        self.sc_follow_table[i][j][k][l] = 0;
-                        self.sc_counter_table[i][j][k][l] = 0;
+                        self.sc_hist_table[i][j][k][l] = 0;
                     }
                 }
             }
@@ -272,11 +290,7 @@ pub const Search = struct {
     }
 
     pub inline fn get_ch(self: *Search, p_piece: u4, parent_to: u6, piece: u4, move_to: u6) i32 {
-        return (&self.sc_counter_table)[p_piece][parent_to][piece][move_to];
-    }
-
-    pub inline fn get_fh(self: *Search, gp_piece: u4, gparent_to: u6, piece: u4, move_to: u6) i32 {
-        return (&self.sc_follow_table)[gp_piece][gparent_to][piece][move_to];
+        return (&self.sc_hist_table)[p_piece][parent_to][piece][move_to];
     }
 
     pub fn clear_for_new_game(self: *Search) void {
@@ -286,6 +300,7 @@ pub const Search = struct {
         self.clear_sc_history();
         self.clear_node_state_stack();
         self.clear_sc_follow_table();
+        self.clear_corr_history();
 
         self.best_move = Move.empty();
         self.stop_on_time = false;
@@ -296,15 +311,17 @@ pub const Search = struct {
         self.ply = 0;
         self.max_depth = MAX_DEPTH - 1;
         self.seldepth = 0;
+        self.beta_cutoffs = 0; // Reset beta cutoffs
     }
 
     pub fn clear_for_new_search(self: *Search) void {
-        self.clear_pv_table();
-        self.clear_mv_killer();
-        self.clear_mv_counter();
-        self.clear_sc_history();
-        self.clear_node_state_stack();
-        //self.clear_sc_follow_table();
+        // self.clear_pv_table();
+        // self.clear_mv_killer();
+        // self.clear_mv_counter();
+        // self.clear_sc_history();
+        // self.clear_node_state_stack();
+        // //self.clear_sc_follow_table();
+        // self.clear_corr_history();
 
         self.best_move = Move.empty();
         self.stop_on_time = false;
@@ -313,6 +330,7 @@ pub const Search = struct {
         self.nodes = 0;
         self.non_terminal_nodes = 0;
         self.ply = 0;
+        self.beta_cutoffs = 0; // Reset beta cutoffs
     }
 
     pub inline fn check_stop_conditions(self: *Search) bool {
@@ -327,7 +345,7 @@ pub const Search = struct {
             return true;
         }
 
-        if (self.nodes & 1024 == 0 and ((self.timer.read() / std.time.ns_per_ms) >= self.manager.max_ms)) {
+        if (self.nodes & 1023 == 0 and ((self.timer.read() / std.time.ns_per_ms) >= self.manager.max_ms)) {
             self.stop = true;
             self.stop_on_time = true;
             return true;
@@ -395,6 +413,7 @@ pub const Search = struct {
         const start = Instant.now() catch unreachable;
         self.nodes = 0;
         self.non_terminal_nodes = 0;
+        self.beta_cutoffs = 0; // Reset beta cutoffs
 
         mainloop: while (it_depth <= self.max_depth) {
             self.ply = 0;
@@ -404,6 +423,7 @@ pub const Search = struct {
 
             const start_nodes = self.nodes;
             const start_non_terminal = self.non_terminal_nodes;
+            const start_beta_cutoffs = self.beta_cutoffs;
 
             if (depth >= 4) {
                 delta = 5;
@@ -479,9 +499,15 @@ pub const Search = struct {
 
             const nodes_used = self.nodes - start_nodes;
             const non_terminal_used = self.non_terminal_nodes - start_non_terminal;
+            const beta_cutoffs_used = self.beta_cutoffs - start_beta_cutoffs;
 
             const mbf: f32 = if (non_terminal_used > 0)
                 @as(f32, @floatFromInt(nodes_used)) / @as(f32, @floatFromInt(non_terminal_used))
+            else
+                0.0;
+
+            const search_eff: f32 = if (non_terminal_used > 0)
+                (@as(f32, @floatFromInt(beta_cutoffs_used)) / @as(f32, @floatFromInt(non_terminal_used))) * 100.0
             else
                 0.0;
 
@@ -495,7 +521,7 @@ pub const Search = struct {
             } else {
                 _ = std.fmt.format(stdout, "cp {} ", .{score}) catch unreachable;
             }
-            _ = std.fmt.format(stdout, "depth {} seldepth {} nodes {} nps {d} time {d} hashfull {d} mbf {d:.2} pv ", .{ it_depth, self.seldepth, self.nodes, nps, elapsed_ms, est_hash_full, mbf }) catch unreachable;
+            _ = std.fmt.format(stdout, "depth {} seldepth {} nodes {} nps {d} time {d} hashfull {d} mbf {d:.2} bc {d:.2} pv ", .{ it_depth, self.seldepth, self.nodes, nps, elapsed_ms, est_hash_full, mbf, search_eff }) catch unreachable;
 
             var next_ply: usize = 0;
             while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
@@ -697,7 +723,8 @@ pub const Search = struct {
             depth -= 1;
         }
 
-        const static_eval = pos.eval.eval(pos, me);
+        var static_eval = pos.eval.eval(pos, me) + history.get_correction(self, pos);
+        static_eval = pos.eval.adjust_eval(pos, static_eval);
         best_score = static_eval;
 
         self.ns_stack[self.ply].eval = static_eval;
@@ -816,26 +843,25 @@ pub const Search = struct {
 
             const sc_hist: i32 = self.get_sh(me.toU4(), move.from, move.to);
             var cm_hist: i32 = 0;
-            var fm_hist: i32 = 0;
 
             if (self.ply >= 1) {
                 const parent = self.ns_stack[self.ply - 1].move;
                 const p_piece = self.ns_stack[self.ply - 1].piece;
                 cm_hist += self.get_ch(p_piece.toU4(), parent.to, piece.toU4(), move.to);
             }
-
             if (self.ply >= 2) {
                 const gparent = self.ns_stack[self.ply - 2].move;
                 const gp_piece = self.ns_stack[self.ply - 2].piece;
-                fm_hist += self.get_fh(gp_piece.toU4(), gparent.to, piece.toU4(), move.to);
+                cm_hist += self.get_ch(gp_piece.toU4(), gparent.to, piece.toU4(), move.to);
             }
-            const full_hist = sc_hist + cm_hist + fm_hist;
+
+            const full_hist = sc_hist + cm_hist;
 
             if (!is_root and best_score > MATED_IN_MAX) {
                 if (mv_quiet) {
                     if (skip_quiets) continue;
 
-                    if (depth <= histroy_depth[improving] and (cm_hist + fm_hist) < cm_history_limit[improving]) {
+                    if (depth <= histroy_depth[improving] and cm_hist < cm_history_limit[improving]) {
                         continue;
                     }
 
@@ -995,6 +1021,7 @@ pub const Search = struct {
                         if (mv_quiet) {
                             history.update_all_history(self, move, quiet_list, quet_mv_pieces, depth, me);
                         }
+                        self.beta_cutoffs += 1;
                         break;
                     }
                 }
@@ -1003,6 +1030,10 @@ pub const Search = struct {
 
         tt_bound = if (best_score >= beta) tt.Bound.BOUND_LOWER else if (alpha != _alpha) tt.Bound.BOUND_EXACT else tt.Bound.BOUND_UPPER;
         if (!skip_move) {
+            if (!in_check and best_move.is_quiet() and !(tt_bound == tt.Bound.BOUND_LOWER and best_score <= static_eval) and !(tt_bound == tt.Bound.BOUND_UPPER and best_score >= static_eval)) {
+                history.update_corr_history(self, pos, static_eval, best_score, depth);
+            }
+
             tt.TT.store(tt.scoreEntry.new(pos.hash, best_move, tt.TT.to_hash_score(best_score, self.ply), tt_bound, depth, tt.TT.age));
         }
 
@@ -1141,6 +1172,11 @@ pub const Search = struct {
 
         if (pos.is_draw()) return 1 - (@as(i32, @intCast(self.nodes & 2)));
 
+        // if (alpha < 0 and pos.upcoming_repetition()) {
+        //     alpha = 0;
+        //     if (alpha >= beta) return alpha;
+        // }
+
         const entry = tt.TT.fetch(pos.hash);
         const tt_hit: bool = if (entry != null) true else false;
 
@@ -1165,7 +1201,9 @@ pub const Search = struct {
         if (in_check) {
             best_score = -MATE_VALUE + @as(i32, self.ply);
         } else {
-            best_score = pos.eval.eval(pos, me);
+            best_score = pos.eval.eval(pos, me) + history.get_correction(self, pos);
+            best_score = pos.eval.adjust_eval(pos, best_score);
+            //self.ns_stack[self.ply].eval = best_score;
 
             if (tt_hit) {
                 if ((tt_bound == tt.Bound.BOUND_LOWER and tt_score > best_score) or
@@ -1179,6 +1217,9 @@ pub const Search = struct {
             if (best_score >= beta) return best_score;
             if (best_score > alpha) alpha = best_score;
         }
+
+        // if (best_score >= beta) return best_score;
+        // if (best_score > alpha) alpha = best_score;
 
         var best_move = Move.empty();
 
@@ -1207,9 +1248,7 @@ pub const Search = struct {
 
             // SEE pruning with depth-dependent threshold
             const see_val = ms.see_value(pos, move, false);
-            // if (!in_check and see_val < -depth * 50) {
-            //     continue;
-            // }
+
             if (!in_check and see_val < -1) continue;
 
             // make move

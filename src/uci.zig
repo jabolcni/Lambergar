@@ -133,7 +133,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
         const command = words.next().?;
 
         if (std.mem.eql(u8, command, "uci")) {
-            _ = try std.fmt.format(stdout, "id name Lambergar 1.2\n", .{});
+            _ = try std.fmt.format(stdout, "id name Lambergar 1.3\n", .{});
             _ = try std.fmt.format(stdout, "id author Janez Podobnik\n", .{});
             _ = try std.fmt.format(stdout, "option name Hash type spin default {d} min {d} max {d}\n", .{ HASH_SIZE_DEFAULT, HASH_SIZE_MIN, HASH_SIZE_MAX });
             _ = try std.fmt.format(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, MAX_THREADS });
@@ -249,7 +249,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                 const _delta: i32 = @as(i32, 5 + @divFloor(@as(i32, @intCast(i)), 2) * 2);
                 //const _delta: i32 = @as(i32, 9); //2 + @as(i32, @intCast(i)));
                 threads[i] = std.Thread.spawn(.{}, search.start_search, .{ &thinkers[i], &pos[i], _delta }) catch |e| {
-                    std.debug.print("Error spawning thread {}: {}\n", .{ i, e });
+                    _ = try std.fmt.format(stdout, "Error spawning thread {}: {}\n", .{ i, e });
                     unreachable;
                 };
             }
@@ -292,7 +292,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     if (std.mem.eql(u8, arg, "value")) {
                         num_threads = usize_from_str(words.next() orelse continue);
                         @atomicStore(bool, &thinkers[0].stop, true, .seq_cst);
-                        std.debug.print("Threads set to: {}\n", .{num_threads});
+                        _ = try std.fmt.format(stdout, "Threads set to: {}\n", .{num_threads});
                     } else continue;
                 } else if (std.mem.eql(u8, arg, "UseNNUE")) {
                     arg = words.next().?;
@@ -371,12 +371,12 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
             for (0..list.count) |i| {
                 const move = list.moves[i];
-                std.debug.print("\n{}. ", .{i});
+                _ = try std.fmt.format(stdout, "\n{}. ", .{i});
                 move.print();
             }
-            std.debug.print("\n", .{});
+            _ = try std.fmt.format(stdout, "\n", .{});
         } else if (std.mem.eql(u8, command, "eval")) {
-            std.debug.print("{d} (from white's perspective)\n", .{pos[0].eval.eval(&pos[0], Color.White)});
+            _ = try std.fmt.format(stdout, "{d} (from white's perspective)\n", .{pos[0].eval.eval(&pos[0], Color.White)});
         } else if (std.mem.eql(u8, command, "perft")) {
             const depth = u32_from_str(words.next() orelse "1");
             const report = perft.perft_test(&pos[0], @as(u4, @intCast(depth)));
@@ -394,7 +394,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             } else {
                 _ = try std.fmt.format(stdout, "{d:.3}MN/s\n", .{nps / 1_000_000});
             }
-        } else if (std.mem.eql(u8, command, "see")) {
+        } else if (std.mem.eql(u8, command, "seepos")) {
             var list: MoveList = .{};
 
             if (pos[0].side_to_play == Color.White) {
@@ -403,15 +403,24 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                 pos[0].generate_legals(Color.Black, &list);
             }
 
-            std.debug.print("SEE thresholds\n", .{});
+            _ = try std.fmt.format(stdout, "SEE thresholds\n", .{});
 
             for (0..list.count) |i| {
                 const move = list.moves[i];
                 const thr = ms.see_value(&pos[0], move, false);
-                std.debug.print("{}. ", .{i});
+                _ = try std.fmt.format(stdout, "{}. ", .{i});
                 move.print();
-                std.debug.print(" SEE result: {}\n", .{thr});
+                _ = try std.fmt.format(stdout, " SEE result: {}\n", .{thr});
             }
+        } else if (std.mem.eql(u8, command[0..3], "see")) {
+            const move_str = command[4..];
+            const move = Move.parse_move(move_str, &pos[0]) catch continue; // Parse UCI move
+            if (move.is_empty()) {
+                _ = try std.fmt.format(stdout, "Invalid move format\n", .{});
+                continue;
+            }
+            const see_val = ms.see_value(&pos[0], move, false);
+            _ = try std.fmt.format(stdout, "\nsee_value {}\n", .{see_val});
         }
     }
 
