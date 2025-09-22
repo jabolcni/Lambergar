@@ -173,7 +173,7 @@ const MATE_ON_A8_H1 = [64]i32{
     };
 
 
-pub inline fn distance(sq1: u6, sq2: u6) u4 {
+pub  fn distance(sq1: u6, sq2: u6) u4 {
 
     const dist = [100]u4{
         // zig fmt: off
@@ -217,7 +217,7 @@ pub const Evaluation = struct {
     eval_eg: i32 = 0,
     phase: [2]u8 = [1]u8{0} ** 2,
 
-    pub inline fn put_piece(self: *Evaluation, pc: Piece, s_idx: u6) void {
+    pub  fn put_piece(self: *Evaluation, pc: Piece, s_idx: u6) void {
 
         const pc_type_idx = pc.type_of().toU3();
 
@@ -240,7 +240,7 @@ pub const Evaluation = struct {
         }
     }
 
-    pub inline fn remove_piece(self: *Evaluation, pc: Piece, s_idx: u6) void {
+    pub  fn remove_piece(self: *Evaluation, pc: Piece, s_idx: u6) void {
 
         const pc_type_idx = pc.type_of().toU3();
 
@@ -265,7 +265,7 @@ pub const Evaluation = struct {
         }     
     }
 
-    pub inline fn move_piece_quiet(self: *Evaluation, pc: Piece, from: u6, to: u6) void {
+    pub  fn move_piece_quiet(self: *Evaluation, pc: Piece, from: u6, to: u6) void {
         const pc_type_idx = pc.type_of().toU3();
 
         if (pc != Piece.NO_PIECE) {
@@ -286,14 +286,14 @@ pub const Evaluation = struct {
 
     }
 
-    pub inline fn move_piece(self: *Evaluation, from_pc: Piece, to_pc: Piece, from: u6, to: u6) void {
+    pub  fn move_piece(self: *Evaluation, from_pc: Piece, to_pc: Piece, from: u6, to: u6) void {
 
         self.remove_piece(to_pc, to);
         self.move_piece_quiet(from_pc, from, to);
 
     }
 
-    pub inline fn put_piece_update_phase(self: *Evaluation, pc: Piece) void {
+    pub  fn put_piece_update_phase(self: *Evaluation, pc: Piece) void {
 
         const pc_type_idx = pc.type_of().toU3();
 
@@ -304,7 +304,7 @@ pub const Evaluation = struct {
         }
     }
 
-    pub inline fn remove_piece_update_phase(self: *Evaluation, pc: Piece) void {
+    pub  fn remove_piece_update_phase(self: *Evaluation, pc: Piece) void {
 
         const pc_type_idx = pc.type_of().toU3();
 
@@ -317,7 +317,7 @@ pub const Evaluation = struct {
         }     
     }
 
-    pub inline fn move_piece_update_phase(self: *Evaluation, to_pc: Piece) void {
+    pub  fn move_piece_update_phase(self: *Evaluation, to_pc: Piece) void {
         self.remove_piece_update_phase(to_pc);
     }    
 
@@ -1392,28 +1392,28 @@ pub const king_safety = [25]i32{
     -5, -5, -20, -25, -36, -56, -72, -90, -133, -190, -222, -252, -255, -178, -322, -332, -350, -370, -400, -422, -425, -430, -435, -440, -445,
 };
 
-pub inline fn get_passed_pawn_score(sq: u6) [2]i32 {
+pub  fn get_passed_pawn_score(sq: u6) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] = mg_passed_score[sq];
     score[1] = eg_passed_score[sq];
     return score;
 }
 
-pub inline fn get_isolated_pawn_score(file: u6) [2]i32 {
+pub  fn get_isolated_pawn_score(file: u6) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] += mg_isolated_pawn_score[file];
     score[1] += eg_isolated_pawn_score[file];
     return score;
 }
 
-pub inline fn get_blocked_passer_score(rank: u6) [2]i32 {
+pub  fn get_blocked_passer_score(rank: u6) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] = mg_blocked_passer_score[rank];
     score[1] = eg_blocked_passer_score[rank];
     return score;
 }
 
-pub inline fn get_pawn_threat(piece_type: PieceType) [2]i32 {
+pub  fn get_pawn_threat(piece_type: PieceType) [2]i32 {
     var score = [_]i32{ 0, 0 };
     const pt = piece_type.toU3();
     score[0] = mg_pawn_attacking[pt];
@@ -1421,7 +1421,7 @@ pub inline fn get_pawn_threat(piece_type: PieceType) [2]i32 {
     return score;
 }
 
-pub inline fn get_knight_threat(piece_type: PieceType) [2]i32 {
+pub  fn get_knight_threat(piece_type: PieceType) [2]i32 {
     var score = [_]i32{ 0, 0 };
     const pt = piece_type.toU3();
     score[0] = mg_knight_attacking[pt];
@@ -1429,7 +1429,7 @@ pub inline fn get_knight_threat(piece_type: PieceType) [2]i32 {
     return score;
 }
 
-pub inline fn get_bishop_threat(piece_type: PieceType) [2]i32 {
+pub  fn get_bishop_threat(piece_type: PieceType) [2]i32 {
     var score = [_]i32{ 0, 0 };
     const pt = piece_type.toU3();
     score[0] = mg_bishop_attacking[pt];
@@ -1437,7 +1437,7 @@ pub inline fn get_bishop_threat(piece_type: PieceType) [2]i32 {
     return score;
 }
 
-pub inline fn get_rook_threat(piece_type: PieceType) [2]i32 {
+pub  fn get_rook_threat(piece_type: PieceType) [2]i32 {
     var score = [_]i32{ 0, 0 };
     const pt = piece_type.toU3();
     score[0] = mg_rook_attacking[pt];
@@ -1445,7 +1445,7 @@ pub inline fn get_rook_threat(piece_type: PieceType) [2]i32 {
     return score;
 }
 
-pub inline fn get_queen_threat(piece_type: PieceType) [2]i32 {
+pub  fn get_queen_threat(piece_type: PieceType) [2]i32 {
     var score = [_]i32{ 0, 0 };
     const pt = piece_type.toU3();
     score[0] = mg_queen_attacking[pt];
@@ -1453,42 +1453,42 @@ pub inline fn get_queen_threat(piece_type: PieceType) [2]i32 {
     return score;
 }
 
-pub inline fn get_supported_pawn_bonus(rank: u6) [2]i32 {
+pub  fn get_supported_pawn_bonus(rank: u6) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] = mg_supported_pawn[rank];
     score[1] = eg_supported_pawn[rank];
     return score;
 }
 
-pub inline fn get_phalanx_score(rank: u6) [2]i32 {
+pub  fn get_phalanx_score(rank: u6) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] = mg_pawn_phalanx[rank];
     score[1] = eg_pawn_phalanx[rank];
     return score;
 }
 
-pub inline fn get_knight_mobility_score(index: u7) [2]i32 {
+pub  fn get_knight_mobility_score(index: u7) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] = mg_knigh_mobility[index];
     score[1] = eg_knigh_mobility[index];
     return score;
 }
 
-pub inline fn get_bishop_mobility_score(index: u7) [2]i32 {
+pub  fn get_bishop_mobility_score(index: u7) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] = mg_bishop_mobility[index];
     score[1] = eg_bishop_mobility[index];
     return score;
 }
 
-pub inline fn get_rook_mobility_score(index: u7) [2]i32 {
+pub  fn get_rook_mobility_score(index: u7) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] = mg_rook_mobility[index];
     score[1] = eg_rook_mobility[index];
     return score;
 }
 
-pub inline fn get_queen_mobility_score(index: u7) [2]i32 {
+pub  fn get_queen_mobility_score(index: u7) [2]i32 {
     var score = [_]i32{ 0, 0 };
     score[0] = mg_queen_mobility[index];
     score[1] = eg_queen_mobility[index];

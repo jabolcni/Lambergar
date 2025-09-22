@@ -45,7 +45,7 @@ pub const Tuner = struct {
         self.clear_probe_arrays();
     }
 
-    pub inline fn clear_probe_arrays(self: *Tuner) void {
+    pub fn clear_probe_arrays(self: *Tuner) void {
         @memset(self.mat[0][0..NPIECE_TYPES], @as(u8, 0));
         @memset(self.mat[1][0..NPIECE_TYPES], @as(u8, 0));
 

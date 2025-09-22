@@ -1,5 +1,19 @@
 # Release notes
 
+## Lambergar 1.4 Dev
+
+### Release Notes
+
+- Regular bug fixes
+- This version experimentally supports Syzygy end game table bases using Fathom library from Jon Dart
+  - new standard `uci` commands `SyzygyPath` and `SyzygyProbeDepth` added 
+  - new non-standard `uci` command `probe`: returns WDL from end game table bases
+  - new non-standard `uci` command `probebest`: returns WDL, DTZ, best move and rest of moves from end game table bases
+- Added `bench` argument for compatibility with OpenBench platform
+- Added bunch of zig tests
+- Added new folder `test` with python scripts for testing the engine
+- `uci` loop refactoring
+
 ## Lambergar 1.3
 
 ### Builds

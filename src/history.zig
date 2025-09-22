@@ -21,11 +21,11 @@ const MAX_CORRHIST = 16384;
 const CORRHIST_GRAIN = 256;
 const CORRHIST_WEIGHT_SCALE = 1024; // 2^10
 
-pub inline fn histoy_bonus(_entry: *i32, bonus: i32) void {
+pub fn histoy_bonus(_entry: *i32, bonus: i32) void {
     _entry.* += bonus - @divTrunc(_entry.* * @as(i32, @intCast(@abs(bonus))), history_divider);
 }
 
-inline fn corr_update(_entry: *i32, err: i32, weight: i32) void {
+fn corr_update(_entry: *i32, err: i32, weight: i32) void {
     const interp = (_entry.* * (CORRHIST_WEIGHT_SCALE - weight) + err * weight) >> 10;
     const clamped = std.math.clamp(interp, -MAX_CORRHIST, MAX_CORRHIST);
     _entry.* = @as(i32, @intCast(clamped));
@@ -130,7 +130,7 @@ pub fn update_all_history(search: *Search, move: Move, quet_moves: MoveList, que
     }
 }
 
-pub inline fn get_counter_move(search: *Search) Move {
+pub fn get_counter_move(search: *Search) Move {
     if (search.ply >= 1 and !search.ns_stack[search.ply - 1].is_null) {
         const parent = search.ns_stack[search.ply - 1].move;
         const pc = search.ns_stack[search.ply - 1].piece.toU4();

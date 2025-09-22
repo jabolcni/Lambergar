@@ -38,28 +38,28 @@ pub const DeltaPieces = struct {
         self.count = 0;
     }
 
-    pub inline fn move_piece_quiet(self: *DeltaPieces, pc: Piece, from: u6, to: u6) void {
+    pub fn move_piece_quiet(self: *DeltaPieces, pc: Piece, from: u6, to: u6) void {
         self.pieces[self.count] = pc.toU4();
         self.from[self.count] = from;
         self.to[self.count] = to;
         self.count += 1;
     }
 
-    pub inline fn remove_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
+    pub fn remove_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
         self.pieces[self.count] = pc.toU4();
         self.from[self.count] = sq;
         self.to[self.count] = null;
         self.count += 1;
     }
 
-    pub inline fn put_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
+    pub fn put_piece(self: *DeltaPieces, pc: Piece, sq: u6) void {
         self.pieces[self.count] = pc.toU4();
         self.from[self.count] = null;
         self.to[self.count] = sq;
         self.count += 1;
     }
 
-    pub inline fn move_piece(self: *DeltaPieces, from_pc: Piece, to_pc: Piece, from: u6, to: u6) void {
+    pub fn move_piece(self: *DeltaPieces, from_pc: Piece, to_pc: Piece, from: u6, to: u6) void {
         self.move_piece_quiet(from_pc, from, to);
         self.remove_piece(to_pc, to);
     }
@@ -278,62 +278,71 @@ pub fn init(allocator: std.mem.Allocator) !void {
     try load_output_layer(nnue_data);
 }
 
-inline fn orient(sq: u6, c: Color) u6 {
+fn orient(sq: u6, c: Color) u6 {
     return if (c == Color.White) sq else sq ^ 0x3F;
 }
 
-inline fn make_index(sq: u6, pc: u4, ksq: u6, color: Color) usize {
+fn make_index(sq: u6, pc: u4, ksq: u6, color: Color) usize {
     const ret = orient(sq, color) +
         PieceToIndex[color.toU4()][@as(usize, @intCast(pc))] +
         @intFromEnum(PS.END) * @as(usize, @intCast(ksq));
     return @as(usize, @intCast(ret));
 }
 
-fn propagate(
-    input: []u8,
-    biases: []const i32,
-    weights: []const i8,
-) i32 {
-    var sum: i32 = biases[0];
-    comptime var i = 0;
-    inline while (i < 16) : (i += 1) {
-        sum += @as(i32, input[i]) * @as(i32, weights[i]);
-    }
-    return sum;
-}
+// pub fn refresh_accumulator_side(pos: Position, accumulator: *Accumulator, comptime c: Color) void {
+//     var bitboard = pos.piece_bb[position.Piece.make_piece(c, PieceType.King).toU4()];
+//     const kingSquare = bb.pop_lsb(&bitboard);
+//     const orientedKingSquare = orient(kingSquare, c);
 
-fn transform(
-    curr_accu: Accumulator,
-    player: Color,
-    output: []u8,
-) void {
-    std.debug.assert(output.len == FT_OUT_DIM);
-    const Vec = @Vector(16, i16);
-    const VecU8 = @Vector(16, u8);
-    const accumulation = &(curr_accu.accumulation);
+//     std.mem.copyForwards(i16, accumulator.accumulation[c.toU4()][0..], &ft_bs);
 
-    var i: usize = 0;
-    while (i + 16 <= FT_HALF_DIM) : (i += 16) {
-        var sum_vec: Vec = accumulation[player.toU4()][i..][0..16].*;
-        var clamped_vec: Vec = @min(@max(sum_vec, @as(Vec, @splat(@as(i16, 0)))), @as(Vec, @splat(@as(i16, 127))));
-        output[i..][0..16].* = @as(VecU8, @intCast(clamped_vec));
+//     // Iterate over all pieces of the given color
+//     for (Piece.WHITE_PAWN.toU4()..Piece.BLACK_KING.toU4()) |pc| {
+//         //if (pc >= Piece.WHITE_KING.toU4() and pc < Piece.BLACK_PAWN.toU4()) continue;
+//         if (pc == Piece.WHITE_KING.toU4()) continue;
 
-        sum_vec = accumulation[player.change_side().toU4()][i..][0..16].*;
-        clamped_vec = @min(@max(sum_vec, @as(Vec, @splat(@as(i16, 0)))), @as(Vec, @splat(@as(i16, 127))));
-        output[FT_HALF_DIM + i ..][0..16].* = @as(VecU8, @intCast(clamped_vec));
-    }
-}
+//         bitboard = pos.piece_bb[pc];
+//         const ppc = @as(u4, @intCast(pc));
+
+//         while (bitboard != 0) {
+//             const square = bb.pop_lsb(&bitboard);
+
+//             // Compute index for the piece
+//             const index = make_index(square, ppc, orientedKingSquare, c);
+
+//             // Update accumulator with weights
+//             const offset = FT_HALF_DIM * index;
+
+//             // for (0..FT_HALF_DIM) |j| {
+//             //     accumulator.accumulation[c.toU4()][j] += ft_ws[offset + j];
+//             // }
+//             var j: usize = 0;
+//             while (j + 16 <= FT_HALF_DIM) : (j += 16) {
+//                 const acc_slice = accumulator.accumulation[c.toU4()][j..][0..16];
+//                 const ws_slice = ft_ws[offset + j ..][0..16];
+//                 const acc_vec: @Vector(16, i16) = acc_slice.*;
+//                 const ws_vec: @Vector(16, i16) = ws_slice.*;
+//                 (accumulator.accumulation[c.toU4()][j..][0..16]).* = acc_vec + ws_vec;
+//             }
+//         }
+//     }
+// }
 
 pub fn refresh_accumulator_side(pos: Position, accumulator: *Accumulator, comptime c: Color) void {
     var bitboard = pos.piece_bb[position.Piece.make_piece(c, PieceType.King).toU4()];
     const kingSquare = bb.pop_lsb(&bitboard);
     const orientedKingSquare = orient(kingSquare, c);
 
-    std.mem.copyForwards(i16, accumulator.accumulation[c.toU4()][0..], &ft_bs);
+    // Use SIMD to copy initial biases
+    const Vec16I16 = @Vector(16, i16);
+    var i: usize = 0;
+    while (i < FT_HALF_DIM) : (i += 16) {
+        const bias_vec: Vec16I16 = ft_bs[i..][0..16].*;
+        accumulator.accumulation[c.toU4()][i..][0..16].* = bias_vec;
+    }
 
-    // Iterate over all pieces of the given color
+    // Process pieces in batches where possible
     for (Piece.WHITE_PAWN.toU4()..Piece.BLACK_KING.toU4()) |pc| {
-        //if (pc >= Piece.WHITE_KING.toU4() and pc < Piece.BLACK_PAWN.toU4()) continue;
         if (pc == Piece.WHITE_KING.toU4()) continue;
 
         bitboard = pos.piece_bb[pc];
@@ -341,14 +350,15 @@ pub fn refresh_accumulator_side(pos: Position, accumulator: *Accumulator, compti
 
         while (bitboard != 0) {
             const square = bb.pop_lsb(&bitboard);
-
-            // Compute index for the piece
             const index = make_index(square, ppc, orientedKingSquare, c);
-
-            // Update accumulator with weights
             const offset = FT_HALF_DIM * index;
-            for (0..FT_HALF_DIM) |j| {
-                accumulator.accumulation[c.toU4()][j] += ft_ws[offset + j];
+
+            // Use SIMD for weight updates
+            i = 0;
+            while (i < FT_HALF_DIM) : (i += 16) {
+                const acc_vec: Vec16I16 = accumulator.accumulation[c.toU4()][i..][0..16].*;
+                const ws_vec: Vec16I16 = ft_ws[offset + i ..][0..16].*;
+                accumulator.accumulation[c.toU4()][i..][0..16].* = acc_vec + ws_vec;
             }
         }
     }
@@ -397,6 +407,8 @@ pub fn incremental_update(pos: *Position) void {
 
     const king_index: [2]u4 = .{ Piece.WHITE_KING.toU4(), Piece.BLACK_KING.toU4() };
 
+    const Vec16I16 = @Vector(16, i16);
+
     for (std.enums.values(Color)) |c| {
         const c_index = c.toU4();
 
@@ -427,8 +439,14 @@ pub fn incremental_update(pos: *Position) void {
 
                     // Update accumulator with weights
                     const offset = FT_HALF_DIM * index;
-                    for (0..FT_HALF_DIM) |j| {
-                        accumulator.accumulation[c_index][j] -= ft_ws[offset + j];
+                    // for (0..FT_HALF_DIM) |j| {
+                    //     accumulator.accumulation[c_index][j] -= ft_ws[offset + j];
+                    // }
+                    var j: usize = 0;
+                    while (j < FT_HALF_DIM) : (j += 16) {
+                        const acc_vec: Vec16I16 = accumulator.accumulation[c_index][j..][0..16].*;
+                        const ws_vec: Vec16I16 = ft_ws[offset + j ..][0..16].*;
+                        accumulator.accumulation[c_index][j..][0..16].* = acc_vec - ws_vec;
                     }
                 }
 
@@ -438,8 +456,14 @@ pub fn incremental_update(pos: *Position) void {
 
                     // Update accumulator with weights
                     const offset = FT_HALF_DIM * index;
-                    for (0..FT_HALF_DIM) |j| {
-                        accumulator.accumulation[c_index][j] += ft_ws[offset + j];
+                    // for (0..FT_HALF_DIM) |j| {
+                    //     accumulator.accumulation[c_index][j] += ft_ws[offset + j];
+                    // }
+                    var j: usize = 0;
+                    while (j < FT_HALF_DIM) : (j += 16) {
+                        const acc_vec: Vec16I16 = accumulator.accumulation[c_index][j..][0..16].*;
+                        const ws_vec: Vec16I16 = ft_ws[offset + j ..][0..16].*;
+                        accumulator.accumulation[c_index][j..][0..16].* = acc_vec + ws_vec;
                     }
                 }
             }
@@ -487,6 +511,53 @@ pub fn load_layer2(nnue_data: []u8) !void {
     }
 }
 
+fn propagate(
+    input: []u8,
+    biases: []const i32,
+    weights: []const i8,
+) i32 {
+    var sum: i32 = biases[0];
+    comptime var i = 0;
+    inline while (i < 16) : (i += 1) {
+        sum += @as(i32, input[i]) * @as(i32, weights[i]);
+    }
+    return sum;
+}
+
+fn transform(
+    curr_accu: Accumulator,
+    comptime player: Color,
+    output: []u8,
+) void {
+    std.debug.assert(output.len == FT_OUT_DIM);
+
+    const Vec = @Vector(16, i16);
+    const VecU8 = @Vector(16, u8);
+
+    const zero = @as(Vec, @splat(0));
+    const max127 = @as(Vec, @splat(@as(i16, 127)));
+
+    const accumulation = &curr_accu.accumulation;
+    //const p_idx = player.toU4();
+    const p_idx = if (player == Color.White) Color.White.toU4() else Color.Black.toU4();
+
+    //const opp_idx = player.change_side().toU4();
+    const opp_idx = if (player == Color.White) Color.Black.toU4() else Color.White.toU4();
+
+    var i: usize = 0;
+    //comptime var i = 0;
+    while (i + 16 <= FT_HALF_DIM) : (i += 16) {
+        const v1: Vec = accumulation[p_idx][i..][0..16].*;
+        const v2: Vec = accumulation[opp_idx][i..][0..16].*;
+
+        const c1 = @min(@max(v1, zero), max127);
+        const c2 = @min(@max(v2, zero), max127);
+
+        output[i..][0..16].* = @as(VecU8, @intCast(c1));
+        output[FT_HALF_DIM + i ..][0..16].* = @as(VecU8, @intCast(c2));
+    }
+}
+
 inline fn affine(
     input: []const u8,
     output: []u8,
@@ -515,18 +586,39 @@ inline fn affine(
     }
 }
 
-pub fn evaluate(curr_accu: Accumulator, player: Color) i32 {
-    const FV_SCALE = 16;
+// pub fn evaluate(curr_accu: Accumulator, comptime player: Color) i32 {
+//     const FV_SCALE = 16;
 
-    var input: [FT_OUT_DIM]u8 = undefined;
-    var l1_out: [L2]u8 = undefined;
-    var l2_out: [L2]u8 = undefined;
+//     var input: [FT_OUT_DIM]u8 = undefined;
+//     var l1_out: [L2]u8 = undefined;
+//     var l2_out: [L2]u8 = undefined;
+
+//     transform(curr_accu, player, &input);
+//     affine(&input, &l1_out, &l1_biases, &l1_weights, FT_OUT_DIM, L1_DIM);
+//     affine(&l1_out, &l2_out, &l2_biases, &l2_weights, L1_DIM, L2_DIM);
+
+//     const out_value = propagate(&l2_out, &out_biases, &out_weights);
+//     const ret = @divTrunc(out_value, FV_SCALE);
+//     return @as(i32, @intCast(ret));
+// }
+
+pub fn evaluate(curr_accu: Accumulator, comptime player: Color) i32 {
+    const FV_SCALE = 16;
+    //const QA = 127;
+
+    var input: [FT_OUT_DIM]u8 align(32) = undefined;
+    var l1_out: [L2]u8 align(32) = undefined;
+    var l2_out: [L2]u8 align(32) = undefined;
 
     transform(curr_accu, player, &input);
     affine(&input, &l1_out, &l1_biases, &l1_weights, FT_OUT_DIM, L1_DIM);
-    affine(&l1_out, &l2_out, &l2_biases, &l2_weights, L1_DIM, L2_DIM);
+    affine(&l1_out, &l2_out, &l2_biases, &l2_weights, L2_SIZE, L2_DIM);
 
-    const out_value = propagate(&l2_out, &out_biases, &out_weights);
-    const ret = @divTrunc(out_value, FV_SCALE);
-    return @as(i32, @intCast(ret));
+    var sum: i32 = out_biases[0];
+    var i: usize = 0;
+    while (i < OUT_SIZE) : (i += 1) {
+        sum += @as(i32, l2_out[i]) * @as(i32, out_weights[i]);
+    }
+
+    return @divTrunc(sum, FV_SCALE);
 }
