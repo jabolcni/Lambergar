@@ -2,13 +2,18 @@
 .EXPORT_ALL_VARIABLES:
 .DEFAULT_GOAL := build
 
-# Engine name
-ENGINE = lambergar
+# Default engine name
+ENGINE_COMP = lambergar
+
+# If EXE is provided by OpenBench, use it
+ifdef EXE
+    ENGINE = $(EXE)
+endif
 
 # Detect OS and set commands accordingly
 ifeq ($(OS),Windows_NT)
     # Windows commands
-    MOVE_CMD = move zig-out\\bin\\$(ENGINE).exe ./
+    MOVE_CMD = move zig-out\\bin\\$(ENGINE_COMP).exe ./$(ENGINE).exe
     RM_CMD = del /Q
     RMDIR_CMD = rmdir /S /Q
     EXE_SUFFIX = .exe
