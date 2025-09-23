@@ -19,7 +19,7 @@ ifeq ($(OS),Windows_NT)
     EXE_SUFFIX = .exe
 else
     # Linux commands (for future compatibility)
-    MOVE_CMD = mv ./zig-out/bin/$(ENGINE) ./
+    MOVE_CMD = mv ./zig-out/bin/$(ENGINE_COMP) ./$(ENGINE)
     RM_CMD = rm -f
     RMDIR_CMD = rm -rf
     EXE_SUFFIX =
