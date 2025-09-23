@@ -32,6 +32,7 @@ build:
 	zig build
 	@echo "Moving binary to current directory..."
 	@$(MOVE_CMD)
+	@echo "Moved binary to $(ENGINE)$(EXE_SUFFIX)"
 	@echo "Build complete: $(ENGINE)$(EXE_SUFFIX)"
 
 clean:
@@ -41,4 +42,5 @@ clean:
 	@if exist ".zig-cache" $(RMDIR_CMD) .zig-cache
 	@if exist "zig-out" $(RMDIR_CMD) zig-out
 	@echo "Clean complete"
+
 
