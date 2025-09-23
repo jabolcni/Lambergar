@@ -1,0 +1,17 @@
+# Zig build artifacts
+.zig-cache/
+zig-out/
+
+# Executable files in root directory
+/*.exe
+
+# For Unix/Linux executables (if needed)
+/*.out
+/*.bin
+
+# Additional Zig-related ignores (optional)
+*.o
+*.obj
+*.dll
+*.so
+*.dylib
