@@ -724,9 +724,9 @@ pub fn bench(allocator: std.mem.Allocator, depth: u32) !void {
     const elapsed_seconds = elapsed_nanos / 1_000_000_000;
     const nps: u46 = @intFromFloat(@as(f64, @floatFromInt(nodes)) / elapsed_seconds);
 
-    const elapsed_ms: u32 = @intFromFloat(elapsed_nanos / 1_000_000);
-    try printout(stdout, "{} nodes {} nps {} elapsed\n", .{ nodes, nps, elapsed_ms });
-    //try printout(stdout, "{} nodes {} nps\n", .{ nodes, nps });
+    //const elapsed_ms: u32 = @intFromFloat(elapsed_nanos / 1_000_000);
+    //try printout(stdout, "{} nodes {} nps {} elapsed\n", .{ nodes, nps, elapsed_ms });
+    try printout(stdout, "{} nodes {} nps\n", .{ nodes, nps });
 }
 
 test "perft for positions" {
@@ -933,3 +933,4 @@ test "SEE for positions" {
         }
     }
 }
+
