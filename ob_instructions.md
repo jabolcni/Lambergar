@@ -28,5 +28,26 @@ set PATH=%PATH%;C:\ProgramData\chocolatey\bin
 make --version
 ```
 
+## OpenBench server setup
+
+```cmd
+netsh advfirewall firewall add rule name="OpenBench" dir=in action=allow protocol=TCP localport=8000
+```
+
 ## Install Zig
 
+```cmd
+set PATH=%PATH%;c:\Users\janezp\AppData\Roaming\Code\User\globalStorage\ziglang.vscode-zig\zig\x86_64-windows-0.15.1\
+```
+
+## Run OpenBench in WSL
+
+```bash
+(base) janezp@lr-force:~$ conda activate py-ob
+(py-ob) janezp@lr-force:~$ cd OpenBench/
+(py-ob) janezp@lr-force:~/OpenBench$ python3 manage.py runserver 0.0.0.0:8000
+```
+
+## Run client
+
+python3.12 client.py -U lamb -P lamb -S http://192.168.65.97:8000 -T 9 -N 1 -I force
