@@ -430,15 +430,6 @@ pub const Search = struct {
             return true;
         }
 
-        // if (self.nodes & 1023 == 0) {
-        //     const elapsed_ms = self.timer.read() / std.time.ns_per_ms;
-        //     if (elapsed_ms >= self.manager.max_ms) {
-        //         self.stop = true;
-        //         self.stop_on_time = true;
-        //         return true;
-        //     }
-        // }
-
         if ((self.nodes & 1023 == 0) and (self.timer.read() / std.time.ns_per_ms >= self.manager.max_ms)) {
             self.stop = true;
             self.stop_on_time = true;
@@ -486,9 +477,6 @@ pub const Search = struct {
     }
 
     pub fn iterative_deepening(self: *Search, pos: *Position, comptime color: Color) void {
-        //const stdout = std.io.getStdOut().writer();
-        // var stdout_buffer = [1]u8{0} ** 10000;
-        // var stdout = std.Io.Writer.fixed(&stdout_buffer);
         const allocator = std.heap.c_allocator;
 
         self.clear_for_new_search();
