@@ -454,7 +454,7 @@ pub const Search = struct {
         var early_adjusted_ms = self.manager.early_ms;
 
         if (self.manager.termination == Termination.TIME) {
-            var factor: f32 = 1.0 - 0.02 * @as(f32, @floatFromInt(stability)) - 0.08 * @as(f32, @floatFromInt(improving));
+            var factor: f32 = 1.0 - 0.02 * @as(f32, @floatFromInt(stability)) - 0.04 * @as(f32, @floatFromInt(improving));
             factor = @max(0.5, @min(1.25, factor));
 
             // const phase = pos.eval.phase[0] + pos.eval.phase[1];
@@ -1581,3 +1581,4 @@ test "benchmark update_pv1 vs update_pv2" {
         try expect(pv1.pv_length[0] == pv2.pv_length[0] and pv2.pv_length[0] == pv3.pv_length[0]);
     }
 }
+
