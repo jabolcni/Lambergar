@@ -802,6 +802,98 @@ pub const Position = struct {
         };
     }
 
+    pub const MoveGenContext = struct {
+        us_bb: u64,
+        them_bb: u64,
+        all_bb: u64,
+        our_king: u6,
+        their_king: u6,
+        our_diag_sliders: u64,
+        their_diag_sliders: u64,
+        our_orth_sliders: u64,
+        their_orth_sliders: u64,
+        danger: u64,
+        checkers: u64,
+        pinned: u64,
+        not_pinned: u64,
+    };
+
+    pub fn computeMoveGenContext(self: *Position, comptime Us: Color) MoveGenContext {
+        const Them = Us.change_side();
+
+        const us_bb = self.all_pieces(Us);
+        const them_bb = self.all_pieces(Them);
+        const all_bb = us_bb | them_bb;
+
+        const our_king = bb.get_ls1b_index(self.bitboard_of_pt(Us, PieceType.King));
+        const their_king = bb.get_ls1b_index(self.bitboard_of_pt(Them, PieceType.King));
+
+        const our_diag_sliders = self.diagonal_sliders(Us);
+        const their_diag_sliders = self.diagonal_sliders(Them);
+        const our_orth_sliders = self.orthogonal_sliders(Us);
+        const their_orth_sliders = self.orthogonal_sliders(Them);
+
+        var b1: u64 = 0;
+
+        var danger: u64 = 0;
+        var checkers: u64 = 0;
+        var pinned: u64 = 0;
+
+        danger |= attacks.pawn_attacks_from_bitboard(self.bitboard_of_pt(Them, PieceType.Pawn), Them) | attacks.piece_attacks(their_king, all_bb, PieceType.King);
+
+        b1 = self.bitboard_of_pt(Them, PieceType.Knight);
+
+        while (b1 != 0) {
+            danger |= attacks.piece_attacks(bb.pop_lsb(&b1), all_bb, PieceType.Knight);
+        }
+
+        b1 = their_diag_sliders;
+        while (b1 != 0) {
+            danger |= attacks.piece_attacks(bb.pop_lsb(&b1), all_bb ^ SQUARE_BB[our_king], PieceType.Bishop);
+        }
+
+        b1 = their_orth_sliders;
+        while (b1 != 0) {
+            danger |= attacks.piece_attacks(bb.pop_lsb(&b1), all_bb ^ SQUARE_BB[our_king], PieceType.Rook);
+        }             
+
+        checkers = (attacks.piece_attacks(our_king, all_bb, PieceType.Knight) & self.bitboard_of_pt(Them, PieceType.Knight)) | (attacks.pawn_attacks_from_square(our_king, Us) & self.bitboard_of_pt(Them, PieceType.Pawn));
+
+        var candidates = (attacks.piece_attacks(our_king, them_bb, PieceType.Rook) & their_orth_sliders) | (attacks.piece_attacks(our_king, them_bb, PieceType.Bishop) & their_diag_sliders);
+        
+        pinned = 0;
+
+        while (candidates != 0) {
+            const s = bb.pop_lsb(&candidates);
+            b1 = attacks.SQUARES_BETWEEN_BB[our_king][s] & us_bb;
+
+            if (b1 == 0) {
+                checkers ^= SQUARE_BB[s];
+            }
+            else if ((b1 & b1-1) == 0) {
+                pinned ^= b1;
+            }
+        }
+
+        const not_pinned = ~pinned;
+
+        return .{
+            .us_bb = us_bb,
+            .them_bb = them_bb,
+            .all_bb = all_bb,
+            .our_king = our_king,
+            .their_king = their_king,
+            .our_diag_sliders = our_diag_sliders,
+            .their_diag_sliders = their_diag_sliders,
+            .our_orth_sliders = our_orth_sliders,
+            .their_orth_sliders = their_orth_sliders,
+            .danger = danger,
+            .checkers = checkers,
+            .pinned = pinned,
+            .not_pinned = not_pinned,
+        };
+    }
+
     pub inline fn add_piece_to_board(self: *Position, pc: Piece, s_idx: u6) void {
         const pc_idx = pc.toU4();
 
@@ -1846,284 +1938,66 @@ pub const Position = struct {
     // defer allocator.free(fen);
     // std.debug.print("Generated FEN: {s}\n", .{fen});
 
-    pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
-        const Them = Us.change_side();
-
-        const us_bb = self.all_pieces(Us);
-        const them_bb = self.all_pieces(Them);
-        const all_bb = us_bb | them_bb;
-
-        const our_king = bb.get_ls1b_index(self.bitboard_of_pt(Us, PieceType.King));
-        const their_king = bb.get_ls1b_index(self.bitboard_of_pt(Them, PieceType.King));
-
-        const our_diag_sliders = self.diagonal_sliders(Us);
-        const their_diag_sliders = self.diagonal_sliders(Them);
-        const our_orth_sliders = self.orthogonal_sliders(Us);
-        const their_orth_sliders = self.orthogonal_sliders(Them);
-
-        var b1: u64 = 0;
-        var b2: u64 = 0;
-        var b3: u64 = 0;        
-
-        var danger: u64 = 0;
-        var checkers: u64 = 0;
-        var pinned: u64 = 0;
 
 
-        //For each enemy piece, add all of its attacks to the danger bitboard
-        danger |= attacks.pawn_attacks_from_bitboard(self.bitboard_of_pt(Them, PieceType.Pawn), Them) | attacks.piece_attacks(their_king, all_bb, PieceType.King);
 
-        b1 = self.bitboard_of_pt(Them, PieceType.Knight);
 
-        while (b1 != 0) {
-            danger |= attacks.piece_attacks(bb.pop_lsb(&b1), all_bb, PieceType.Knight);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    pub fn generateKingMoves(ctx: MoveGenContext, list: *MoveList, include_quiet: bool) void {
+        const b1 = attacks.piece_attacks(ctx.our_king, ctx.all_bb, PieceType.King) & ~(ctx.us_bb | ctx.danger);
+        if (include_quiet) {
+            make_list(Square.fromU6(ctx.our_king), b1 & ~ctx.them_bb, MoveFlags.QUIET, list);
         }
+        make_list(Square.fromU6(ctx.our_king), b1 & ctx.them_bb, MoveFlags.CAPTURE, list);
+    }
 
-        b1 = their_diag_sliders;
-        //all ^ SQUARE_BB[our_king] is written to prevent the king from moving to squares which are 'x-rayed'
-        //by enemy bishops and queens
-        while (b1 != 0) {
-            danger |= attacks.piece_attacks(bb.pop_lsb(&b1), all_bb ^ SQUARE_BB[our_king], PieceType.Bishop);
-        }
+    pub fn generateQuietMoves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, quiet_mask: u64) void {
 
-        b1 = their_orth_sliders;
-        //all ^ SQUARE_BB[our_king] is written to prevent the king from moving to squares which are 'x-rayed'
-        //by enemy rooks and queens   
-        while (b1 != 0) {
-            danger |= attacks.piece_attacks(bb.pop_lsb(&b1), all_bb ^ SQUARE_BB[our_king], PieceType.Rook);
-        }             
-
-        //The king can move to all of its surrounding squares, except ones that are attacked, and
-        //ones that have our own pieces on them
-        b1 = attacks.piece_attacks(our_king, all_bb, PieceType.King) & ~(us_bb | danger);
-        make_list(Square.fromU6(our_king), b1 & ~them_bb, MoveFlags.QUIET, list);
-        make_list(Square.fromU6(our_king), b1 & them_bb, MoveFlags.CAPTURE, list);
-
-        //The capture mask filters destination squares to those that contain an enemy piece that is checking the 
-        //king and must be captured
-        var capture_mask: u64 = undefined;
-
-        //The quiet mask filter destination squares to those where pieces must be moved to block an incoming attack 
-        //to the king        
-        var quiet_mask: u64 = undefined;
-
-        //A general purpose square for storing destinations, etc.
-        var s: u6 = undefined;
-
-        //Checkers of each piece type are identified by:
-        //1. Projecting attacks FROM the king square
-        //2. Intersecting this bitboard with the enemy bitboard of that piece type
-        checkers = (attacks.piece_attacks(our_king, all_bb, PieceType.Knight) & self.bitboard_of_pt(Them, PieceType.Knight)) | (attacks.pawn_attacks_from_square(our_king, Us) & self.bitboard_of_pt(Them, PieceType.Pawn)); // Bug in original code //piece_bb[Piece.new(Them, PieceType.Knight).toU4()]  //self.piece_bb[Piece.new(Them, PieceType.Pawn).toU4()]
-
-        //Here, we identify slider checkers and pinners simultaneously, and candidates for such pinners 
-        //and checkers are represented by the bitboard <candidates>
-        var candidates = (attacks.piece_attacks(our_king, them_bb, PieceType.Rook) & their_orth_sliders) | (attacks.piece_attacks(our_king, them_bb, PieceType.Bishop) & their_diag_sliders); // Possible bug in original code
-        
-        pinned = 0;
-
-        while (candidates != 0) {
-            s = bb.pop_lsb(&candidates);
-            b1 = attacks.SQUARES_BETWEEN_BB[our_king][s] & us_bb;
-
-            //Do the squares in between the enemy slider and our king contain any of our pieces?
-            //If not, add the slider to the checker bitboard   
-            if (b1 == 0) {
-                checkers ^= SQUARE_BB[s];
-            }
-            //If there is only one of our pieces between them, add our piece to the pinned bitboard 
-            else if ((b1 & b1-1) == 0) {
-                pinned ^= b1;
-            }
-        }
-
-        //This makes it easier to mask pieces
-        const not_pinned = ~pinned;
-
-        switch (bb.pop_count(checkers)) {
-            //If there is a double check, the only legal moves are king moves out of check
-            2 => return,
-            1 => {
-                //It's a single check!
-
-                const checker_square = bb.get_ls1b_index(checkers);
-                switch (self.board[checker_square]) {
-                    Piece.new(Them, PieceType.Pawn) => {
-                        //If the checker is a pawn, we must check for e.p. moves that can capture it
-                        //This evaluates to true if the checking piece is the one which just double pushed                        
-                        const sq_idx = self.history[self.game_ply].epsq.toU6();
-                        if (checkers == shift(SQUARE_BB[sq_idx], Direction.relative_dir(Direction.SOUTH, Us))) {
-                            b1 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn) & not_pinned;
-                            while (b1 != 0) {
-                                list.append(Move.new(bb.pop_lsb_Sq(&b1), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
-                            }
-                        }
-                        b1 = self.attackers_from(checker_square, all_bb, Us) & not_pinned;
-                        while (b1 != 0) {
-                            list.append(Move.new(bb.pop_lsb_Sq(&b1), Square.fromU6(checker_square), MoveFlags.CAPTURE));
-                        }
-                        return;                        
-                    },
-                    Piece.new(Them, PieceType.King) => {
-                        b1 = self.attackers_from(checker_square, all_bb, Us) & not_pinned;
-                        while (b1 != 0) {
-                            list.append(Move.new(bb.pop_lsb_Sq(&b1), Square.fromU6(checker_square), MoveFlags.CAPTURE));
-                        }
-                        return;                           
-                    },
-                    else => {
-                        //We must capture the checking piece
-                        capture_mask = checkers;     
-
-                        //...or we can block it since it is guaranteed to be a slider
-                        quiet_mask = attacks.SQUARES_BETWEEN_BB[our_king][checker_square];     
-                    },
-                }
-            },
-            else => {
-                //We can capture any enemy piece
-                capture_mask = them_bb;
-
-                //...and we can play a quiet move to any square which is not occupied
-                quiet_mask = ~all_bb;                
-
-                if (self.history[self.game_ply].epsq != Square.NO_SQUARE) {
-                    //b1 contains our pawns that can perform an e.p. capture
-                    const sq_idx = self.history[self.game_ply].epsq.toU6();
-                    b2 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn);
-                    b1 = b2 & not_pinned;
-                    while (b1 != 0) {
-                        s = bb.pop_lsb(&b1);
-
-                        const b4 = all_bb ^ SQUARE_BB[s] ^ shift(SQUARE_BB[self.history[self.game_ply].epsq.toU6()], Direction.SOUTH.relative_dir(Us));
-                        const mr = bb.MASK_RANK[rank_of_u6(our_king)]; // pozor
-                        const md = bb.MASK_DIAGONAL[diagonal_of_u6(our_king)];
-                        const mad = bb.MASK_ANTI_DIAGONAL[anti_diagonal_of_u6(our_king)];
-
-                        const cond1 = attacks.sliding_attacks(our_king, b4, mr) & their_orth_sliders;
-                        const cond2 = attacks.sliding_attacks(our_king, b4, md) & their_diag_sliders;
-                        const cond3 = attacks.sliding_attacks(our_king, b4, mad) & their_diag_sliders;
-
-                        if ((cond1 | cond2 | cond3 ) == 0) {
-                            list.append(Move.new(Square.fromU6(s), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
-                        }
-
-                    }
-
-                    //Pinned pawns can only capture e.p. if they are pinned diagonally and the e.p. square is in line with the king 
-                    b1 = b2 & pinned & attacks.LINE[sq_idx][our_king];
-                    if (b1 != 0) {
-                        list.append(Move.new(Square.fromU6(bb.get_ls1b_index(b1)), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));     
-                    }
-                }
-
-                //Only add castling if:
-                //1. The king and the rook have both not moved
-                //2. No piece is attacking between the the rook and the king
-                //3. The king is not in check
-                if (((self.history[self.game_ply].entry & oo_mask(Us)) | ((all_bb | danger) & oo_blockers_mask(Us))) == 0) {
-                    if (Us == Color.White ) {
-                        list.append(Move.new(Square.e1, Square.g1, MoveFlags.OO)); //Bug in original code - castling is done to wrong square
-                    } else {
-                        list.append(Move.new(Square.e8, Square.g8, MoveFlags.OO)); //Bug in original code - castling is done to wrong square
-                    }
-                }
-
-                if (((self.history[self.game_ply].entry & ooo_mask(Us)) | ((all_bb | (danger & ~ignore_ooo_danger(Us))) & ooo_blockers_mask(Us))) == 0) {
-                    if (Us == Color.White ) {
-                        list.append(Move.new(Square.e1, Square.c1, MoveFlags.OOO));
-                    } else {
-                        list.append(Move.new(Square.e8, Square.c8, MoveFlags.OOO));
-                    }
-                }      
-
-                //For each pinned rook, bishop or queen...
-                b1 = ~(not_pinned | self.bitboard_of_pt(Us, PieceType.Knight) | self.bitboard_of_pt(Us, PieceType.Pawn));
-                while (b1 != 0) {
-                    const s1 = bb.pop_lsb(&b1);
-
-                    //...only include attacks that are aligned with our king, since pinned pieces
-                    //are constrained to move in this direction only
-                    var pc = self.board[s1];                    
-                    b2 = attacks.piece_attacks(s1, all_bb, pc.type_of()) & attacks.LINE[our_king][s1];
-                    make_list(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
-                    make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
-                }
-
-                //For each pinned pawn...
-                b1 = ~not_pinned & self.bitboard_of_pt(Us, PieceType.Pawn);
-                while (b1 != 0) {
-                    s = bb.pop_lsb(&b1);
-
-                    if (rank_of_u6(s) == Rank.RANK7.relative_rank(Us).toU6()) {
-                        //Quiet promotions are impossible since the square in front of the pawn will
-                        //either be occupied by the king or the pinner, or doing so would leave our king
-                        //in check  
-                        b2 = attacks.pawn_attacks_from_square(s, Us) & capture_mask & attacks.LINE[our_king][s];
-
-                        const sq_from = Square.fromU6(s);
-
-                        while (b2 != 0) {
-                            const sq_to = Square.fromU6(bb.pop_lsb(&b2));
-
-                            list.append(Move.new(sq_from, sq_to, MoveFlags.PC_KNIGHT));
-                            list.append(Move.new(sq_from, sq_to, MoveFlags.PC_BISHOP));
-                            list.append(Move.new(sq_from, sq_to, MoveFlags.PC_ROOK));
-                            list.append(Move.new(sq_from, sq_to, MoveFlags.PC_QUEEN));
-                        }
-
-                    } else {
-                        b2 = attacks.pawn_attacks_from_square(s, Us) & them_bb & attacks.LINE[s][our_king]; // pozor
-                        make_list(Square.fromU6(s), b2, MoveFlags.CAPTURE, list);
-
-                        //Single pawn pushes
-                        b2 = shift(SQUARE_BB[s], Direction.NORTH.relative_dir(Us)) & ~all_bb & attacks.LINE[our_king][s];
-                        //Double pawn pushes (only pawns on rank 3/6 are eligible)
-                        b3 = shift( b2 & bb.MASK_RANK[Rank.RANK3.relative_rank(Us).toU3()], Direction.NORTH.relative_dir(Us)) & ~all_bb & attacks.LINE[our_king][s];
-                        make_list(Square.fromU6(s), b2, MoveFlags.QUIET, list);
-                        make_list(Square.fromU6(s), b3, MoveFlags.DOUBLE_PUSH, list);
-                    }
-                }
-            },
-        }
-
-        //Non-pinned knight moves
-        b1 = self.bitboard_of_pt(Us, PieceType.Knight) & not_pinned;
+        // Non-pinned knights
+        var b1 = self.bitboard_of_pt(Us, PieceType.Knight) & ctx.not_pinned;
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
-            b2 = attacks.piece_attacks(s1, all_bb, PieceType.Knight);
+            const b2 = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Knight);
             make_list(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
-            make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
         }
 
-        //Non-pinned bishops and queens
-        b1 = our_diag_sliders & not_pinned;
+        // Non-pinned bishops and queens
+        b1 = ctx.our_diag_sliders & ctx.not_pinned;
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
-            b2 = attacks.piece_attacks(s1, all_bb, PieceType.Bishop);
+            const b2 = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Bishop);
             make_list(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
-            make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
         }
 
-        //Non-pinned rooks and queens
-        b1 = our_orth_sliders & not_pinned;
+        // Non-pinned rooks and queens
+        b1 = ctx.our_orth_sliders & ctx.not_pinned;
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
-            b2 = attacks.piece_attacks(s1, all_bb, PieceType.Rook);
+            const b2 = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Rook);
             make_list(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
-            make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
         }
 
-        //b1 contains non-pinned pawns which are not on the last rank
-        b1 = self.bitboard_of_pt(Us, PieceType.Pawn) & not_pinned & ~bb.MASK_RANK[Rank.RANK7.relative_rank(Us).toU3()];
-
-        //Single pawn pushes
-        b2 = shift(b1, Direction.NORTH.relative_dir(Us)) & ~all_bb;
-
-        //Double pawn pushes (only pawns on rank 3/6 are eligible)
-        b3 = shift(b2 & bb.MASK_RANK[Rank.RANK3.relative_rank(Us).toU3()], Direction.NORTH.relative_dir(Us)) & quiet_mask;
-
-        //We & this with the quiet mask only later, as a non-check-blocking single push does NOT mean that the 
-        //corresponding double push is not blocking check either.        
+        // Non-pinned pawns not on the last rank
+        b1 = self.bitboard_of_pt(Us, PieceType.Pawn) & ctx.not_pinned & ~bb.MASK_RANK[Rank.RANK7.relative_rank(Us).toU3()];
+        var b2 = shift(b1, Direction.NORTH.relative_dir(Us)) & ~ctx.all_bb;
+        var b3 = shift(b2 & bb.MASK_RANK[Rank.RANK3.relative_rank(Us).toU3()], Direction.NORTH.relative_dir(Us)) & quiet_mask;
         b2 &= quiet_mask;
 
         while (b2 != 0) {
@@ -2136,309 +2010,38 @@ pub const Position = struct {
             list.append(Move.new(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_NORTH.relative_dir(Us).toI8()))), Square.fromU6(s1), MoveFlags.DOUBLE_PUSH));
         }
 
-        //Pawn captures
-        b2 = shift(b1, Direction.NORTH_WEST.relative_dir(Us)) & capture_mask;
-        b3 = shift(b1, Direction.NORTH_EAST.relative_dir(Us)) & capture_mask;
-
-        while (b2 != 0) {
-            const s1 = bb.pop_lsb(&b2);
-            list.append(Move.new(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_WEST.relative_dir(Us).toI8()))), Square.fromU6(s1), MoveFlags.CAPTURE));
-        }
-
-        while (b3 != 0) {
-            const s1 = bb.pop_lsb(&b3);
-            list.append(Move.new(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8()))), Square.fromU6(s1), MoveFlags.CAPTURE));
-        }
-
-        //b1 now contains non-pinned pawns which ARE on the last rank (about to promote)    
-        b1 = self.bitboard_of_pt(Us, PieceType.Pawn) & not_pinned & bb.MASK_RANK[Rank.RANK7.relative_rank(Us).toU3()];
-        if (b1 != 0) {
-            //Quiet promotions
-            b2 = shift(b1, Direction.NORTH.relative_dir(Us)) & quiet_mask;
-            while (b2 != 0) {
-                const s1 = bb.pop_lsb(&b2);
-                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH.relative_dir(Us).toI8())));
-                const Sq1 = Square.fromU6(s1);
-
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PR_KNIGHT));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PR_BISHOP));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PR_ROOK));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PR_QUEEN));
-
-            }
-
-            //Promotion captures
-            b2 = shift(b1, Direction.NORTH_WEST.relative_dir(Us)) & capture_mask;
-            b3 = shift(b1, Direction.NORTH_EAST.relative_dir(Us)) & capture_mask; 
-            while (b2 != 0) {
-                const s1 = bb.pop_lsb(&b2);
-                //One move is added for each promotion piece
-                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_WEST.relative_dir(Us).toI8())));
-                const Sq1 = Square.fromU6(s1);
-
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_KNIGHT));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_BISHOP));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_ROOK));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_QUEEN));
-            }  
-
-            while (b3 != 0) {
-                const s1 = bb.pop_lsb(&b3);
-                //One move is added for each promotion piece
-                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8())));
-                const Sq1 = Square.fromU6(s1);
-
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_KNIGHT));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_BISHOP));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_ROOK));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_QUEEN));
-            }                      
-        }
-
-        return;
     }
 
-    pub fn generate_captures_list(self: *Position, comptime Us: Color, list: *MoveList) void {
-        //comptime var Them = Us.change_side();
-        const Them = Us.change_side();
+    pub fn generateNoisyMoves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, capture_mask: u64, quiet_mask: u64) void {
 
-        const us_bb = self.all_pieces(Us);
-        const them_bb = self.all_pieces(Them);
-        const all_bb = us_bb | them_bb;
-
-        const our_king = bb.get_ls1b_index(self.bitboard_of_pt(Us, PieceType.King));
-        const their_king = bb.get_ls1b_index(self.bitboard_of_pt(Them, PieceType.King));
-
-        const our_diag_sliders = self.diagonal_sliders(Us);
-        const their_diag_sliders = self.diagonal_sliders(Them);
-        const our_orth_sliders = self.orthogonal_sliders(Us);
-        const their_orth_sliders = self.orthogonal_sliders(Them);
-
-        var b1: u64 = 0;
-        var b2: u64 = 0;
-        var b3: u64 = 0;
-
-        var danger: u64 = 0;
-        var checkers: u64 = 0;
-        var pinned: u64 = 0;
-
-        //For each enemy piece, add all of its attacks to the danger bitboard
-        danger |= attacks.pawn_attacks_from_bitboard(self.bitboard_of_pt(Them, PieceType.Pawn), Them) | attacks.piece_attacks(their_king, all_bb, PieceType.King);
-
-        b1 = self.bitboard_of_pt(Them, PieceType.Knight);
-
-        while (b1 != 0) {
-            danger |= attacks.piece_attacks(bb.pop_lsb(&b1), all_bb, PieceType.Knight);
-        }
-
-        b1 = their_diag_sliders;
-        //all ^ SQUARE_BB[our_king] is written to prevent the king from moving to squares which are 'x-rayed'
-        //by enemy bishops and queens
-        while (b1 != 0) {
-            danger |= attacks.piece_attacks(bb.pop_lsb(&b1), all_bb ^ SQUARE_BB[our_king], PieceType.Bishop);
-        }
-
-        b1 = their_orth_sliders;
-        //all ^ SQUARE_BB[our_king] is written to prevent the king from moving to squares which are 'x-rayed'
-        //by enemy rooks and queens
-        while (b1 != 0) {
-            danger |= attacks.piece_attacks(bb.pop_lsb(&b1), all_bb ^ SQUARE_BB[our_king], PieceType.Rook);
-        }
-
-        //The king can move to all of its surrounding squares, except ones that are attacked, and
-        //ones that have our own pieces on them
-        b1 = attacks.piece_attacks(our_king, all_bb, PieceType.King) & ~(us_bb | danger);
-        //make(Square.fromU6(our_king), b1 & ~them_bb, MoveFlags.QUIET, list);
-        make_list(Square.fromU6(our_king), b1 & them_bb, MoveFlags.CAPTURE, list);
-
-        //The capture mask filters destination squares to those that contain an enemy piece that is checking the
-        //king and must be captured
-        var capture_mask: u64 = undefined;
-
-        //The quiet mask filter destination squares to those where pieces must be moved to block an incoming attack
-        //to the king
-        var quiet_mask: u64 = undefined;
-
-        //A general purpose square for storing destinations, etc.
-        var s: u6 = undefined;
-
-        //Checkers of each piece type are identified by:
-        //1. Projecting attacks FROM the king square
-        //2. Intersecting this bitboard with the enemy bitboard of that piece type
-        checkers = (attacks.piece_attacks(our_king, all_bb, PieceType.Knight) & self.bitboard_of_pt(Them, PieceType.Knight)) | (attacks.pawn_attacks_from_square(our_king, Us) & self.bitboard_of_pt(Them, PieceType.Pawn)); // Bug in original code //piece_bb[Piece.new(Them, PieceType.Knight).toU4()]  //self.piece_bb[Piece.new(Them, PieceType.Pawn).toU4()]
-
-        //Here, we identify slider checkers and pinners simultaneously, and candidates for such pinners
-        //and checkers are represented by the bitboard <candidates>
-        var candidates = (attacks.piece_attacks(our_king, them_bb, PieceType.Rook) & their_orth_sliders) | (attacks.piece_attacks(our_king, them_bb, PieceType.Bishop) & their_diag_sliders); // Possible bug in original code
-
-        pinned = 0;
-
-        while (candidates != 0) {
-            s = bb.pop_lsb(&candidates);
-            b1 = attacks.SQUARES_BETWEEN_BB[our_king][s] & us_bb;
-
-            //Do the squares in between the enemy slider and our king contain any of our pieces?
-            //If not, add the slider to the checker bitboard
-            if (b1 == 0) {
-                checkers ^= SQUARE_BB[s];
-            }
-            //If there is only one of our pieces between them, add our piece to the pinned bitboard
-            else if ((b1 & b1 - 1) == 0) {
-                pinned ^= b1;
-            }
-        }
-
-        //This makes it easier to mask pieces
-        const not_pinned = ~pinned;
-
-        switch (bb.pop_count(checkers)) {
-            //If there is a double check, the only legal moves are king moves out of check
-            2 => return,
-            1 => {
-                //It's a single check!
-
-                const checker_square = bb.get_ls1b_index(checkers);
-                switch (self.board[checker_square]) {
-                    Piece.new(Them, PieceType.Pawn) => {
-                        //If the checker is a pawn, we must check for e.p. moves that can capture it
-                        //This evaluates to true if the checking piece is the one which just double pushed
-                        const sq_idx = self.history[self.game_ply].epsq.toU6();
-                        if (checkers == shift(SQUARE_BB[sq_idx], Direction.relative_dir(Direction.SOUTH, Us))) {
-                            b1 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn) & not_pinned;
-                            while (b1 != 0) {
-                                list.append(Move.new(bb.pop_lsb_Sq(&b1), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
-                            }
-                        }
-                        b1 = self.attackers_from(checker_square, all_bb, Us) & not_pinned;
-                        while (b1 != 0) {
-                            list.append(Move.new(bb.pop_lsb_Sq(&b1), Square.fromU6(checker_square), MoveFlags.CAPTURE));
-                        }
-                        return;
-                    },
-                    Piece.new(Them, PieceType.King) => {
-                        b1 = self.attackers_from(checker_square, all_bb, Us) & not_pinned;
-                        while (b1 != 0) {
-                            list.append(Move.new(bb.pop_lsb_Sq(&b1), Square.fromU6(checker_square), MoveFlags.CAPTURE));
-                        }
-                        return;
-                    },
-                    else => {
-                        //We must capture the checking piece
-                        capture_mask = checkers;
-
-                        //...or we can block it since it is guaranteed to be a slider
-                        quiet_mask = attacks.SQUARES_BETWEEN_BB[our_king][checker_square];
-                    },
-                }
-            },
-            else => {
-                //We can capture any enemy piece
-                capture_mask = them_bb;
-
-                //...and we can play a quiet move to any square which is not occupied
-                quiet_mask = ~all_bb;
-
-                if (self.history[self.game_ply].epsq != Square.NO_SQUARE) {
-                    //b1 contains our pawns that can perform an e.p. capture
-                    const sq_idx = self.history[self.game_ply].epsq.toU6();
-                    b2 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn);
-                    b1 = b2 & not_pinned;
-                    while (b1 != 0) {
-                        s = bb.pop_lsb(&b1);
-
-                        const b4 = all_bb ^ SQUARE_BB[s] ^ shift(SQUARE_BB[self.history[self.game_ply].epsq.toU6()], Direction.SOUTH.relative_dir(Us));
-                        const mr = bb.MASK_RANK[rank_of_u6(our_king)]; // pozor
-                        const md = bb.MASK_DIAGONAL[diagonal_of_u6(our_king)];
-                        const mad = bb.MASK_ANTI_DIAGONAL[anti_diagonal_of_u6(our_king)];
-
-                        const cond1 = attacks.sliding_attacks(our_king, b4, mr) & their_orth_sliders;
-                        const cond2 = attacks.sliding_attacks(our_king, b4, md) & their_diag_sliders;
-                        const cond3 = attacks.sliding_attacks(our_king, b4, mad) & their_diag_sliders;
-
-                        if ((cond1 | cond2 | cond3) == 0) {
-                            list.append(Move.new(Square.fromU6(s), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
-                        }
-                    }
-
-                    //Pinned pawns can only capture e.p. if they are pinned diagonally and the e.p. square is in line with the king
-                    b1 = b2 & pinned & attacks.LINE[sq_idx][our_king];
-                    if (b1 != 0) {
-                        list.append(Move.new(Square.fromU6(bb.get_ls1b_index(b1)), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
-                    }
-                }
-
-                //For each pinned rook, bishop or queen...
-                b1 = ~(not_pinned | self.bitboard_of_pt(Us, PieceType.Knight) | self.bitboard_of_pt(Us, PieceType.Pawn));
-                while (b1 != 0) {
-                    const s1 = bb.pop_lsb(&b1);
-
-                    //...only include attacks that are aligned with our king, since pinned pieces
-                    //are constrained to move in this direction only
-                    var pc = self.board[s1];
-                    b2 = attacks.piece_attacks(s1, all_bb, pc.type_of()) & attacks.LINE[our_king][s1];
-                    make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
-                }
-
-                //For each pinned pawn...
-                b1 = ~not_pinned & self.bitboard_of_pt(Us, PieceType.Pawn);
-                while (b1 != 0) {
-                    s = bb.pop_lsb(&b1);
-
-                    if (rank_of_u6(s) == Rank.RANK7.relative_rank(Us).toU6()) {
-                        //Quiet promotions are impossible since the square in front of the pawn will
-                        //either be occupied by the king or the pinner, or doing so would leave our king
-                        //in check
-                        b2 = attacks.pawn_attacks_from_square(s, Us) & capture_mask & attacks.LINE[our_king][s];
-                        //make_list(Square.fromU6(s), b2, MoveFlags.PROMOTION_CAPTURES, list);
-                        const sq_from = Square.fromU6(s);
-
-                        while (b2 != 0) {
-                            const sq_to = Square.fromU6(bb.pop_lsb(&b2));
-
-                            list.append(Move.new(sq_from, sq_to, MoveFlags.PC_KNIGHT));
-                            list.append(Move.new(sq_from, sq_to, MoveFlags.PC_BISHOP));
-                            list.append(Move.new(sq_from, sq_to, MoveFlags.PC_ROOK));
-                            list.append(Move.new(sq_from, sq_to, MoveFlags.PC_QUEEN));
-                        }                        
-                    } else {
-                        b2 = attacks.pawn_attacks_from_square(s, Us) & them_bb & attacks.LINE[s][our_king]; // pozor
-                        make_list(Square.fromU6(s), b2, MoveFlags.CAPTURE, list);
-
-                    }
-                }
-            },
-        }
-
-        //Non-pinned knight moves
-        b1 = self.bitboard_of_pt(Us, PieceType.Knight) & not_pinned;
+        // Non-pinned knights
+        var b1 = self.bitboard_of_pt(Us, PieceType.Knight) & ctx.not_pinned;
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
-            b2 = attacks.piece_attacks(s1, all_bb, PieceType.Knight);
+            const b2 = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Knight);
             make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
         }
 
-        //Non-pinned bishops and queens
-        b1 = our_diag_sliders & not_pinned;
+        // Non-pinned bishops and queens
+        b1 = ctx.our_diag_sliders & ctx.not_pinned;
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
-            b2 = attacks.piece_attacks(s1, all_bb, PieceType.Bishop);
+            const b2 = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Bishop);
             make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
         }
 
-        //Non-pinned rooks and queens
-        b1 = our_orth_sliders & not_pinned;
+        // Non-pinned rooks and queens
+        b1 = ctx.our_orth_sliders & ctx.not_pinned;
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
-            b2 = attacks.piece_attacks(s1, all_bb, PieceType.Rook);
+            const b2 = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Rook);
             make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
         }
 
-        //b1 contains non-pinned pawns which are not on the last rank
-        b1 = self.bitboard_of_pt(Us, PieceType.Pawn) & not_pinned & ~bb.MASK_RANK[Rank.RANK7.relative_rank(Us).toU3()];
-
-        //Pawn captures
-        b2 = shift(b1, Direction.NORTH_WEST.relative_dir(Us)) & capture_mask;
-        b3 = shift(b1, Direction.NORTH_EAST.relative_dir(Us)) & capture_mask;
+        // Non-pinned pawns not on the last rank
+        b1 = self.bitboard_of_pt(Us, PieceType.Pawn) & ctx.not_pinned & ~bb.MASK_RANK[Rank.RANK7.relative_rank(Us).toU3()];
+        var b2 = shift(b1, Direction.NORTH_WEST.relative_dir(Us)) & capture_mask;
+        var b3 = shift(b1, Direction.NORTH_EAST.relative_dir(Us)) & capture_mask;
 
         while (b2 != 0) {
             const s1 = bb.pop_lsb(&b2);
@@ -2450,50 +2053,290 @@ pub const Position = struct {
             list.append(Move.new(Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8()))), Square.fromU6(s1), MoveFlags.CAPTURE));
         }
 
-        //b1 now contains non-pinned pawns which ARE on the last rank (about to promote)
-        b1 = self.bitboard_of_pt(Us, PieceType.Pawn) & not_pinned & bb.MASK_RANK[Rank.RANK7.relative_rank(Us).toU3()];
+        // Non-pinned pawns on the last rank (promotions)
+        b1 = self.bitboard_of_pt(Us, PieceType.Pawn) & ctx.not_pinned & bb.MASK_RANK[Rank.RANK7.relative_rank(Us).toU3()];
         if (b1 != 0) {
-            //Quiet promotions
+            // Quiet promotions
             b2 = shift(b1, Direction.NORTH.relative_dir(Us)) & quiet_mask;
             while (b2 != 0) {
                 const s1 = bb.pop_lsb(&b2);
-                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH.relative_dir(Us).toI8())));
-                const Sq1 = Square.fromU6(s1);
+                const sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH.relative_dir(Us).toI8())));
+                const sq1 = Square.fromU6(s1);
 
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PR_KNIGHT));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PR_BISHOP));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PR_ROOK));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PR_QUEEN));
+                list.append(Move.new(sq2, sq1, MoveFlags.PR_KNIGHT));
+                list.append(Move.new(sq2, sq1, MoveFlags.PR_BISHOP));
+                list.append(Move.new(sq2, sq1, MoveFlags.PR_ROOK));
+                list.append(Move.new(sq2, sq1, MoveFlags.PR_QUEEN));
+            }
 
-            }            
-
-            //Promotion captures
+            // Promotion captures
             b2 = shift(b1, Direction.NORTH_WEST.relative_dir(Us)) & capture_mask;
             b3 = shift(b1, Direction.NORTH_EAST.relative_dir(Us)) & capture_mask;
             while (b2 != 0) {
                 const s1 = bb.pop_lsb(&b2);
-                //One move is added for each promotion piece
-                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_WEST.relative_dir(Us).toI8())));
-                const Sq1 = Square.fromU6(s1);
+                const sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_WEST.relative_dir(Us).toI8())));
+                const sq1 = Square.fromU6(s1);
 
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_KNIGHT));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_BISHOP));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_ROOK));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_QUEEN));
+                list.append(Move.new(sq2, sq1, MoveFlags.PC_KNIGHT));
+                list.append(Move.new(sq2, sq1, MoveFlags.PC_BISHOP));
+                list.append(Move.new(sq2, sq1, MoveFlags.PC_ROOK));
+                list.append(Move.new(sq2, sq1, MoveFlags.PC_QUEEN));
             }
 
             while (b3 != 0) {
                 const s1 = bb.pop_lsb(&b3);
-                //One move is added for each promotion piece
-                const Sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8())));
-                const Sq1 = Square.fromU6(s1);
+                const sq2 = Square.fromU6(@as(u6, @intCast(@as(i8, @intCast(s1)) - Direction.NORTH_EAST.relative_dir(Us).toI8())));
+                const sq1 = Square.fromU6(s1);
 
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_KNIGHT));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_BISHOP));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_ROOK));
-                list.append(Move.new(Sq2, Sq1, MoveFlags.PC_QUEEN));
+                list.append(Move.new(sq2, sq1, MoveFlags.PC_KNIGHT));
+                list.append(Move.new(sq2, sq1, MoveFlags.PC_BISHOP));
+                list.append(Move.new(sq2, sq1, MoveFlags.PC_ROOK));
+                list.append(Move.new(sq2, sq1, MoveFlags.PC_QUEEN));
             }
         }
+
+    }
+
+    pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
+        const ctx = self.computeMoveGenContext(Us);
+
+        const Them = Us.change_side();
+
+        var capture_mask: u64 = undefined;
+        var quiet_mask: u64 = undefined;
+
+        // King moves: to all surrounding squares except those attacked or occupied by own pieces
+        generateKingMoves(ctx, list, true);
+
+        switch (bb.pop_count(ctx.checkers)) {
+            // Double check: only king moves are legal
+            2 => return,
+            1 => {
+                // Single check
+                const checker_square = bb.get_ls1b_index(ctx.checkers);
+                switch (self.board[checker_square]) {
+                    Piece.new(Them, PieceType.Pawn) => {
+                        // Check for en passant capture if checker is a pawn that just double-pushed
+                        handle_pawn_checker(self, Us, list, checker_square, ctx);
+                        return;
+                    },
+                    Piece.new(Them, PieceType.King) => {
+                        handle_king_checker(self, Us, list, checker_square, ctx);
+                        return;
+                    },
+                    else => {
+                        // Must capture the checking piece or block it (slider)
+                        capture_mask = ctx.checkers;
+                        quiet_mask = attacks.SQUARES_BETWEEN_BB[ctx.our_king][checker_square];
+                    },
+                }
+            },
+            else => {
+                // No checks: can capture any enemy piece or move to any unoccupied square
+                capture_mask = ctx.them_bb;
+                quiet_mask = ~ctx.all_bb;
+
+                // En passant moves
+                generate_en_passant_moves(self, Us, ctx, list);
+
+                // Castling
+                generate_castling_moves(self, Us, ctx, list);
+
+                // Pinned rooks, bishops, or queens
+                generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, capture_mask, false);
+
+                // Pinned pawns
+                generate_pinned_pawn_moves(self, Us, ctx, list, capture_mask, false);
+            },
+        }
+
+        generateNoisyMoves(self, Us, ctx, list, capture_mask, quiet_mask);
+        generateQuietMoves(self, Us, ctx, list, quiet_mask);
+
+        return;
+    }
+
+    fn handle_king_checker(self: *Position, comptime Us: Color, list: *MoveList, checker_square: u6, ctx: MoveGenContext) void {
+        var b1 = self.attackers_from(checker_square, ctx.all_bb, Us) & ctx.not_pinned;
+        while (b1 != 0) {
+            list.append(Move.new(bb.pop_lsb_Sq(&b1), Square.fromU6(checker_square), MoveFlags.CAPTURE));
+        }        
+    }
+
+    fn handle_pawn_checker(self: *Position, comptime Us: Color, list: *MoveList, checker_square: u6, ctx: MoveGenContext) void {
+        const Them = Us.change_side();
+        const sq_idx = self.history[self.game_ply].epsq.toU6();
+        if (ctx.checkers == shift(SQUARE_BB[sq_idx], Direction.relative_dir(Direction.SOUTH, Us))) {
+            var b1 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn) & ctx.not_pinned;
+            while (b1 != 0) {
+                list.append(Move.new(bb.pop_lsb_Sq(&b1), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
+            }
+        }
+        var b1 = self.attackers_from(checker_square, ctx.all_bb, Us) & ctx.not_pinned;
+        while (b1 != 0) {
+            list.append(Move.new(bb.pop_lsb_Sq(&b1), Square.fromU6(checker_square), MoveFlags.CAPTURE));
+        }
+    }
+
+    fn generate_castling_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
+        if (((self.history[self.game_ply].entry & oo_mask(Us)) | ((ctx.all_bb | ctx.danger) & oo_blockers_mask(Us))) == 0) {
+            if (Us == Color.White) {
+                list.append(Move.new(Square.e1, Square.g1, MoveFlags.OO));
+            } else {
+                list.append(Move.new(Square.e8, Square.g8, MoveFlags.OO));
+            }
+        }
+
+        if (((self.history[self.game_ply].entry & ooo_mask(Us)) | ((ctx.all_bb | (ctx.danger & ~ignore_ooo_danger(Us))) & ooo_blockers_mask(Us))) == 0) {
+            if (Us == Color.White) {
+                list.append(Move.new(Square.e1, Square.c1, MoveFlags.OOO));
+            } else {
+                list.append(Move.new(Square.e8, Square.c8, MoveFlags.OOO));
+            }
+        }
+    }
+
+    fn generate_en_passant_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
+        const Them = Us.change_side();
+        var s: u6 = undefined;
+        if (self.history[self.game_ply].epsq != Square.NO_SQUARE) {
+            const sq_idx = self.history[self.game_ply].epsq.toU6();
+            const b2 = attacks.pawn_attacks_from_square(sq_idx, Them) & self.bitboard_of_pt(Us, PieceType.Pawn);
+            var b1 = b2 & ctx.not_pinned;
+            while (b1 != 0) {
+                s = bb.pop_lsb(&b1);
+                const b4 = ctx.all_bb ^ SQUARE_BB[s] ^ shift(SQUARE_BB[sq_idx], Direction.SOUTH.relative_dir(Us));
+                const mr = bb.MASK_RANK[rank_of_u6(ctx.our_king)];
+                const md = bb.MASK_DIAGONAL[diagonal_of_u6(ctx.our_king)];
+                const mad = bb.MASK_ANTI_DIAGONAL[anti_diagonal_of_u6(ctx.our_king)];
+
+                const cond1 = attacks.sliding_attacks(ctx.our_king, b4, mr) & ctx.their_orth_sliders;
+                const cond2 = attacks.sliding_attacks(ctx.our_king, b4, md) & ctx.their_diag_sliders;
+                const cond3 = attacks.sliding_attacks(ctx.our_king, b4, mad) & ctx.their_diag_sliders;
+
+                if ((cond1 | cond2 | cond3) == 0) {
+                    list.append(Move.new(Square.fromU6(s), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
+                }
+            }
+
+            // Pinned pawns en passant
+            b1 = b2 & ctx.pinned & attacks.LINE[sq_idx][ctx.our_king];
+            if (b1 != 0) {
+                list.append(Move.new(Square.fromU6(bb.get_ls1b_index(b1)), self.history[self.game_ply].epsq, MoveFlags.EN_PASSANT));
+            }
+        }
+    }
+
+    fn generate_pinned_slider_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, quiet_mask: u64, capture_mask: u64, comptime only_captures: bool) void {
+        var b1 = ~(ctx.not_pinned | self.bitboard_of_pt(Us, PieceType.Knight) | self.bitboard_of_pt(Us, PieceType.Pawn));
+        while (b1 != 0) {
+            const s1 = bb.pop_lsb(&b1);
+            var pc = self.board[s1];
+            const b2 = attacks.piece_attacks(s1, ctx.all_bb, pc.type_of()) & attacks.LINE[ctx.our_king][s1];
+            if (!only_captures) {
+                make_list(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
+            }
+            make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
+        }        
+    }
+
+    fn generate_pinned_pawn_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, capture_mask: u64, comptime only_captures: bool) void {
+        var b1 = ~ctx.not_pinned & self.bitboard_of_pt(Us, PieceType.Pawn);
+        while (b1 != 0) {
+            const s = bb.pop_lsb(&b1);
+            if (rank_of_u6(s) == Rank.RANK7.relative_rank(Us).toU6() and !only_captures) {
+                var b2 = attacks.pawn_attacks_from_square(s, Us) & capture_mask & attacks.LINE[ctx.our_king][s];
+                const sq_from = Square.fromU6(s);
+                while (b2 != 0) {
+                    const sq_to = Square.fromU6(bb.pop_lsb(&b2));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_KNIGHT));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_BISHOP));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_ROOK));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_QUEEN));
+                }
+            } else {
+                var b2 = attacks.pawn_attacks_from_square(s, Us) & ctx.them_bb & attacks.LINE[s][ctx.our_king];
+                make_list(Square.fromU6(s), b2, MoveFlags.CAPTURE, list);
+                b2 = shift(SQUARE_BB[s], Direction.NORTH.relative_dir(Us)) & ~ctx.all_bb & attacks.LINE[ctx.our_king][s];
+                const b3 = shift(b2 & bb.MASK_RANK[Rank.RANK3.relative_rank(Us).toU3()], Direction.NORTH.relative_dir(Us)) & ~ctx.all_bb & attacks.LINE[ctx.our_king][s];
+                if (!only_captures) {
+                    make_list(Square.fromU6(s), b2, MoveFlags.QUIET, list);
+                    make_list(Square.fromU6(s), b3, MoveFlags.DOUBLE_PUSH, list);
+                }
+            }
+        }
+    }
+
+    pub fn generate_captures_list(self: *Position, comptime Us: Color, list: *MoveList) void {
+        const ctx = self.computeMoveGenContext(Us);
+
+        const Them = Us.change_side();
+
+        var capture_mask: u64 = undefined;
+        var quiet_mask: u64 = undefined;
+
+        // King captures
+        generateKingMoves(ctx, list, false);
+
+        switch (bb.pop_count(ctx.checkers)) {
+            // Double check: only king moves are legal
+            2 => return,
+            1 => {
+                // Single check
+                const checker_square = bb.get_ls1b_index(ctx.checkers);
+                switch (self.board[checker_square]) {
+                    Piece.new(Them, PieceType.Pawn) => {
+                        // En passant capture for pawn checker
+                        handle_pawn_checker(self, Us, list, checker_square, ctx);
+                        return;
+                    },
+                    Piece.new(Them, PieceType.King) => {
+                        handle_king_checker(self, Us, list, checker_square, ctx);
+                        return;
+                    },
+                    else => {
+                        // Capture the checking piece (slider)
+                        capture_mask = ctx.checkers;
+                        quiet_mask = attacks.SQUARES_BETWEEN_BB[ctx.our_king][checker_square];
+                    },
+                }
+            },
+            else => {
+                // No checks: capture any enemy piece
+                capture_mask = ctx.them_bb;
+                quiet_mask = ~ctx.all_bb;
+
+                // En passant captures
+                generate_en_passant_moves(self, Us, ctx, list);
+
+                // Pinned rooks, bishops, or queens
+                generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, capture_mask, true);
+
+                // Pinned pawns
+                generate_pinned_pawn_moves(self, Us, ctx, list, capture_mask, true);
+
+                // b1 = ~ctx.not_pinned & self.bitboard_of_pt(Us, PieceType.Pawn);
+                // while (b1 != 0) {
+                //     s = bb.pop_lsb(&b1);
+                //     if (rank_of_u6(s) == Rank.RANK7.relative_rank(Us).toU6()) {
+                //         var b2 = attacks.pawn_attacks_from_square(s, Us) & capture_mask & attacks.LINE[ctx.our_king][s];
+                //         const sq_from = Square.fromU6(s);
+                //         while (b2 != 0) {
+                //             const sq_to = Square.fromU6(bb.pop_lsb(&b2));
+                //             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_KNIGHT));
+                //             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_BISHOP));
+                //             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_ROOK));
+                //             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_QUEEN));
+                //         }
+                //     } else {
+                //         const b2 = attacks.pawn_attacks_from_square(s, Us) & ctx.them_bb & attacks.LINE[s][ctx.our_king];
+                //         make_list(Square.fromU6(s), b2, MoveFlags.CAPTURE, list);
+                //     }
+                // }
+            },
+        }
+
+        generateNoisyMoves(self, Us, ctx, list, capture_mask, quiet_mask);
 
         return;
     }
