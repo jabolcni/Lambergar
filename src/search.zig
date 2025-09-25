@@ -278,7 +278,7 @@ pub const Search = struct {
     major_corr: [history.CORRHIST_SIZE][2]i32 = undefined,
     minor_corr: [history.CORRHIST_SIZE][2]i32 = undefined,
     non_pawn_corr: [history.CORRHIST_SIZE][2][2]i32 = undefined,
-    counter_move_corr: [position.NPIECE_TYPES][64][2]i32 = undefined,
+    // counter_move_corr: [position.NPIECE_TYPES][64][2]i32 = undefined,
 
     ns_stack: [MAX_PLY + 4]NodeState = undefined,
 
@@ -338,12 +338,12 @@ pub const Search = struct {
             self.non_pawn_corr[i][1][1] = 0;
         }
 
-        for (0..position.NPIECE_TYPES) |pt| {
-            for (0..64) |sq| {
-                self.counter_move_corr[pt][sq][0] = 0;
-                self.counter_move_corr[pt][sq][1] = 0;
-            }
-        }
+        // for (0..position.NPIECE_TYPES) |pt| {
+        //     for (0..64) |sq| {
+        //         self.counter_move_corr[pt][sq][0] = 0;
+        //         self.counter_move_corr[pt][sq][1] = 0;
+        //     }
+        // }
     }
 
     fn age_sc_history(self: *Search) void {
