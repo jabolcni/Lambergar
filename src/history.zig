@@ -34,7 +34,7 @@ fn corr_update(_entry: *i32, err: i32, weight: i32) void {
 pub fn update_corr_history(search: *Search, pos: *Position, corr_eval: i32, score: i32, depth: i8) void {
     const err = (score - corr_eval) * CORRHIST_GRAIN;
     const depth_i32: i32 = @as(i32, @intCast(depth));
-    const weight: i32 = @min(depth_i32 * depth_i32 + 2 * depth_i32 + 1, 64);
+    const weight: i32 = @min(depth_i32 * depth_i32 + 2 * depth_i32 + 1, 256);
     // const weight2: i32 = @min(3 * depth_i32 + 1, 32);
 
     corr_update(&search.pawn_corr[pos.pawn_hash % CORRHIST_SIZE][pos.side_to_play.toU4()], err, weight);
