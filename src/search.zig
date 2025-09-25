@@ -606,8 +606,6 @@ pub const Search = struct {
                 if (use_tb) {
                     printout(uci.stdout, "tbhits {d} ", .{tbhits}) catch unreachable;
                 }
-                printout(uci.stdout, "stab {d}", .{stability_counter}) catch unreachable;
-                printout(uci.stdout, " improv {d} ", .{improving}) catch unreachable;
                 printout(uci.stdout, "pv ", .{}) catch unreachable;
 
                 var next_ply: usize = 0;
