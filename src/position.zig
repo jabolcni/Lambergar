@@ -1960,15 +1960,17 @@ pub const Position = struct {
 
 
 
-    pub fn generateKingMoves(ctx: MoveGenContext, list: *MoveList, include_quiet: bool) void {
+    pub fn generate_king_moves(ctx: MoveGenContext, list: *MoveList, comptime noisy: bool) void {
         const b1 = attacks.piece_attacks(ctx.our_king, ctx.all_bb, PieceType.King) & ~(ctx.us_bb | ctx.danger);
-        if (include_quiet) {
+
+        if (noisy) {
+            make_list(Square.fromU6(ctx.our_king), b1 & ctx.them_bb, MoveFlags.CAPTURE, list);   
+        } else {  
             make_list(Square.fromU6(ctx.our_king), b1 & ~ctx.them_bb, MoveFlags.QUIET, list);
         }
-        make_list(Square.fromU6(ctx.our_king), b1 & ctx.them_bb, MoveFlags.CAPTURE, list);
     }
 
-    pub fn generateQuietMoves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, quiet_mask: u64) void {
+    pub fn generate_quiet_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, quiet_mask: u64) void {
 
         // Non-pinned knights
         var b1 = self.bitboard_of_pt(Us, PieceType.Knight) & ctx.not_pinned;
@@ -2012,7 +2014,7 @@ pub const Position = struct {
 
     }
 
-    pub fn generateNoisyMoves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, capture_mask: u64, quiet_mask: u64) void {
+    pub fn generate_noisy_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, capture_mask: u64, quiet_mask: u64) void {
 
         // Non-pinned knights
         var b1 = self.bitboard_of_pt(Us, PieceType.Knight) & ctx.not_pinned;
@@ -2097,73 +2099,14 @@ pub const Position = struct {
 
     }
 
-    pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
-        const ctx = self.computeMoveGenContext(Us);
-
-        const Them = Us.change_side();
-
-        var capture_mask: u64 = undefined;
-        var quiet_mask: u64 = undefined;
-
-        // King moves: to all surrounding squares except those attacked or occupied by own pieces
-        generateKingMoves(ctx, list, true);
-
-        switch (bb.pop_count(ctx.checkers)) {
-            // Double check: only king moves are legal
-            2 => return,
-            1 => {
-                // Single check
-                const checker_square = bb.get_ls1b_index(ctx.checkers);
-                switch (self.board[checker_square]) {
-                    Piece.new(Them, PieceType.Pawn) => {
-                        // Check for en passant capture if checker is a pawn that just double-pushed
-                        handle_pawn_checker(self, Us, list, checker_square, ctx);
-                        return;
-                    },
-                    Piece.new(Them, PieceType.King) => {
-                        handle_king_checker(self, Us, list, checker_square, ctx);
-                        return;
-                    },
-                    else => {
-                        // Must capture the checking piece or block it (slider)
-                        capture_mask = ctx.checkers;
-                        quiet_mask = attacks.SQUARES_BETWEEN_BB[ctx.our_king][checker_square];
-                    },
-                }
-            },
-            else => {
-                // No checks: can capture any enemy piece or move to any unoccupied square
-                capture_mask = ctx.them_bb;
-                quiet_mask = ~ctx.all_bb;
-
-                // En passant moves
-                generate_en_passant_moves(self, Us, ctx, list);
-
-                // Castling
-                generate_castling_moves(self, Us, ctx, list);
-
-                // Pinned rooks, bishops, or queens
-                generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, capture_mask, false);
-
-                // Pinned pawns
-                generate_pinned_pawn_moves(self, Us, ctx, list, capture_mask, false);
-            },
-        }
-
-        generateNoisyMoves(self, Us, ctx, list, capture_mask, quiet_mask);
-        generateQuietMoves(self, Us, ctx, list, quiet_mask);
-
-        return;
-    }
-
-    fn handle_king_checker(self: *Position, comptime Us: Color, list: *MoveList, checker_square: u6, ctx: MoveGenContext) void {
+    fn generate_king_checker_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, checker_square: u6) void { // generates only noisy moves
         var b1 = self.attackers_from(checker_square, ctx.all_bb, Us) & ctx.not_pinned;
         while (b1 != 0) {
             list.append(Move.new(bb.pop_lsb_Sq(&b1), Square.fromU6(checker_square), MoveFlags.CAPTURE));
         }        
     }
 
-    fn handle_pawn_checker(self: *Position, comptime Us: Color, list: *MoveList, checker_square: u6, ctx: MoveGenContext) void {
+    fn generate_pawn_checker_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, checker_square: u6) void { // generates only noisy moves
         const Them = Us.change_side();
         const sq_idx = self.history[self.game_ply].epsq.toU6();
         if (ctx.checkers == shift(SQUARE_BB[sq_idx], Direction.relative_dir(Direction.SOUTH, Us))) {
@@ -2178,7 +2121,7 @@ pub const Position = struct {
         }
     }
 
-    fn generate_castling_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
+    fn generate_castling_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void { // captures are quiet moves
         if (((self.history[self.game_ply].entry & oo_mask(Us)) | ((ctx.all_bb | ctx.danger) & oo_blockers_mask(Us))) == 0) {
             if (Us == Color.White) {
                 list.append(Move.new(Square.e1, Square.g1, MoveFlags.OO));
@@ -2196,7 +2139,7 @@ pub const Position = struct {
         }
     }
 
-    fn generate_en_passant_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
+    fn generate_en_passant_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void { // en passant moves are noisy moves
         const Them = Us.change_side();
         var s: u6 = undefined;
         if (self.history[self.game_ply].epsq != Square.NO_SQUARE) {
@@ -2227,16 +2170,17 @@ pub const Position = struct {
         }
     }
 
-    fn generate_pinned_slider_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, quiet_mask: u64, capture_mask: u64, comptime only_captures: bool) void {
+    fn generate_pinned_slider_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, quiet_mask: u64, capture_mask: u64, comptime noisy: bool) void {
         var b1 = ~(ctx.not_pinned | self.bitboard_of_pt(Us, PieceType.Knight) | self.bitboard_of_pt(Us, PieceType.Pawn));
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
             var pc = self.board[s1];
             const b2 = attacks.piece_attacks(s1, ctx.all_bb, pc.type_of()) & attacks.LINE[ctx.our_king][s1];
-            if (!only_captures) {
+            if (noisy) {
+                make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);            
+            } else {
                 make_list(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
             }
-            make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
         }        
     }
 
@@ -2267,6 +2211,101 @@ pub const Position = struct {
         }
     }
 
+    fn generate_noisy_pinned_pawn_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, capture_mask: u64) void {
+        var b1 = ~ctx.not_pinned & self.bitboard_of_pt(Us, PieceType.Pawn);
+        while (b1 != 0) {
+            const s = bb.pop_lsb(&b1);
+            if (rank_of_u6(s) == Rank.RANK7.relative_rank(Us).toU6()) {
+                var b2 = attacks.pawn_attacks_from_square(s, Us) & capture_mask & attacks.LINE[ctx.our_king][s];
+                const sq_from = Square.fromU6(s);
+                while (b2 != 0) {
+                    const sq_to = Square.fromU6(bb.pop_lsb(&b2));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_KNIGHT));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_BISHOP));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_ROOK));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_QUEEN));
+                }
+            } else {
+                const b2 = attacks.pawn_attacks_from_square(s, Us) & ctx.them_bb & attacks.LINE[s][ctx.our_king];
+                make_list(Square.fromU6(s), b2, MoveFlags.CAPTURE, list);
+            }
+        }
+    }    
+
+    fn generate_quiet_pinned_pawn_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
+        var b1 = ~ctx.not_pinned & self.bitboard_of_pt(Us, PieceType.Pawn);
+        while (b1 != 0) {
+            const s = bb.pop_lsb(&b1);
+            const b2 = shift(SQUARE_BB[s], Direction.NORTH.relative_dir(Us)) & ~ctx.all_bb & attacks.LINE[ctx.our_king][s];
+            const b3 = shift(b2 & bb.MASK_RANK[Rank.RANK3.relative_rank(Us).toU3()], Direction.NORTH.relative_dir(Us)) & ~ctx.all_bb & attacks.LINE[ctx.our_king][s];
+            make_list(Square.fromU6(s), b2, MoveFlags.QUIET, list);
+            make_list(Square.fromU6(s), b3, MoveFlags.DOUBLE_PUSH, list);
+        }
+    }    
+
+    pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
+        const ctx = self.computeMoveGenContext(Us);
+
+        const Them = Us.change_side();
+
+        var capture_mask: u64 = undefined;
+        var quiet_mask: u64 = undefined;
+
+        // King moves: to all surrounding squares except those attacked or occupied by own pieces
+        generate_king_moves(ctx, list, true);
+        generate_king_moves(ctx, list, false);
+
+        switch (bb.pop_count(ctx.checkers)) {
+            // Double check: only king moves are legal
+            2 => return,
+            1 => {
+                // Single check
+                const checker_square = bb.get_ls1b_index(ctx.checkers);
+                switch (self.board[checker_square]) {
+                    Piece.new(Them, PieceType.Pawn) => {
+                        // Check for en passant capture if checker is a pawn that just double-pushed
+                        generate_pawn_checker_moves(self, Us, ctx, list, checker_square);
+                        return;
+                    },
+                    Piece.new(Them, PieceType.King) => {
+                        generate_king_checker_moves(self, Us, ctx, list, checker_square);
+                        return;
+                    },
+                    else => {
+                        // Must capture the checking piece or block it (slider)
+                        capture_mask = ctx.checkers;
+                        quiet_mask = attacks.SQUARES_BETWEEN_BB[ctx.our_king][checker_square];
+                    },
+                }
+            },
+            else => {
+                // No checks: can capture any enemy piece or move to any unoccupied square
+                capture_mask = ctx.them_bb;
+                quiet_mask = ~ctx.all_bb;
+
+                // En passant moves
+                generate_en_passant_moves(self, Us, ctx, list);
+
+                // Castling
+                generate_castling_moves(self, Us, ctx, list);
+
+                // Pinned rooks, bishops, or queens
+                generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, capture_mask, true);
+                generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, capture_mask, false);
+
+                // Pinned pawns
+                //generate_pinned_pawn_moves(self, Us, ctx, list, capture_mask, false);
+                generate_noisy_pinned_pawn_moves(self, Us, ctx, list, capture_mask);
+                generate_quiet_pinned_pawn_moves(self, Us, ctx, list);
+            },
+        }
+
+        generate_noisy_moves(self, Us, ctx, list, capture_mask, quiet_mask);
+        generate_quiet_moves(self, Us, ctx, list, quiet_mask);
+
+        return;
+    }
+
     pub fn generate_captures_list(self: *Position, comptime Us: Color, list: *MoveList) void {
         const ctx = self.computeMoveGenContext(Us);
 
@@ -2276,7 +2315,7 @@ pub const Position = struct {
         var quiet_mask: u64 = undefined;
 
         // King captures
-        generateKingMoves(ctx, list, false);
+        generate_king_moves(ctx, list, true);
 
         switch (bb.pop_count(ctx.checkers)) {
             // Double check: only king moves are legal
@@ -2287,11 +2326,11 @@ pub const Position = struct {
                 switch (self.board[checker_square]) {
                     Piece.new(Them, PieceType.Pawn) => {
                         // En passant capture for pawn checker
-                        handle_pawn_checker(self, Us, list, checker_square, ctx);
+                        generate_pawn_checker_moves(self, Us, ctx, list, checker_square);
                         return;
                     },
                     Piece.new(Them, PieceType.King) => {
-                        handle_king_checker(self, Us, list, checker_square, ctx);
+                        generate_king_checker_moves(self, Us, ctx, list, checker_square);
                         return;
                     },
                     else => {
@@ -2313,30 +2352,14 @@ pub const Position = struct {
                 generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, capture_mask, true);
 
                 // Pinned pawns
-                generate_pinned_pawn_moves(self, Us, ctx, list, capture_mask, true);
+                //generate_pinned_pawn_moves(self, Us, ctx, list, capture_mask, true);
+                generate_noisy_pinned_pawn_moves(self, Us, ctx, list, capture_mask);
 
-                // b1 = ~ctx.not_pinned & self.bitboard_of_pt(Us, PieceType.Pawn);
-                // while (b1 != 0) {
-                //     s = bb.pop_lsb(&b1);
-                //     if (rank_of_u6(s) == Rank.RANK7.relative_rank(Us).toU6()) {
-                //         var b2 = attacks.pawn_attacks_from_square(s, Us) & capture_mask & attacks.LINE[ctx.our_king][s];
-                //         const sq_from = Square.fromU6(s);
-                //         while (b2 != 0) {
-                //             const sq_to = Square.fromU6(bb.pop_lsb(&b2));
-                //             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_KNIGHT));
-                //             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_BISHOP));
-                //             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_ROOK));
-                //             list.append(Move.new(sq_from, sq_to, MoveFlags.PC_QUEEN));
-                //         }
-                //     } else {
-                //         const b2 = attacks.pawn_attacks_from_square(s, Us) & ctx.them_bb & attacks.LINE[s][ctx.our_king];
-                //         make_list(Square.fromU6(s), b2, MoveFlags.CAPTURE, list);
-                //     }
-                // }
+
             },
         }
 
-        generateNoisyMoves(self, Us, ctx, list, capture_mask, quiet_mask);
+        generate_noisy_moves(self, Us, ctx, list, capture_mask, quiet_mask);
 
         return;
     }
@@ -2511,6 +2534,4 @@ test "Test in_check function for black" {
         }        
 
     }
-
-
 }
