@@ -2244,65 +2244,41 @@ pub const Position = struct {
     }    
 
     pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
+
+        generate_captures_list(self, Us, list);
+        generate_quiets_list(self, Us, list);
+
+        return;
+    }
+
+    pub fn generate_quiets_list(self: *Position, comptime Us: Color, list: *MoveList) void {
         const ctx = self.computeMoveGenContext(Us);
 
-        const Them = Us.change_side();
-
-        var capture_mask: u64 = undefined;
-        var quiet_mask: u64 = undefined;
-
-        // King moves: to all surrounding squares except those attacked or occupied by own pieces
-        generate_king_moves(ctx, list, true);
         generate_king_moves(ctx, list, false);
 
+        var quiet_mask: u64 = undefined;
+        const Them = Us.change_side();
+
         switch (bb.pop_count(ctx.checkers)) {
-            // Double check: only king moves are legal
             2 => return,
             1 => {
-                // Single check
                 const checker_square = bb.get_ls1b_index(ctx.checkers);
-                switch (self.board[checker_square]) {
-                    Piece.new(Them, PieceType.Pawn) => {
-                        // Check for en passant capture if checker is a pawn that just double-pushed
-                        generate_pawn_checker_moves(self, Us, ctx, list, checker_square);
-                        return;
-                    },
-                    Piece.new(Them, PieceType.King) => {
-                        generate_king_checker_moves(self, Us, ctx, list, checker_square);
-                        return;
-                    },
-                    else => {
-                        // Must capture the checking piece or block it (slider)
-                        capture_mask = ctx.checkers;
-                        quiet_mask = attacks.SQUARES_BETWEEN_BB[ctx.our_king][checker_square];
-                    },
+                const checker_piece = self.board[checker_square];
+                if (checker_piece == Piece.new(Them, PieceType.Pawn) or checker_piece == Piece.new(Them, PieceType.King)) {
+                    return;
                 }
+                quiet_mask = attacks.SQUARES_BETWEEN_BB[ctx.our_king][checker_square];
+                // Add pinned quiet generations here to fix potential issues
             },
             else => {
-                // No checks: can capture any enemy piece or move to any unoccupied square
-                capture_mask = ctx.them_bb;
                 quiet_mask = ~ctx.all_bb;
-
-                // En passant moves
-                generate_en_passant_moves(self, Us, ctx, list);
-
-                // Castling
                 generate_castling_moves(self, Us, ctx, list);
-
-                // Pinned rooks, bishops, or queens
-                generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, capture_mask, true);
-                generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, capture_mask, false);
-
-                // Pinned pawns
-                //generate_pinned_pawn_moves(self, Us, ctx, list, capture_mask, false);
-                generate_noisy_pinned_pawn_moves(self, Us, ctx, list, capture_mask);
                 generate_quiet_pinned_pawn_moves(self, Us, ctx, list);
+                generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, 0, false);                
             },
         }
 
-        generate_noisy_moves(self, Us, ctx, list, capture_mask, quiet_mask);
         generate_quiet_moves(self, Us, ctx, list, quiet_mask);
-
         return;
     }
 
@@ -2534,4 +2510,6 @@ test "Test in_check function for black" {
         }        
 
     }
+
+
 }
