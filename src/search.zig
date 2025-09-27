@@ -415,6 +415,7 @@ pub const Search = struct {
         // self.clear_node_state_stack();
         // //self.clear_sc_follow_table();
         // self.clear_corr_history();
+        // self.age_sc_history();
 
         self.best_move = Move.empty();
         self.stop_on_time = false;
@@ -865,7 +866,11 @@ pub const Search = struct {
         }
 
         if (depth >= 4 and tt_bound == tt.Bound.BOUND_NONE and !is_root) {
-            depth -= 1;
+            if (depth >= 8) {
+                depth -= 2;
+            } else {
+                depth -= 1;
+            }
         }
 
         var static_eval = pos.eval.eval(pos, me) + history.get_correction(self, pos);
