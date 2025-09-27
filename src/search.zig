@@ -866,11 +866,7 @@ pub const Search = struct {
         }
 
         if (depth >= 4 and tt_bound == tt.Bound.BOUND_NONE and !is_root) {
-            if (depth >= 8) {
-                depth -= 2;
-            } else {
-                depth -= 1;
-            }
+            depth -= 1;
         }
 
         var static_eval = pos.eval.eval(pos, me) + history.get_correction(self, pos);
@@ -913,7 +909,7 @@ pub const Search = struct {
             }
 
             if (best_score >= beta and !is_null and depth >= 2 and (pos.eval.phase[me.toU4()] > 0) and (!tt_hit or !(tt_bound == tt.Bound.BOUND_UPPER) or tt_score >= beta)) {
-                var R = 4 + @divTrunc(depth, 5) + @as(i8, @intCast(@min(3, @divTrunc(best_score - beta, 190))));
+                var R = 5 + @divTrunc(depth, 5) + @as(i8, @intCast(@min(3, @divTrunc(best_score - beta, 230))));
                 R += if (self.ns_stack[self.ply - 1].is_tactical) 1 else 0;
 
                 // make null move
@@ -934,9 +930,9 @@ pub const Search = struct {
                 // unmake move
 
                 if (score >= beta) {
-                    if (@abs(beta) < MATE_VALUE and depth < 14) {
-                        return if (_is_mate_score(score)) beta else score;
-                    }
+                    // if (@abs(beta) < MATE_VALUE and depth < 6) {
+                    //     return if (_is_mate_score(score)) beta else score;
+                    // }
 
                     score = self.pvs(depth - R, beta - 1, beta, pos, false, me);
 
