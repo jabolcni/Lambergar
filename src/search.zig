@@ -45,16 +45,16 @@ const fm_history_limit = [_]i32{ -1000, -2000 }; //{ -2000, -4000 };
 const futility_histroy_limit = [_]i32{ -500, -1000 };
 const lmp_depth = 8;
 
-var lmp = [2][11]i8{
-    [_]i8{ 0, 2, 3, 5, 9, 13, 18, 25, 34, 45, 55 },
-    [_]i8{ 0, 5, 6, 9, 14, 21, 30, 41, 55, 69, 84 },
-};
-
-// // Testiraj še z daljšimi tc
 // var lmp = [2][11]i8{
-//     [_]i8{ 0, 2, 3, 4, 6, 8, 10, 13, 17, 22, 30 },
-//     [_]i8{ 0, 4, 5, 7, 10, 13, 17, 22, 29, 38, 50 },
-// }; // !!! te so nekoliko boljše vrednosti
+//     [_]i8{ 0, 2, 3, 5, 9, 13, 18, 25, 34, 45, 55 },
+//     [_]i8{ 0, 5, 6, 9, 14, 21, 30, 41, 55, 69, 84 },
+// };
+
+// Testiraj še z daljšimi tc
+var lmp = [2][11]i8{
+    [_]i8{ 0, 2, 3, 4, 6, 8, 10, 13, 17, 22, 30 },
+    [_]i8{ 0, 4, 5, 7, 10, 13, 17, 22, 29, 38, 50 },
+}; // !!! te so nekoliko boljše vrednosti
 
 var lmr: [MAX_DEPTH][MAX_MOVES]i8 = undefined;
 
