@@ -39,6 +39,14 @@ pub fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_l
         var score: i32 = 0;
         if (move.equal(hash_move)) {
             score = SortHash;
+        } else if (move.is_capture() and move.is_promotion()) {
+            score = switch (move.flags) {
+                MoveFlags.PC_QUEEN => QueenPromotionWithCapture,
+                MoveFlags.PC_KNIGHT => KnightPromotionWithCapture,
+                else => Badpromotion,
+            };
+            const see_val = see_value(pos, move, true);
+            if (see_val < 0) score = Badpromotion;
         } else if (move.is_capture()) {
             const captured = if (move.flags == MoveFlags.EN_PASSANT) 0 else pos.board[move.to].type_of().toU3();
             const capturer = pos.board[move.from].type_of().toU3();
@@ -50,11 +58,13 @@ pub fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_l
                 score = 10 * piece_val[captured] - piece_val[capturer] + SortBadCapture;
             }
         } else if (move.is_promotion()) {
-            switch (move.flags) {
-                MoveFlags.PR_QUEEN => score = QueenPromotion,
-                MoveFlags.PR_KNIGHT => score = KnightPromotion,
-                else => score = Badpromotion,
-            }
+            score = switch (move.flags) {
+                MoveFlags.PR_QUEEN => QueenPromotion,
+                MoveFlags.PR_KNIGHT => KnightPromotion,
+                else => Badpromotion,
+            };
+            const see_val = see_value(pos, move, true);
+            if (see_val < 0) score = Badpromotion;
         } else {
             if (move.equal(search.mv_killer[search.ply][0])) {
                 score = SortKiller1;
