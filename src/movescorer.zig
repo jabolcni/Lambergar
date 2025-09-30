@@ -39,14 +39,6 @@ pub fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_l
         var score: i32 = 0;
         if (move.equal(hash_move)) {
             score = SortHash;
-        } else if (move.is_capture() and move.is_promotion()) {
-            score = switch (move.flags) {
-                MoveFlags.PC_QUEEN => QueenPromotionWithCapture,
-                MoveFlags.PC_KNIGHT => KnightPromotionWithCapture,
-                else => Badpromotion,
-            };
-            // const see_val = see_value(pos, move, true);
-            // if (see_val < 0) score = Badpromotion;
         } else if (move.is_capture()) {
             const captured = if (move.flags == MoveFlags.EN_PASSANT) 0 else pos.board[move.to].type_of().toU3();
             const capturer = pos.board[move.from].type_of().toU3();
@@ -63,8 +55,6 @@ pub fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_l
                 MoveFlags.PR_KNIGHT => KnightPromotion,
                 else => Badpromotion,
             };
-            // const see_val = see_value(pos, move, true);
-            // if (see_val < 0) score = Badpromotion;
         } else {
             if (move.equal(search.mv_killer[search.ply][0])) {
                 score = SortKiller1;
@@ -143,14 +133,14 @@ pub fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usize) Mov
     // Swap if needed
     if (best_j != i) {
         // Use swap functions that might be optimized better
-        // std.mem.swap(Move, &move_list.moves[best_j], &move_list.moves[i]);
-        // std.mem.swap(i32, &score_list.scores[best_j], &score_list.scores[i]);
-        const best_move = move_list.moves[best_j];
-        const best_score = score_list.scores[best_j];
-        move_list.moves[best_j] = move_list.moves[i];
-        score_list.scores[best_j] = score_list.scores[i];
-        move_list.moves[i] = best_move;
-        score_list.scores[i] = best_score;
+        std.mem.swap(Move, &move_list.moves[best_j], &move_list.moves[i]);
+        std.mem.swap(i32, &score_list.scores[best_j], &score_list.scores[i]);
+        // const best_move = move_list.moves[best_j];
+        // const best_score = score_list.scores[best_j];
+        // move_list.moves[best_j] = move_list.moves[i];
+        // score_list.scores[best_j] = score_list.scores[i];
+        // move_list.moves[i] = best_move;
+        // score_list.scores[i] = best_score;
     }
 
     return move_list.moves[i];
