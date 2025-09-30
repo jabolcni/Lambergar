@@ -1358,11 +1358,12 @@ pub const Search = struct {
         var best_move = Move.empty();
 
         var move_list: MoveList = .{};
-        if (in_check) {
-            pos.generate_legals(me, &move_list);
-        } else {
-            pos.generate_captures_list(me, &move_list);
-        }
+        // if (in_check) {
+        //     pos.generate_legals(me, &move_list);
+        // } else {
+        //     pos.generate_captures_list(me, &move_list);
+        // }
+        pos.generate_noisy_legals(me, &move_list);
         var score_list: ScoreList = .{};
         ms.score_move(pos, self, &move_list, &score_list, tt_move, me);
 

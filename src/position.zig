@@ -816,6 +816,7 @@ pub const Position = struct {
         checkers: u64,
         pinned: u64,
         not_pinned: u64,
+        check_count: u7 = 0,
     };
 
     pub fn computeMoveGenContext(self: *Position, comptime Us: Color) MoveGenContext {
@@ -891,6 +892,7 @@ pub const Position = struct {
             .checkers = checkers,
             .pinned = pinned,
             .not_pinned = not_pinned,
+            .check_count = bb.pop_count(checkers),
         };
     }
 
@@ -1938,29 +1940,69 @@ pub const Position = struct {
     // defer allocator.free(fen);
     // std.debug.print("Generated FEN: {s}\n", .{fen});
 
+    // Generate only evasions
+    fn generate_evasions(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
 
+        const Them = Us.change_side();
+        var capture_mask: u64 = undefined;
+        var quiet_mask: u64 = undefined;
 
+        // Always generate king evasions (escapes + captures)
+        self.generate_all_king_moves(ctx, list);
+        
+        if (ctx.check_count >= 2) return; // Double check: only king moves
 
+        const checker_square = bb.get_ls1b_index(ctx.checkers);
+        switch (self.board[checker_square]) {
+            Piece.new(Them, PieceType.Pawn) => {
+                // Check for en passant capture if checker is a pawn that just double-pushed
+                self.generate_pawn_checker_moves(Us, ctx, list, checker_square);
+                return;
+            },
+            Piece.new(Them, PieceType.King) => {
+                self.generate_king_checker_moves(Us, ctx, list, checker_square);
+                return;
+            },
+            else => {
+                // Must capture the checking piece or block it (slider)
+                capture_mask = ctx.checkers;
+                quiet_mask = attacks.SQUARES_BETWEEN_BB[ctx.our_king][checker_square];
+            },
+        }
 
+        self.generate_noisy_moves(Us, ctx, list, capture_mask, quiet_mask);
+        self.generate_quiet_moves(Us, ctx, list, quiet_mask);
+    }
 
+    pub fn generate_all_captures_no_evasion(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
 
+        const capture_mask = ctx.them_bb;
+        const quiet_mask = ~ctx.all_bb;
 
+        self.generate_en_passant_moves(Us, ctx, list);
+        self.generate_pinned_slider_moves(Us, ctx, list, quiet_mask, capture_mask, true);
+        self.generate_noisy_pinned_pawn_moves(Us, ctx, list, capture_mask);
+        self.generate_noisy_moves(Us, ctx, list, capture_mask, quiet_mask);
+        self.generate_king_moves(ctx, list, true);
 
+        return;
+    }
 
+    pub fn generate_all_quiets_no_evasion(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
 
+        const quiet_mask = ~ctx.all_bb;
 
+        self.generate_castling_moves(Us, ctx, list);
+        self.generate_quiet_pinned_pawn_moves(Us, ctx, list);
+        self.generate_pinned_slider_moves(Us, ctx, list, quiet_mask, 0, false);                
+        self.generate_quiet_moves(Us, ctx, list, quiet_mask);
+        self.generate_king_moves(ctx, list, false);
 
+        return;
+    }    
 
-
-
-
-
-
-
-
-
-
-    pub fn generate_king_moves(ctx: MoveGenContext, list: *MoveList, comptime noisy: bool) void {
+    pub fn generate_king_moves(self: *Position, ctx: MoveGenContext, list: *MoveList, comptime noisy: bool) void {
+        _ = self;
         const b1 = attacks.piece_attacks(ctx.our_king, ctx.all_bb, PieceType.King) & ~(ctx.us_bb | ctx.danger);
 
         if (noisy) {
@@ -1969,6 +2011,14 @@ pub const Position = struct {
             make_list(Square.fromU6(ctx.our_king), b1 & ~ctx.them_bb, MoveFlags.QUIET, list);
         }
     }
+
+    pub fn generate_all_king_moves(self: *Position, ctx: MoveGenContext, list: *MoveList) void {
+        _ = self;
+        const b1 = attacks.piece_attacks(ctx.our_king, ctx.all_bb, PieceType.King) & ~(ctx.us_bb | ctx.danger);
+
+        make_list(Square.fromU6(ctx.our_king), b1 & ctx.them_bb, MoveFlags.CAPTURE, list);   
+        make_list(Square.fromU6(ctx.our_king), b1 & ~ctx.them_bb, MoveFlags.QUIET, list);
+    }    
 
     pub fn generate_quiet_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, quiet_mask: u64) void {
 
@@ -2243,7 +2293,55 @@ pub const Position = struct {
         }
     }    
 
+    // pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList, comptime noisy: bool) void {
+
+    //     const ctx = self.computeMoveGenContext(Us);
+
+    //     if (ctx.check_count > 0) {
+    //         self.generate_evasions(Us, ctx, list);
+    //         return;
+    //     }
+
+    //     //generate_captures_list(self, Us, list);
+    //     //generate_quiets_list(self, Us, list);
+    //     self.generate_all_captures_no_evasion(Us, ctx, list);
+    //     if (noisy) {
+    //         return;
+    //     } 
+    //     self.generate_all_quiets_no_evasion(Us, ctx, list);
+    //     return;
+    // }    
+
     pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
+
+        const ctx = self.computeMoveGenContext(Us);
+
+        if (ctx.check_count > 0) {
+            self.generate_evasions(Us, ctx, list);
+            return;
+        }
+
+        //generate_captures_list(self, Us, list);
+        //generate_quiets_list(self, Us, list);
+        self.generate_all_captures_no_evasion(Us, ctx, list);
+        self.generate_all_quiets_no_evasion(Us, ctx, list);
+        return;
+    }  
+
+    pub fn generate_noisy_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
+
+        const ctx = self.computeMoveGenContext(Us);
+
+        if (ctx.check_count > 0) {
+            self.generate_evasions(Us, ctx, list);
+            return;
+        }
+
+        self.generate_all_captures_no_evasion(Us, ctx, list);
+        return;
+    }          
+
+    pub fn generate_legals2(self: *Position, comptime Us: Color, list: *MoveList) void {
 
         generate_captures_list(self, Us, list);
         generate_quiets_list(self, Us, list);
@@ -2339,6 +2437,10 @@ pub const Position = struct {
 
         return;
     }
+
+
+
+
 
 };
 
