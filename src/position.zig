@@ -1,3 +1,4 @@
+// TODO: gen_fen function is not the latest, update it
 const std = @import("std");
 const bb = @import("bitboard.zig");
 const zobrist = @import("zobrist.zig");
@@ -574,13 +575,6 @@ pub const Move = packed struct {
         } else {
             curr_pos.generate_legals(Color.Black, &move_list);
         }
-        // std.debug.print("Legal moves for {s}:\n", .{move_str});
-        // for (0..move_list.count) |i| {
-        //     const move = move_list.moves[i];
-        //     std.debug.print("Move: from={d}, to={d}, promotion={?c}, capture={}\n", .{
-        //         move.from, move.to, move.flags.promote_type_str(), move.is_capture(),
-        //     });
-        // }
 
         // Find source square by checking legal moves
         var src_square: ?u64 = null;
@@ -616,9 +610,6 @@ pub const Move = packed struct {
         }
 
         if (src_square == null) {
-            // std.debug.print("No matching move for {s}, dest_idx={d}, promotion={?c}, is_capture={}\n", .{
-            //     move_str, dest_idx, promotion, is_cap,
-            // });
             return error.NoMatchingMove;
         }
 
@@ -651,13 +642,6 @@ pub const Move = packed struct {
     }
 
 };
-
-// pub inline fn make(sq_from: Square, to: u64, comptime flag: MoveFlags, move_list: *ArrayList(Move)) void {
-//     var b = to;
-//     while (b != 0) {
-//         move_list.append(Move.new(sq_from, Square.fromU6(bb.pop_lsb(&b)), flag)) catch unreachable;
-//     }
-// }
 
 pub inline fn make_list(sq_from: Square, to: u64, comptime flag: MoveFlags, move_list: *MoveList) void {
     var b = to;
@@ -1138,10 +1122,6 @@ pub const Position = struct {
         (attacks.piece_attacks(s, occ, PieceType.Rook) & (self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()]));        
     } 
 
-    // pub inline fn all_attackers(self: *Position, s: u6, occ: u64) u64 {
-    //     return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
-    // }
-
     pub inline fn all_attackers(self: *Position, s: u6, occ: u64) u64 {
         //return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
         //return self.attackers_plus_king_from(s, occ, Color.White) | self.attackers_plus_king_from(s, occ, Color.Black);
@@ -1231,6 +1211,8 @@ pub const Position = struct {
         return bb.pop_count(pieces);
     }
 
+    // This is old version of is_insufficient_material:
+    // TODO: write zig test to test the new version of function
     // pub inline fn is_insufficient_material(self: *Position) bool {
     //     const remaining_pieces = self.all_pieces(Color.White) | self.all_pieces(Color.Black);
     //     const white_bishop = self.piece_bb[Piece.WHITE_BISHOP.toU4()];
@@ -1932,14 +1914,6 @@ pub const Position = struct {
         return fen_string[0 .. fen_string.len - 1]; // Exclude the null terminator
     }
 
-    // Example usage (assuming you have a Position instance):
-    // const allocator = std.heap.page_allocator; // Or your preferred allocator
-    // var pos = Position.new();
-    // try pos.set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    // const fen = try positionToFen(allocator, &pos);
-    // defer allocator.free(fen);
-    // std.debug.print("Generated FEN: {s}\n", .{fen});
-
     // Generate only evasions
     fn generate_evasions(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
 
@@ -2293,6 +2267,7 @@ pub const Position = struct {
         }
     }    
 
+    // TODO: think about using this function, which is more general
     // pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList, comptime noisy: bool) void {
 
     //     const ctx = self.computeMoveGenContext(Us);
@@ -2321,8 +2296,6 @@ pub const Position = struct {
             return;
         }
 
-        //generate_captures_list(self, Us, list);
-        //generate_quiets_list(self, Us, list);
         self.generate_all_captures_no_evasion(Us, ctx, list);
         self.generate_all_quiets_no_evasion(Us, ctx, list);
         return;

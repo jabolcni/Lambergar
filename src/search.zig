@@ -1174,6 +1174,7 @@ pub const Search = struct {
         return best_score;
     }
 
+    // TODO: check why this old version of quiescence is still here, if it is obsolete delete the old version
     // pub fn quiescence(self: *Search, _alpha: i32, _beta: i32, pos: *Position, depth: i8, comptime color: Color) i32 {
     //     const opp = if (color == Color.White) Color.Black else Color.White;
     //     const me = if (color == Color.White) Color.White else Color.Black;
@@ -1418,26 +1419,6 @@ pub const Search = struct {
         return best_score;
     }
 
-    // fn update_pv(self: *Search, move: Move) void {
-    //     self.pv_table[self.ply][0] = move;
-    //     std.mem.copyBackwards(Move, self.pv_table[self.ply][1..(self.pv_length[self.ply + 1] + 1)], self.pv_table[self.ply + 1][0..(self.pv_length[self.ply + 1])]);
-    //     self.pv_length[self.ply] = self.pv_length[self.ply + 1] + 1;
-    // }
-
-    // fn update_pv(self: *Search, move: Move) void {
-    //     // Store the best move at the current ply
-    //     self.pv_table[self.ply][0] = move;
-
-    //     // Copy the PV from the next ply using a for loop
-    //     const child_pv_length = self.pv_length[self.ply + 1];
-    //     for (1..child_pv_length + 1) |i| {
-    //         self.pv_table[self.ply][i] = self.pv_table[self.ply + 1][i - 1];
-    //     }
-
-    //     // Update the PV length for the current ply
-    //     self.pv_length[self.ply] = child_pv_length + 1;
-    // }
-
     fn update_pv(self: *Search, move: Move) void {
         self.pv_table[self.ply][0] = move;
         const child_pv_length = self.pv_length[self.ply + 1];
@@ -1459,6 +1440,7 @@ const TestSimpleSearch = struct {
     ply: usize,
 };
 
+// Just old versions of update_pv, for release they should be deleted
 // Original function with std.mem.copyBackwards
 fn update_pv1(self: *TestSimpleSearch, move: Move) void {
     self.pv_table[self.ply][0] = move;
