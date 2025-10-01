@@ -1805,8 +1805,8 @@ pub const Position = struct {
     /// Converts the current state of a `Position` struct into a FEN string.
     /// The caller is responsible for freeing the returned string using `allocator`.
     pub fn get_fen(self: *Position, allocator: std.mem.Allocator) ![]u8 {
-        var fen_parts = std.ArrayList(u8).init(allocator);
-        defer fen_parts.deinit();
+        var fen_parts = try std.ArrayList(u8).initCapacity(allocator, 128);
+        defer fen_parts.deinit(allocator);
 
         // --- 1. Piece placement ---
         var rank: i8 = 7; // Start from rank 8 (index 7)
@@ -1823,94 +1823,94 @@ pub const Position = struct {
                 } else {
                     // If we were counting empty squares, add the count to the FEN
                     if (empty_count > 0) {
-                        try fen_parts.append('0' + empty_count);
+                        try fen_parts.append(allocator, '0' + empty_count);
                         empty_count = 0;
                     }
                     // Add the piece character
                     // Assuming PIECE_STR exists and maps pieces correctly
                     // Adjust indexing if your Piece enum or PIECE_STR is different
                     const piece_char = PIECE_STR[@intFromEnum(piece)];
-                    try fen_parts.append(piece_char);
+                    try fen_parts.append(allocator, piece_char);
                 }
             }
             // After processing a rank, add any trailing empty squares
             if (empty_count > 0) {
-                try fen_parts.append('0' + empty_count);
+                try fen_parts.append(allocator, '0' + empty_count);
             }
             // Add rank separator, except after the last rank (rank 1)
             if (rank > 0) {
-                try fen_parts.append('/');
+                try fen_parts.append(allocator, '/');
             }
         }
 
         // --- 2. Active color ---
-        try fen_parts.append(' ');
+        try fen_parts.append(allocator, ' ');
         if (self.side_to_play == Color.White) {
-            try fen_parts.append('w');
+            try fen_parts.append(allocator, 'w');
         } else {
-            try fen_parts.append('b');
+            try fen_parts.append(allocator, 'b');
         }
 
         // --- 3. Castling availability ---
-        try fen_parts.append(' ');
+        try fen_parts.append(allocator, ' ');
         var has_castling = false;
         const castling_rights = self.history[self.game_ply].castling; // Assuming u4 field
 
         // Check for White castling rights (assuming Castling enum values)
         if ((castling_rights & Castling.WK.toU4()) != 0) {
-            try fen_parts.append('K');
+            try fen_parts.append(allocator, 'K');
             has_castling = true;
         }
         if ((castling_rights & Castling.WQ.toU4()) != 0) {
-            try fen_parts.append('Q');
+            try fen_parts.append(allocator, 'Q');
             has_castling = true;
         }
         // Check for Black castling rights
         if ((castling_rights & Castling.BK.toU4()) != 0) {
-            try fen_parts.append('k');
+            try fen_parts.append(allocator, 'k');
             has_castling = true;
         }
         if ((castling_rights & Castling.BQ.toU4()) != 0) {
-            try fen_parts.append('q');
+            try fen_parts.append(allocator, 'q');
             has_castling = true;
         }
 
         if (!has_castling) {
-            try fen_parts.append('-');
+            try fen_parts.append(allocator, '-');
         }
 
         // --- 4. En passant target square ---
-        try fen_parts.append(' ');
+        try fen_parts.append(allocator, ' ');
         const ep_square = self.history[self.game_ply].epsq; // Assuming Square enum
         if (ep_square != Square.NO_SQUARE) {
             // Assuming sq_to_coord array exists as in your provided code
             const ep_str = sq_to_coord[ep_square.toU()]; // Use toU() which returns usize
-            try fen_parts.appendSlice(ep_str);
+            try fen_parts.appendSlice(allocator, ep_str);
         } else {
-            try fen_parts.append('-');
+            try fen_parts.append(allocator, '-');
         }
 
         // --- 5. Halfmove clock (50-move counter) ---
-        try fen_parts.append(' ');
+        try fen_parts.append(allocator, ' ');
         // Assuming fifty_move_counter or similar field exists in history
         const halfmove_clock = self.history[self.game_ply].fifty; // Adjust field name if needed
         var halfmove_buf: [10]u8 = undefined; // Buffer for integer to string conversion
         const halfmove_str = try std.fmt.bufPrint(&halfmove_buf, "{}", .{halfmove_clock});
-        try fen_parts.appendSlice(halfmove_str);
+        try fen_parts.appendSlice(allocator, halfmove_str);
 
         // --- 6. Fullmove number ---
-        try fen_parts.append(' ');
+        try fen_parts.append(allocator, ' ');
         // Fullmove number is (game_ply / 2) + 1
         // Ensure game_ply is at least 0, then perform calculation
         const fullmove_number: u32 = @intCast((self.game_ply / 2) + 1);
         var fullmove_buf: [10]u8 = undefined;
         const fullmove_str = try std.fmt.bufPrint(&fullmove_buf, "{}", .{fullmove_number});
-        try fen_parts.appendSlice(fullmove_str);
+        try fen_parts.appendSlice(allocator, fullmove_str);
 
         // Null-terminate the string
-        try fen_parts.append(0);
+        try fen_parts.append(allocator, 0);
         // Resize to exclude the null terminator for the returned slice
-        const fen_string = try fen_parts.toOwnedSlice();
+        const fen_string = try fen_parts.toOwnedSlice(allocator);
         return fen_string[0 .. fen_string.len - 1]; // Exclude the null terminator
     }
 
@@ -2586,5 +2586,50 @@ test "Test in_check function for black" {
 
     }
 
+}
+
+test "Test get_fen" {
+
+    attacks.initialise_all_databases();
+    zobrist.initialise_zobrist_keys();
+
+    const test_cases = [_][]const u8{
+        "r3qb1k/1b4p1/p2pr2p/3n4/Pnp1N1N1/6RP/1B3PP1/1B1QR1K1 w - - 0 1",
+        "r4rk1/pp1n1p1p/1nqP2p1/2b1P1B1/4NQ2/1B3P2/PP2K2P/2R5 w - - 0 1",
+        "r2qk2r/ppp1b1pp/2n1p3/3pP1n1/3P2b1/2PB1NN1/PP4PP/R1BQK2R w KQkq - 0 1",
+        "r1b1kb1r/1p1n1ppp/p2ppn2/6BB/2qNP3/2N5/PPP2PPP/R2Q1RK1 w kq - 0 1",
+        "r2qrb1k/1p1b2p1/p2ppn1p/8/3NP3/1BN5/PPP3QP/1K3RR1 w - - 0 1",
+        "rnbqk2r/1p3ppp/p7/1NpPp3/QPP1P1n1/P4N2/4KbPP/R1B2B1R b kq - 0 1 ",
+        "1r1bk2r/2R2ppp/p3p3/1b2P2q/4QP2/4N3/1B4PP/3R2K1 w k - 0 1",
+        "r3rbk1/ppq2ppp/2b1pB2/8/6Q1/1P1B3P/P1P2PP1/R2R2K1 w - - 0 1",
+        "r4r1k/4bppb/2n1p2p/p1n1P3/1p1p1BNP/3P1NP1/qP2QPB1/2RR2K1 w - - 0 1",
+        "r1b2rk1/1p1nbppp/pq1p4/3B4/P2NP3/2N1p3/1PP3PP/R2Q1R1K w - - 0 1",
+        "r1b3k1/p2p1nP1/2pqr1Rp/1p2p2P/2B1PnQ1/1P6/P1PP4/1K4R1 w - - 0 1",
+        "1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - - 0 1",
+        "3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - 0 1",
+        "2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1",
+        "rnbqkb1r/p3pppp/1p6/2ppP3/3N4/2P5/PPP1QPPP/R1B1KB1R w KQkq - 0 1",
+        "r1b2rk1/2q1b1pp/p2ppn2/1p6/3QP3/1BN1B3/PPP3PP/R4RK1 w - - 0 1",
+        "2r3k1/pppR1pp1/4p3/4P1P1/5P2/1P4K1/P1P5/8 w - - 0 1",
+        "1nk1r1r1/pp2n1pp/4p3/q2pPp1N/b1pP1P2/B1P2R2/2P1B1PP/R2Q2K1 w - - 0 1",
+        "4b3/p3kp2/6p1/3pP2p/2pP1P2/4K1P1/P3N2P/8 w - - 0 1",
+        "2kr1bnr/pbpq4/2n1pp2/3p3p/3P1P1B/2N2N1Q/PPP3PP/2KR1B1R w - - 0 1",
+        "3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - 0 1",
+        "8/5Bp1/4P3/6pP/1b1k1P2/5K2/8/8 w - - 0 1",
+    };        
+
+    std.debug.print("\n", .{});
+    
+    for (test_cases) |test_case| {
+        // Set up position
+        var curr_pos = Position.new();
+        try curr_pos.set(test_case.fen);
+
+        const fen = try curr_pos.get_fen(std.heap.c_allocator); // Unwrap the error
+        defer std.heap.c_allocator.free(fen); // Free the allocated slice
+        std.debug.print("FEN: {s}\n", .{fen});
+        try std.testing.expectEqual(test_case.fen, fen);
+    }
 
 }
+
