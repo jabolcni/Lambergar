@@ -1,4 +1,3 @@
-// TODO: gen_fen function is not the latest, update it
 const std = @import("std");
 const bb = @import("bitboard.zig");
 const zobrist = @import("zobrist.zig");
