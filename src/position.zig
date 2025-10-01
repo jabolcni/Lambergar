@@ -2588,6 +2588,7 @@ test "Test in_check function for black" {
 
 }
 
+// run with: zig test --test-filter "Test get_fen" -lc .\src\position.zig
 test "Test get_fen" {
 
     attacks.initialise_all_databases();
@@ -2599,7 +2600,7 @@ test "Test get_fen" {
         "r2qk2r/ppp1b1pp/2n1p3/3pP1n1/3P2b1/2PB1NN1/PP4PP/R1BQK2R w KQkq - 0 1",
         "r1b1kb1r/1p1n1ppp/p2ppn2/6BB/2qNP3/2N5/PPP2PPP/R2Q1RK1 w kq - 0 1",
         "r2qrb1k/1p1b2p1/p2ppn1p/8/3NP3/1BN5/PPP3QP/1K3RR1 w - - 0 1",
-        "rnbqk2r/1p3ppp/p7/1NpPp3/QPP1P1n1/P4N2/4KbPP/R1B2B1R b kq - 0 1 ",
+        "rnbqk2r/1p3ppp/p7/1NpPp3/QPP1P1n1/P4N2/4KbPP/R1B2B1R b kq - 0 1", // Removed trailing ÔÉâ
         "1r1bk2r/2R2ppp/p3p3/1b2P2q/4QP2/4N3/1B4PP/3R2K1 w k - 0 1",
         "r3rbk1/ppq2ppp/2b1pB2/8/6Q1/1P1B3P/P1P2PP1/R2R2K1 w - - 0 1",
         "r4r1k/4bppb/2n1p2p/p1n1P3/1p1p1BNP/3P1NP1/qP2QPB1/2RR2K1 w - - 0 1",
@@ -2616,19 +2617,19 @@ test "Test get_fen" {
         "2kr1bnr/pbpq4/2n1pp2/3p3p/3P1P1B/2N2N1Q/PPP3PP/2KR1B1R w - - 0 1",
         "3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - 0 1",
         "8/5Bp1/4P3/6pP/1b1k1P2/5K2/8/8 w - - 0 1",
-    };        
+    };       
 
     std.debug.print("\n", .{});
-    
+
     for (test_cases) |test_case| {
         // Set up position
         var curr_pos = Position.new();
-        try curr_pos.set(test_case.fen);
+        try curr_pos.set(test_case);
 
-        const fen = try curr_pos.get_fen(std.heap.c_allocator); // Unwrap the error
-        defer std.heap.c_allocator.free(fen); // Free the allocated slice
+        const fen = try curr_pos.get_fen(std.heap.c_allocator);
+        defer std.heap.c_allocator.free(fen);
         std.debug.print("FEN: {s}\n", .{fen});
-        try std.testing.expectEqual(test_case.fen, fen);
+        try std.testing.expectEqualStrings(test_case, fen); // Use expectEqualStrings for string comparison
     }
 
 }
