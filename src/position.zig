@@ -1947,8 +1947,23 @@ pub const Position = struct {
         self.generate_quiet_moves(Us, ctx, list, quiet_mask);
     }
 
-    pub fn generate_all_captures_no_evasion(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
 
+    pub fn generate_all_no_evasion(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
+        const capture_mask = ctx.them_bb;
+        const quiet_mask = ~ctx.all_bb;
+
+        self.generate_en_passant_moves(Us, ctx, list);
+        self.generate_all_pinned_slider_moves(Us, ctx, list, quiet_mask, capture_mask);
+        self.generate_all_pinned_pawn_moves(Us, ctx, list, capture_mask);
+        self.generate_noisy_moves(Us, ctx, list, capture_mask, quiet_mask);        
+        self.generate_all_king_moves(ctx, list);
+        self.generate_castling_moves(Us, ctx, list);
+        self.generate_quiet_moves(Us, ctx, list, quiet_mask);
+
+        return;        
+    }
+
+    pub fn generate_all_captures_no_evasion(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
         const capture_mask = ctx.them_bb;
         const quiet_mask = ~ctx.all_bb;
 
@@ -2207,6 +2222,17 @@ pub const Position = struct {
         }        
     }
 
+    fn generate_all_pinned_slider_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, quiet_mask: u64, capture_mask: u64) void {
+        var b1 = ~(ctx.not_pinned | self.bitboard_of_pt(Us, PieceType.Knight) | self.bitboard_of_pt(Us, PieceType.Pawn));
+        while (b1 != 0) {
+            const s1 = bb.pop_lsb(&b1);
+            var pc = self.board[s1];
+            const b2 = attacks.piece_attacks(s1, ctx.all_bb, pc.type_of()) & attacks.LINE[ctx.our_king][s1];
+            make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);            
+            make_list(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
+        }        
+    }    
+
     fn generate_pinned_pawn_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, capture_mask: u64, comptime only_captures: bool) void {
         var b1 = ~ctx.not_pinned & self.bitboard_of_pt(Us, PieceType.Pawn);
         while (b1 != 0) {
@@ -2233,6 +2259,31 @@ pub const Position = struct {
             }
         }
     }
+
+    fn generate_all_pinned_pawn_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, capture_mask: u64) void {
+        var b1 = ~ctx.not_pinned & self.bitboard_of_pt(Us, PieceType.Pawn);
+        while (b1 != 0) {
+            const s = bb.pop_lsb(&b1);
+            if (rank_of_u6(s) == Rank.RANK7.relative_rank(Us).toU6()) {
+                var b2 = attacks.pawn_attacks_from_square(s, Us) & capture_mask & attacks.LINE[ctx.our_king][s];
+                const sq_from = Square.fromU6(s);
+                while (b2 != 0) {
+                    const sq_to = Square.fromU6(bb.pop_lsb(&b2));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_KNIGHT));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_BISHOP));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_ROOK));
+                    list.append(Move.new(sq_from, sq_to, MoveFlags.PC_QUEEN));
+                }
+            } else {
+                var b2 = attacks.pawn_attacks_from_square(s, Us) & ctx.them_bb & attacks.LINE[s][ctx.our_king];
+                make_list(Square.fromU6(s), b2, MoveFlags.CAPTURE, list);
+                b2 = shift(SQUARE_BB[s], Direction.NORTH.relative_dir(Us)) & ~ctx.all_bb & attacks.LINE[ctx.our_king][s];
+                const b3 = shift(b2 & bb.MASK_RANK[Rank.RANK3.relative_rank(Us).toU3()], Direction.NORTH.relative_dir(Us)) & ~ctx.all_bb & attacks.LINE[ctx.our_king][s];
+                make_list(Square.fromU6(s), b2, MoveFlags.QUIET, list);
+                make_list(Square.fromU6(s), b3, MoveFlags.DOUBLE_PUSH, list);
+            }
+        }
+    }    
 
     fn generate_noisy_pinned_pawn_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList, capture_mask: u64) void {
         var b1 = ~ctx.not_pinned & self.bitboard_of_pt(Us, PieceType.Pawn);
@@ -2295,8 +2346,9 @@ pub const Position = struct {
             return;
         }
 
-        self.generate_all_captures_no_evasion(Us, ctx, list);
-        self.generate_all_quiets_no_evasion(Us, ctx, list);
+        //self.generate_all_captures_no_evasion(Us, ctx, list);
+        //self.generate_all_quiets_no_evasion(Us, ctx, list);
+        self.generate_all_no_evasion(Us, ctx, list);
         return;
     }  
 
