@@ -435,22 +435,32 @@ pub const Move = packed struct {
         return self.equal(Move.empty());
     }
 
-    pub fn to_str(self: Move, allocator: Allocator) []const u8 {
+    pub fn to_str(self: Move) [5]u8 {
+        var result: [5]u8 = undefined;
+        @memcpy(result[0..2], sq_to_coord[self.from]);
+        @memcpy(result[2..4], sq_to_coord[self.to]);
         if (self.is_promotion()) {
-            var move_str = allocator.alloc(u8, 5) catch unreachable;
-
-            @memcpy(move_str[0..2], sq_to_coord[self.from]);
-            @memcpy(move_str[2..4], sq_to_coord[self.to]);
-            move_str[4] = PROM_TYPESTR[self.flags.toU4()][0];
-            return move_str;
-        } else {
-            var move_str = allocator.alloc(u8, 4) catch unreachable;
-            @memcpy(move_str[0..2], sq_to_coord[self.from]);
-            @memcpy(move_str[2..4], sq_to_coord[self.to]);
-            return move_str;
+            result[4] = PROM_TYPESTR[self.flags.toU4()][0];
         }
+        return result;
+    }    
 
-    }
+    // pub fn to_str(self: Move, allocator: Allocator) []const u8 {
+    //     if (self.is_promotion()) {
+    //         var move_str = allocator.alloc(u8, 5) catch unreachable;
+
+    //         @memcpy(move_str[0..2], sq_to_coord[self.from]);
+    //         @memcpy(move_str[2..4], sq_to_coord[self.to]);
+    //         move_str[4] = PROM_TYPESTR[self.flags.toU4()][0];
+    //         return move_str;
+    //     } else {
+    //         var move_str = allocator.alloc(u8, 4) catch unreachable;
+    //         @memcpy(move_str[0..2], sq_to_coord[self.from]);
+    //         @memcpy(move_str[2..4], sq_to_coord[self.to]);
+    //         return move_str;
+    //     }
+
+    // }
 
     pub fn parse_move(move_str: []const u8, pos: *Position) !Move {
         const from = Square.from_str(move_str[0..2]).toU6();

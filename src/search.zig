@@ -230,7 +230,8 @@ pub const SearchManager = struct {
                 return;
             }
         } else {
-            unreachable;
+            self.max_ms = 1 << 63;
+            self.early_ms = self.max_ms;
         }
     }
 };
@@ -475,7 +476,7 @@ pub const Search = struct {
     }
 
     pub fn iterative_deepening(self: *Search, pos: *Position, comptime color: Color) void {
-        const allocator = std.heap.c_allocator;
+        //const allocator = std.heap.c_allocator;
 
         self.clear_for_new_search();
         pos.history[pos.game_ply].accumulator = nnue.refresh_accumulator(pos.*);
@@ -496,9 +497,15 @@ pub const Search = struct {
         var prev_score = score;
         var prev_non_terminal_nodes: u64 = 0;
 
-        self.timer = std.time.Timer.start() catch unreachable;
+        self.timer = std.time.Timer.start() catch |err| {
+            std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
+            return; // or return error, or use fallback logic
+        };
 
-        const start = Instant.now() catch unreachable;
+        const start = Instant.now() catch |err| {
+            std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
+            return; // or return error, or use fallback logic
+        };
         self.nodes = 0;
         self.non_terminal_nodes = 0;
 
@@ -578,7 +585,10 @@ pub const Search = struct {
                     nodes += uci.thinkers[i].nodes;
                     tbhits += uci.thinkers[i].tbhits;
                 }
-                const now = Instant.now() catch unreachable;
+                const now = Instant.now() catch |err| {
+                    std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
+                    return; // or return error, or use fallback logic
+                };
                 const time_elapsed = now.since(start);
                 const elapsed_nanos = @as(f64, @floatFromInt(time_elapsed));
                 const elapsed_seconds = elapsed_nanos / 1_000_000_000;
@@ -609,8 +619,11 @@ pub const Search = struct {
                 var next_ply: usize = 0;
                 while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
                     var pv_move = self.pv_table[0][next_ply];
-                    const pv_move_str = pv_move.to_str(allocator);
-                    defer allocator.free(pv_move_str);
+                    //const pv_move_str = pv_move.to_str(allocator);
+                    //pv_move_str = pv_move.to_str(allocator);
+                    //defer allocator.free(pv_move_str);
+                    const pv_move_repr = pv_move.to_str();
+                    const pv_move_str = if (pv_move.is_promotion()) pv_move_repr[0..5] else pv_move_repr[0..4];
                     printout(uci.stdout, "{s} ", .{pv_move_str});
                 }
 
@@ -637,8 +650,8 @@ pub const Search = struct {
         }
 
         if (self.manager.printout) {
-            const move_name = self.best_move.to_str(allocator);
-            defer allocator.free(move_name);
+            const move_name_repr = self.best_move.to_str();
+            const move_name = if (self.best_move.is_promotion()) move_name_repr[0..5] else move_name_repr[0..4];
             printout(uci.stdout, "bestmove {s}\n", .{move_name});
         }
     }

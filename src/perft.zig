@@ -76,8 +76,6 @@ pub fn perft_with_stats(comptime color: Color, pos: *Position, depth: u4) perft_
 
     const opp = if (color == Color.White) Color.Black else Color.White;
 
-    //var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-    //defer list.deinit();
     var list: MoveList = .{};
 
     pos.generate_legals(color, &list);
@@ -136,8 +134,6 @@ pub fn perft_with_stats(comptime color: Color, pos: *Position, depth: u4) perft_
             if (pos.in_check(color.change_side())) {
                 ps.checks += 1;
 
-                //var list2 = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-                //defer list2.deinit();
                 var list2: MoveList = .{};
                 pos.generate_legals(color.change_side(), &list2);
                 if (list2.count == 0) ps.checkmate += 1;
@@ -163,8 +159,6 @@ pub fn perft(comptime color: Color, pos: *Position, depth: u4) u64 {
 
     const opp = if (color == Color.White) Color.Black else Color.White;
 
-    //var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-    //defer list.deinit();
     var move_list: MoveList = .{};
 
     pos.generate_legals(color, &move_list);
@@ -200,8 +194,6 @@ pub fn perft_div(comptime color: Color, pos: *Position, depth: u4) void {
     var branch: u64 = 0;
     const opp = if (color == Color.White) Color.Black else Color.White;
 
-    //var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-    //defer list.deinit();
     var list: MoveList = .{};
 
     pos.generate_legals(color, &list);
@@ -227,7 +219,10 @@ pub fn perft_test_with_print(pos: *Position, depth: u4) void {
 
     std.debug.print("Running Perft {}:\n", .{depth});
 
-    var timer = std.time.Timer.start() catch unreachable;
+    var timer = std.time.Timer.start() catch |err| {
+        std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
+        return; // or return error, or use fallback logic
+    };
     var nodes: u64 = 0;
 
     if (pos.side_to_play == Color.White) {
@@ -246,7 +241,13 @@ pub fn perft_test_with_print(pos: *Position, depth: u4) void {
 }
 
 pub fn perft_test(pos: *Position, depth: u4) PerftResult {
-    var timer = std.time.Timer.start() catch unreachable;
+    var timer = std.time.Timer.start() catch |err| {
+        std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
+        return PerftResult{
+            .time_elapsed = 0,
+            .nodes = 0,
+        };
+    };
     var nodes: u64 = 0;
 
     if (pos.side_to_play == Color.White) {
@@ -270,7 +271,10 @@ pub fn perft_test_with_stats(pos: *Position, depth: u4) void {
 
     std.debug.print("Running Perft {}:\n", .{depth});
 
-    var timer = std.time.Timer.start() catch unreachable;
+    var timer = std.time.Timer.start() catch |err| {
+        std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
+        return; // or return error, or use fallback logic
+    };
 
     if (pos.side_to_play == Color.White) {
         ps = perft_with_stats(Color.White, pos, depth);
