@@ -594,27 +594,27 @@ pub const Search = struct {
 
                 const est_hash_full = tt.TT.hash_full();
 
-                printout(uci.stdout, "info depth {} seldepth {} score ", .{ it_depth, self.seldepth }) catch unreachable;
+                printout(uci.stdout, "info depth {} seldepth {} score ", .{ it_depth, self.seldepth });
                 if (_is_mate_score(score)) {
-                    printout(uci.stdout, "mate {} ", .{_mate_in(score)}) catch unreachable;
+                    printout(uci.stdout, "mate {} ", .{_mate_in(score)});
                 } else {
-                    printout(uci.stdout, "cp {} ", .{score}) catch unreachable;
+                    printout(uci.stdout, "cp {} ", .{score});
                 }
-                printout(uci.stdout, "nodes {} nps {d} time {d} hashfull {d} ebf {d:.2} ", .{ self.nodes, nps, elapsed_ms, est_hash_full, ebf }) catch unreachable;
+                printout(uci.stdout, "nodes {} nps {d} time {d} hashfull {d} ebf {d:.2} ", .{ self.nodes, nps, elapsed_ms, est_hash_full, ebf });
                 if (use_tb) {
-                    printout(uci.stdout, "tbhits {d} ", .{tbhits}) catch unreachable;
+                    printout(uci.stdout, "tbhits {d} ", .{tbhits});
                 }
-                printout(uci.stdout, "pv ", .{}) catch unreachable;
+                printout(uci.stdout, "pv ", .{});
 
                 var next_ply: usize = 0;
                 while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
                     var pv_move = self.pv_table[0][next_ply];
                     const pv_move_str = pv_move.to_str(allocator);
                     defer allocator.free(pv_move_str);
-                    printout(uci.stdout, "{s} ", .{pv_move_str}) catch unreachable;
+                    printout(uci.stdout, "{s} ", .{pv_move_str});
                 }
 
-                printout(uci.stdout, "\n", .{}) catch unreachable;
+                printout(uci.stdout, "\n", .{});
             }
 
             if (self.stop or self.check_early_stop_conditions(pos, stability_counter, improving)) {
@@ -639,7 +639,7 @@ pub const Search = struct {
         if (self.manager.printout) {
             const move_name = self.best_move.to_str(allocator);
             defer allocator.free(move_name);
-            printout(uci.stdout, "bestmove {s}\n", .{move_name}) catch unreachable;
+            printout(uci.stdout, "bestmove {s}\n", .{move_name});
         }
     }
 

@@ -62,7 +62,7 @@ var tb_ever_initialized: bool = false;
 
 pub fn init_tablebases(allocator: std.mem.Allocator, path: ?[]const u8) !void {
     if (tb_ever_initialized) {
-        _ = try printout(uci.stdout, "info string Tablebases can only be initialized once per process. Restart required.\n", .{});
+        _ = printout(uci.stdout, "info string Tablebases can only be initialized once per process. Restart required.\n", .{});
         return;
     }
     tb_initialized = false;
@@ -80,11 +80,11 @@ pub fn init_tablebases(allocator: std.mem.Allocator, path: ?[]const u8) !void {
 
     const p = path.?;
     if (!std.fs.path.isAbsolute(p)) {
-        _ = try printout(uci.stdout, "info string Syzygy path is not absolute: {s}\n", .{p});
+        _ = printout(uci.stdout, "info string Syzygy path is not absolute: {s}\n", .{p});
         return;
     }
     std.fs.accessAbsolute(p, .{}) catch |err| {
-        _ = try printout(uci.stdout, "info string Failed to access tablebase directory: {s}, error: {}\n", .{ p, err });
+        _ = printout(uci.stdout, "info string Failed to access tablebase directory: {s}, error: {}\n", .{ p, err });
         return;
     };
 
@@ -94,20 +94,20 @@ pub fn init_tablebases(allocator: std.mem.Allocator, path: ?[]const u8) !void {
     //std.debug.print("info string Attempting tb_init with path: {s}\n", .{null_terminated_path});
     //std.debug.print("info string Calling tb_init...\n", .{});
     if (!fathom.tb_init(null_terminated_path.ptr)) {
-        _ = try printout(uci.stdout, "info string Failed to initialize tablebases at: {s}\n", .{p});
+        _ = printout(uci.stdout, "info string Failed to initialize tablebases at: {s}\n", .{p});
         return;
     }
-    _ = try printout(uci.stdout, "info string tb_init succeeded\n", .{});
+    _ = printout(uci.stdout, "info string tb_init succeeded\n", .{});
 
     tb_path = allocator.dupe(u8, p) catch |err| {
-        _ = try printout(uci.stdout, "info string Failed to store path: {}\n", .{err});
+        _ = printout(uci.stdout, "info string Failed to store path: {}\n", .{err});
         fathom.tb_free();
         return;
     };
 
     tb_initialized = true;
     tb_ever_initialized = true;
-    _ = try printout(uci.stdout, "info string Tablebases initialized at: {s} (Largest TB: {} pieces)\n", .{ p, fathom.TB_LARGEST });
+    _ = printout(uci.stdout, "info string Tablebases initialized at: {s} (Largest TB: {} pieces)\n", .{ p, fathom.TB_LARGEST });
 }
 
 pub fn free_tablebases() void {

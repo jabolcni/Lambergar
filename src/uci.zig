@@ -48,9 +48,13 @@ var pos: [MAX_THREADS]Position = undefined;
 
 var syzygy_path: ?[]const u8 = null;
 
-pub fn printout(writer: *std.Io.Writer, comptime str: []const u8, args: anytype) !void {
-    try writer.print(str, args);
-    try writer.flush();
+pub fn printout(writer: *std.Io.Writer, comptime str: []const u8, args: anytype) void {
+    writer.print(str, args) catch io_error();
+    writer.flush() catch io_error();
+}
+
+fn io_error() noreturn { // Idea borowed from Eric Lang
+    @panic("io error");
 }
 
 fn u32_from_str(str: []const u8) !u32 {
@@ -73,7 +77,7 @@ fn parse_and_apply_moves(curr_pos: *Position, moves_str: []const u8) !void {
     var moves = std.mem.splitScalar(u8, std.mem.trim(u8, moves_str, " "), ' ');
     while (moves.next()) |move_str| {
         const move = Move.parse_move(move_str, curr_pos) catch |err| {
-            try printout(stdout, "info string Invalid move '{s}': {any}\n", .{ move_str, err });
+            printout(stdout, "info string Invalid move '{s}': {any}\n", .{ move_str, err });
             continue;
         };
         //const move = Move.parse_move(move_str, &pos[0]) catch continue;
@@ -141,18 +145,18 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
         if (std.mem.eql(u8, command, "uci")) {
             std.debug.print("uci command\n", .{});
-            try printout(stdout, "id name Lambergar 1.4\n", .{});
-            try printout(stdout, "id author Janez Podobnik\n", .{});
-            try printout(stdout, "option name Hash type spin default {d} min {d} max {d}\n", .{ HASH_SIZE_DEFAULT, HASH_SIZE_MIN, HASH_SIZE_MAX });
-            try printout(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, MAX_THREADS });
-            try printout(stdout, "option name UseNNUE type check default {}\n", .{nnue.engine_using_nnue});
-            //try printout(stdout,"option name EvalFile type string default \n", .{});
-            try printout(stdout, "option name Debug type check default {}\n", .{debug});
+            printout(stdout, "id name Lambergar 1.4\n", .{});
+            printout(stdout, "id author Janez Podobnik\n", .{});
+            printout(stdout, "option name Hash type spin default {d} min {d} max {d}\n", .{ HASH_SIZE_DEFAULT, HASH_SIZE_MIN, HASH_SIZE_MAX });
+            printout(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, MAX_THREADS });
+            printout(stdout, "option name UseNNUE type check default {}\n", .{nnue.engine_using_nnue});
+            //printout(stdout,"option name EvalFile type string default \n", .{});
+            printout(stdout, "option name Debug type check default {}\n", .{debug});
             if (use_tb) {
-                try printout(stdout, "option name SyzygyPath type string default <empty>\n", .{});
-                try printout(stdout, "option name SyzygyProbeDepth type spin default {d} min {d} max {d}\n", .{ fathom.tb_probe_depth, 0, 127 });
+                printout(stdout, "option name SyzygyPath type string default <empty>\n", .{});
+                printout(stdout, "option name SyzygyProbeDepth type spin default {d} min {d} max {d}\n", .{ fathom.tb_probe_depth, 0, 127 });
             }
-            try printout(stdout, "uciok\n", .{});
+            printout(stdout, "uciok\n", .{});
         } else if (std.mem.eql(u8, command, "go")) {
             if (main_search_thread) |thread| {
                 @atomicStore(bool, &thinkers[0].stop, true, .seq_cst);
@@ -209,7 +213,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             //thinker.stop = true;
             @atomicStore(bool, &thinkers[0].stop, true, .seq_cst);
         } else if (std.mem.eql(u8, command, "isready")) {
-            try printout(stdout, "readyok\n", .{});
+            printout(stdout, "readyok\n", .{});
         } else if (std.mem.eql(u8, command, "debug")) {
             const arg = words.next().?;
             if (std.mem.eql(u8, arg, "on")) {
@@ -235,7 +239,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     if (std.mem.eql(u8, arg, "value")) {
                         num_threads = try usize_from_str(words.next() orelse continue);
                         @atomicStore(bool, &thinkers[0].stop, true, .seq_cst);
-                        try printout(stdout, "Threads set to: {}\n", .{num_threads});
+                        printout(stdout, "Threads set to: {}\n", .{num_threads});
                     } else continue;
                 } else if (std.mem.eql(u8, arg, "UseNNUE")) {
                     arg = words.next().?;
@@ -270,16 +274,16 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                         const new_path = words.next() orelse null;
                         if (new_path == null or std.mem.eql(u8, new_path.?, "<empty>")) {
                             syzygy_path = null;
-                            _ = try printout(stdout, "info string SyzygyPath cleared.\n", .{});
+                            _ = printout(stdout, "info string SyzygyPath cleared.\n", .{});
                         } else {
                             // Create a durable copy of the path
                             syzygy_path = try allocator.dupe(u8, new_path.?);
-                            _ = try printout(stdout, "info string SyzygyPath set to: {s}\n", .{syzygy_path.?});
+                            _ = printout(stdout, "info string SyzygyPath set to: {s}\n", .{syzygy_path.?});
                         }
 
                         fathom.free_tablebases();
                         fathom.init_tablebases(allocator, syzygy_path) catch |err| {
-                            _ = try printout(stdout, "info string Failed to initialize Syzygy with new path: {any}\n", .{err});
+                            _ = printout(stdout, "info string Failed to initialize Syzygy with new path: {any}\n", .{err});
                         };
                     } else continue;
                 } else if (use_tb and std.mem.eql(u8, arg, "SyzygyProbeDepth")) {
@@ -288,7 +292,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                         const depth = i8_from_str(words.next() orelse continue);
                         if (depth < 0 or depth > 127) continue;
                         fathom.tb_probe_depth = depth;
-                        _ = try printout(stdout, "info string SyzygyProbeDepth set to: {d}\n", .{fathom.tb_probe_depth});
+                        _ = printout(stdout, "info string SyzygyProbeDepth set to: {d}\n", .{fathom.tb_probe_depth});
                     } else continue;
                 } else continue;
             } else continue;
@@ -300,7 +304,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             try pos[0].set(start_position);
         } else if (std.mem.eql(u8, command, "position")) {
             const pos_variant = words.next() orelse {
-                try printout(stdout, "info string Missing position variant\n", .{});
+                printout(stdout, "info string Missing position variant\n", .{});
                 continue;
             };
 
@@ -308,12 +312,12 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             if (std.mem.eql(u8, pos_variant, "fen")) {
                 var parts = std.mem.splitSequence(u8, words.rest(), "moves");
                 const fen = parts.next() orelse {
-                    try printout(stdout, "info string Missing FEN string\n", .{});
+                    printout(stdout, "info string Missing FEN string\n", .{});
                     continue;
                 };
                 //try pos[0].set(std.mem.trim(u8, fen, " "));
                 pos[0].set(std.mem.trim(u8, fen, " ")) catch |err| {
-                    try printout(stdout, "info string Invalid FEN: {s}\n", .{@errorName(err)});
+                    printout(stdout, "info string Invalid FEN: {s}\n", .{@errorName(err)});
                     continue; // or continue loop, depending on context
                 };
 
@@ -328,7 +332,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     }
                 }
             } else {
-                try printout(stdout, "info string Unknown position variant '{s}'\n", .{pos_variant});
+                printout(stdout, "info string Unknown position variant '{s}'\n", .{pos_variant});
                 continue;
             }
         } else if (std.mem.eql(u8, command, "board")) {
@@ -344,28 +348,28 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
             for (0..list.count) |i| {
                 const move = list.moves[i];
-                try printout(stdout, "\n{}. ", .{i});
+                printout(stdout, "\n{}. ", .{i});
                 move.print();
             }
-            try printout(stdout, "\n", .{});
+            printout(stdout, "\n", .{});
         } else if (std.mem.eql(u8, command, "eval")) {
-            try printout(stdout, "{d} (from white's perspective)\n", .{pos[0].eval.eval(&pos[0], Color.White)});
+            printout(stdout, "{d} (from white's perspective)\n", .{pos[0].eval.eval(&pos[0], Color.White)});
         } else if (std.mem.eql(u8, command, "perft")) {
             const depth = try u32_from_str(words.next() orelse "1");
             const report = perft.perft_test(&pos[0], @as(u4, @intCast(depth)));
             const elapsed_nanos = @as(f64, @floatFromInt(report.time_elapsed));
             const elapsed_seconds = elapsed_nanos / 1_000_000_000;
 
-            try printout(stdout, "{d:.3}s elapsed\n", .{elapsed_seconds});
-            try printout(stdout, "{} nodes explored\n", .{report.nodes});
+            printout(stdout, "{d:.3}s elapsed\n", .{elapsed_seconds});
+            printout(stdout, "{} nodes explored\n", .{report.nodes});
 
             const nps = @as(f64, @floatFromInt(report.nodes)) / elapsed_seconds;
             if (nps < 1000) {
-                try printout(stdout, "{d:.3}N/s\n", .{nps});
+                printout(stdout, "{d:.3}N/s\n", .{nps});
             } else if (nps < 1_000_000) {
-                try printout(stdout, "{d:.3}KN/s\n", .{nps / 1000});
+                printout(stdout, "{d:.3}KN/s\n", .{nps / 1000});
             } else {
-                try printout(stdout, "{d:.3}MN/s\n", .{nps / 1_000_000});
+                printout(stdout, "{d:.3}MN/s\n", .{nps / 1_000_000});
             }
         } else if (std.mem.eql(u8, command, "seepos")) {
             var list: MoveList = .{};
@@ -376,36 +380,36 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                 pos[0].generate_legals(Color.Black, &list);
             }
 
-            try printout(stdout, "SEE thresholds\n", .{});
+            printout(stdout, "SEE thresholds\n", .{});
 
             for (0..list.count) |i| {
                 const move = list.moves[i];
                 const thr = ms.see_value(&pos[0], move, false);
-                try printout(stdout, "{}. ", .{i});
+                printout(stdout, "{}. ", .{i});
                 move.print();
-                try printout(stdout, " SEE result: {}\n", .{thr});
+                printout(stdout, " SEE result: {}\n", .{thr});
             }
         } else if (std.mem.eql(u8, command[0..3], "see")) {
             const move_str = command[4..];
             const move = Move.parse_move(move_str, &pos[0]) catch continue; // Parse UCI move
             if (move.is_empty()) {
-                try printout(stdout, "Invalid move format\n", .{});
+                printout(stdout, "Invalid move format\n", .{});
                 continue;
             }
             const see_val = ms.see_value(&pos[0], move, false);
-            try printout(stdout, "\nsee_value {}\n", .{see_val});
+            printout(stdout, "\nsee_value {}\n", .{see_val});
         } else if (use_tb and std.mem.eql(u8, command, "probe")) {
             const total_pieces = bb.pop_count(pos[0].all_pieces(Color.White) | pos[0].all_pieces(Color.Black));
             const has_castling_rights: bool = (pos[0].history[pos[0].game_ply].castling > 0);
 
             if (has_castling_rights) {
-                _ = try printout(stdout, "info string Probe failed: Castling rights are still active.\n", .{});
+                _ = printout(stdout, "info string Probe failed: Castling rights are still active.\n", .{});
             } else if (total_pieces > fathom.get_tb_largest()) {
-                _ = try printout(stdout, "info string Probe failed: Too many pieces ({d}) for largest TB ({d}p).\n", .{ total_pieces, fathom.get_tb_largest() });
+                _ = printout(stdout, "info string Probe failed: Too many pieces ({d}) for largest TB ({d}p).\n", .{ total_pieces, fathom.get_tb_largest() });
             } else {
                 const wdl_result = fathom.probeWDL(&pos[0], fathom.tb_probe_depth + 1);
                 if (wdl_result == fathom.TB_RESULT_FAILED) {
-                    _ = try printout(stdout, "info string WDL Probe Result: Probe failed (position not found in tablebases or other error)\n", .{});
+                    _ = printout(stdout, "info string WDL Probe Result: Probe failed (position not found in tablebases or other error)\n", .{});
                 } else {
                     var result_str: []const u8 = "";
                     if (wdl_result == 0) {
@@ -421,7 +425,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     } else {
                         result_str = "Unknown Result Code";
                     }
-                    _ = try printout(stdout, "info string WDL Probe Result: {s} (Code: {d})\n", .{ result_str, wdl_result });
+                    _ = printout(stdout, "info string WDL Probe Result: {s} (Code: {d})\n", .{ result_str, wdl_result });
                 }
             }
         } else if (use_tb and std.mem.eql(u8, command, "probebest")) {
@@ -430,13 +434,13 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
             // Check if the position meets the criteria for probing
             if (has_castling_rights) {
-                _ = try printout(stdout, "info string Probe failed: Castling rights are still active.\n", .{});
+                _ = printout(stdout, "info string Probe failed: Castling rights are still active.\n", .{});
             } else if (total_pieces > fathom.get_tb_largest()) {
-                _ = try printout(stdout, "info string Probe failed: Too many pieces ({d}) for largest TB ({d}p).\n", .{ total_pieces, fathom.get_tb_largest() });
+                _ = printout(stdout, "info string Probe failed: Too many pieces ({d}) for largest TB ({d}p).\n", .{ total_pieces, fathom.get_tb_largest() });
             } else {
                 const wdl_result = fathom.probeWDL(&pos[0], fathom.tb_probe_depth + 1);
                 if (wdl_result == fathom.TB_RESULT_FAILED) {
-                    _ = try printout(stdout, "info string WDL Probe Result: Probe failed (position not found in tablebases or other error)\n", .{});
+                    _ = printout(stdout, "info string WDL Probe Result: Probe failed (position not found in tablebases or other error)\n", .{});
                 } else {
                     var result_str: []const u8 = "";
                     if (wdl_result == fathom.TB_LOSS) {
@@ -452,7 +456,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     } else {
                         result_str = "Unknown Result Code";
                     }
-                    _ = try printout(stdout, "info string WDL Probe Result: {s} (Code: {d})\n", .{ result_str, wdl_result });
+                    _ = printout(stdout, "info string WDL Probe Result: {s} (Code: {d})\n", .{ result_str, wdl_result });
 
                     // Probe for best move
                     const TB_MAX_MOVES: usize = 64;
@@ -462,13 +466,13 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     const valid_move_count = probe_result.move_count;
 
                     if (dtz_result == fathom.TB_RESULT_FAILED) {
-                        _ = try printout(stdout, "info string Best Move Probe: Failed (DTZ code: {d})\n", .{dtz_result});
+                        _ = printout(stdout, "info string Best Move Probe: Failed (DTZ code: {d})\n", .{dtz_result});
                     } else if (dtz_result == fathom.TB_RESULT_CHECKMATE) {
-                        _ = try printout(stdout, "info string Best Move: Checkmate\n", .{});
-                        _ = try printout(stdout, "bestmove (none)\n", .{});
+                        _ = printout(stdout, "info string Best Move: Checkmate\n", .{});
+                        _ = printout(stdout, "bestmove (none)\n", .{});
                     } else if (dtz_result == fathom.TB_RESULT_STALEMATE) {
-                        _ = try printout(stdout, "info string Best Move: Stalemate\n", .{});
-                        _ = try printout(stdout, "bestmove (none)\n", .{});
+                        _ = printout(stdout, "info string Best Move: Stalemate\n", .{});
+                        _ = printout(stdout, "bestmove (none)\n", .{});
                     } else {
                         // Extract move details from the result
                         const from_sq = fathom.getFrom(dtz_result);
@@ -520,25 +524,25 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                             wdl_str = "Unknown";
                         }
 
-                        _ = try printout(stdout, "info string Best Move: {s} ({s}, WDL: {s})\n", .{ best_move_uci, dtz_str, wdl_str });
+                        _ = printout(stdout, "info string Best Move: {s} ({s}, WDL: {s})\n", .{ best_move_uci, dtz_str, wdl_str });
 
                         // Print additional candidate moves
                         if (valid_move_count > 0) {
-                            _ = try printout(stdout, "info string Additional moves ({d} total): ", .{valid_move_count});
+                            _ = printout(stdout, "info string Additional moves ({d} total): ", .{valid_move_count});
                             var printed = false;
                             for (results[0..valid_move_count]) |cand_move| {
                                 if (cand_move == best_move) continue; // Skip the best move
                                 const cand_uci = try fathom.moveToUCI(cand_move, allocator);
                                 defer allocator.free(cand_uci);
-                                if (printed) _ = try printout(stdout, " ", .{});
-                                _ = try printout(stdout, "{s}", .{cand_uci});
+                                if (printed) _ = printout(stdout, " ", .{});
+                                _ = printout(stdout, "{s}", .{cand_uci});
                                 printed = true;
                             }
-                            _ = try printout(stdout, "\n", .{});
+                            _ = printout(stdout, "\n", .{});
                         }
 
                         // Output UCI-compliant best move
-                        _ = try printout(stdout, "bestmove {s}\n", .{best_move_uci});
+                        _ = printout(stdout, "bestmove {s}\n", .{best_move_uci});
                     }
                 }
             }
@@ -725,8 +729,8 @@ pub fn bench(allocator: std.mem.Allocator, depth: u32) !void {
     const nps: u46 = @intFromFloat(@as(f64, @floatFromInt(nodes)) / elapsed_seconds);
 
     //const elapsed_ms: u32 = @intFromFloat(elapsed_nanos / 1_000_000);
-    //try printout(stdout, "{} nodes {} nps {} elapsed\n", .{ nodes, nps, elapsed_ms });
-    try printout(stdout, "{} nodes {} nps\n", .{ nodes, nps });
+    //printout(stdout, "{} nodes {} nps {} elapsed\n", .{ nodes, nps, elapsed_ms });
+    printout(stdout, "{} nodes {} nps\n", .{ nodes, nps });
 }
 
 test "perft for positions" {
@@ -933,4 +937,3 @@ test "SEE for positions" {
         }
     }
 }
-
