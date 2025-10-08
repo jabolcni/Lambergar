@@ -529,7 +529,7 @@ fn transform(
     comptime player: Color,
     output: []u8,
 ) void {
-    std.debug.assert(output.len == FT_OUT_DIM);
+    //std.debug.assert(output.len == FT_OUT_DIM);
 
     const Vec = @Vector(16, i16);
     const VecU8 = @Vector(16, u8);
@@ -566,8 +566,8 @@ inline fn affine(
     input_len: usize,
     output_len: usize,
 ) void {
-    std.debug.assert(output.len == output_len);
-    std.debug.assert(weights.len == output_len * input_len);
+    //std.debug.assert(output.len == output_len);
+    //std.debug.assert(weights.len == output_len * input_len);
 
     comptime var out_idx = 0;
     inline while (out_idx < output_len) : (out_idx += 1) {

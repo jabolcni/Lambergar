@@ -221,7 +221,7 @@ pub fn perft_test_with_print(pos: *Position, depth: u4) void {
 
     var timer = std.time.Timer.start() catch |err| {
         std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
-        return; // or return error, or use fallback logic
+        return;
     };
     var nodes: u64 = 0;
 
@@ -273,7 +273,7 @@ pub fn perft_test_with_stats(pos: *Position, depth: u4) void {
 
     var timer = std.time.Timer.start() catch |err| {
         std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
-        return; // or return error, or use fallback logic
+        return;
     };
 
     if (pos.side_to_play == Color.White) {

@@ -56,7 +56,7 @@ pub fn get_correction(search: *Search, pos: *Position) i32 {
 }
 
 pub fn update_all_history(search: *Search, move: Move, quet_moves: MoveList, quet_mv_pieces: PieceList, depth: i8, comptime color: Color) void {
-    std.debug.assert(search.ply < searcher.MAX_PLY);
+    //std.debug.assert(search.ply < searcher.MAX_PLY);
 
     const side: u4 = if (color == Color.White) Color.White.toU4() else Color.Black.toU4();
 

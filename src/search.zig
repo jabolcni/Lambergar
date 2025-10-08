@@ -499,12 +499,12 @@ pub const Search = struct {
 
         self.timer = std.time.Timer.start() catch |err| {
             std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
-            return; // or return error, or use fallback logic
+            return;
         };
 
         const start = Instant.now() catch |err| {
             std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
-            return; // or return error, or use fallback logic
+            return;
         };
         self.nodes = 0;
         self.non_terminal_nodes = 0;
@@ -587,7 +587,7 @@ pub const Search = struct {
                 }
                 const now = Instant.now() catch |err| {
                     std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
-                    return; // or return error, or use fallback logic
+                    return;
                 };
                 const time_elapsed = now.since(start);
                 const elapsed_nanos = @as(f64, @floatFromInt(time_elapsed));

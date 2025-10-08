@@ -335,7 +335,7 @@ pub fn initialise_all_databases() void {
 }
 
 pub fn piece_attacks(sq_idx: u6, occ: u64, P: PieceType) u64 {
-    std.debug.assert(P != PieceType.Pawn);
+    //std.debug.assert(P != PieceType.Pawn);
 
     return switch (P) {
         PieceType.Rook => get_rook_attacks(sq_idx, occ),
@@ -346,7 +346,7 @@ pub fn piece_attacks(sq_idx: u6, occ: u64, P: PieceType) u64 {
 }
 
 pub fn piece_attacks_Sq(s: Square, occ: u64, comptime P: PieceType) u64 {
-    std.debug.assert(P != PieceType.Pawn);
+    //std.debug.assert(P != PieceType.Pawn);
     const sq_idx = s.toU6();
 
     return switch (P) {

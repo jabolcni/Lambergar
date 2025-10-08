@@ -702,7 +702,7 @@ pub fn bench(allocator: std.mem.Allocator, depth: u32) !void {
     var nodes: u64 = 0;
     var timer = std.time.Timer.start() catch |err| {
         std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
-        return; // or return error, or use fallback logic
+        return;
     };
 
     //for (bench_pos, 1..) |fen, i| {
