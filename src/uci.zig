@@ -106,8 +106,19 @@ pub fn init_all(allocator: std.mem.Allocator) !void {
     stdout = &stdout_writer.interface;
 }
 
+// Only define the functions on Windows
+const windows = if (@import("builtin").os.tag == .windows) @cImport({
+    @cDefine("WIN32_LEAN_AND_MEAN", "1");
+    @cInclude("windows.h");
+}) else struct {};
+
 pub fn uci_loop(allocator: std.mem.Allocator) !void {
     try init_all(allocator);
+
+    if (@import("builtin").os.tag == .windows) {
+        _ = windows.SetConsoleCP(windows.CP_UTF8);
+        _ = windows.SetConsoleOutputCP(windows.CP_UTF8);
+    }
 
     if (nnue.engine_using_nnue) {
         //try nnue.init(allocator);
