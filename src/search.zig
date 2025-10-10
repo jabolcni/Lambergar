@@ -216,7 +216,7 @@ pub const SearchManager = struct {
                     return;
                 }
                 if (movestogo == null) {
-                    const scale_div: u64 = 50;
+                    const scale_div: u64 = 40;
                     self.early_ms = @min(@divTrunc(adjusted_time, scale_div), @divTrunc(rt, 5));
                     self.max_ms = @min(5 * self.early_ms, @divTrunc(4 * rt, 5));
                 } else {
