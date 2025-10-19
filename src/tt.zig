@@ -196,7 +196,14 @@ pub const TranspositionTable = struct {
         var best_value: i32 = std.math.maxInt(i32);
         for (bucket, 0..) |e, i| {
             const age_diff: i32 = @as(i32, current_age -% e.age);
-            const value = @as(i32, e.depth) - age_diff * 4;
+
+            // Quadratic depth bias + bonus for EXACT
+            const depth_score: i32 = e.depth * e.depth;
+            const bound_bonus: i32 = if (e.bound == Bound.BOUND_EXACT) 256 else 0;
+
+            // Lower value = more replaceable
+            const value: i32 = -depth_score - bound_bonus + age_diff * 16;
+
             if (value < best_value) {
                 best_value = value;
                 replace_idx = i;
