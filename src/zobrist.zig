@@ -13,7 +13,7 @@ pub const PRNG = struct {
         self.s ^= self.s << 25;
         self.s ^= self.s >> 27;
         //return self.s *% 2685821657736338717;
-        return self.s *% 0x2545F4914F6CDD1;
+        return self.s *% 0x2545F4914F6CDD1D;
     }
 
     pub fn sparse_rand64(self: *PRNG) u64 {
