@@ -146,300 +146,198 @@ pub fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usize) Mov
     return move_list.moves[i];
 }
 
-// // pub fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
-// //     //_ = prune_positive; // Unused parameter, but kept for compatibility
-// //     var gain: [32]i32 = undefined;
+// pub fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
+//     //_ = prune_positive; // Unused parameter, but kept for compatibility
+//     var gain: [32]i32 = undefined;
 
-// //     const from = move.from;
-// //     const to = move.to;
+//     const from = move.from;
+//     const to = move.to;
 
-// //     var p = pos.board[from];
-// //     var captured = pos.board[to];
-
-// //     var side = p.color();
-// //     var pv = piece_val[p.type_of().toU3()];
-// //     var captured_value: i32 = 0;
-
-// //     if (captured != Piece.NO_PIECE) {
-// //         captured_value = piece_val[captured.type_of().toU3()];
-// //         if (prune_positive and pv <= captured_value) {
-// //             return 0;
-// //         }
-// //     }
-
-// //     var pqv: i32 = 0;
-// //     var promote_to: u3 = PieceType.Pawn.toU3();
-// //     if (move.is_promotion()) {
-// //         promote_to = move.flags.promote_type().toU3();
-// //         pqv = piece_val[promote_to] - piece_val[PieceType.Pawn.toU3()];
-// //     }
-
-// //     var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ bb.SQUARE_BB[from];
-
-// //     gain[0] = captured_value;
-// //     var pt: u4 = @as(u4, @intCast(p.type_of().toU3()));
-
-// //     if (move.is_promotion()) {
-// //         pv += pqv;
-// //         gain[0] += pqv;
-// //         pt = @as(u4, @intCast(promote_to)); // Update to promoted piece
-// //     } else if (move.flags == MoveFlags.EN_PASSANT) {
-// //         occupied ^= (@as(u64, 1) << (to ^ 8));
-// //         gain[0] = piece_val[PieceType.Pawn.toU3()];
-// //     }
-
-// //     const bq: u64 = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
-// //     const rq: u64 = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
-
-// //     var attackers: u64 = pos.all_attackers(to, occupied);
-
-// //     var cnt: u5 = 1;
-
-// pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
-//     var gain: [16]i32 = undefined;
-
-//     const from: u6 = move.from;
-//     const to: u6 = move.to;
-//     const from_bb: u64 = bb.SQUARE_BB[from];
-//     const to_bb: u64 = bb.SQUARE_BB[to];
-//     const flags = move.flags;
-
-//     // Fetch moving piece once
 //     var p = pos.board[from];
+//     var captured = pos.board[to];
+
 //     var side = p.color();
+//     var pv = piece_val[p.type_of().toU3()];
+//     var captured_value: i32 = 0;
 
-//     // Cache piece values we’ll reuse
-//     const pawn_val: i32 = piece_val[PieceType.Pawn.toU3()];
-//     var pt_u3: u3 = p.type_of().toU3();
-//     var pv: i32 = piece_val[pt_u3];
-
-//     // Resolve captured piece once (EP-aware)
-//     var captured = if (flags == MoveFlags.EN_PASSANT)
-//         (if (side == Color.White) pos.board[to - 8] else pos.board[to + 8])
-//     else
-//         pos.board[to];
-
-//     // Compute captured value once (EP captured is always a pawn)
-//     var captured_value: i32 = switch (captured) {
-//         Piece.NO_PIECE => if (flags == MoveFlags.EN_PASSANT) pawn_val else 0,
-//         else => piece_val[captured.type_of().toU3()],
-//     };
-
-//     // Early non-losing-capture pruning (same logic, fewer table reads)
-//     if (prune_positive and captured_value != 0) {
-//         if (pv <= captured_value) return 0;
+//     if (captured != Piece.NO_PIECE) {
+//         captured_value = piece_val[captured.type_of().toU3()];
+//         if (prune_positive and pv <= captured_value) {
+//             return 0;
+//         }
 //     }
 
-//     // Promotion delta once
 //     var pqv: i32 = 0;
+//     var promote_to: u3 = PieceType.Pawn.toU3();
 //     if (move.is_promotion()) {
-//         const promote_to: u3 = flags.promote_type().toU3();
-//         pqv = piece_val[promote_to] - pawn_val;
-//         pv += pqv;
-//         pt_u3 = promote_to; // attacker becomes promoted type for subsequent recaptures
-//         captured_value += pqv; // gain[0] includes promotion bump
+//         promote_to = move.flags.promote_type().toU3();
+//         pqv = piece_val[promote_to] - piece_val[PieceType.Pawn.toU3()];
 //     }
 
-//     // Initial gain
+//     var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ bb.SQUARE_BB[from];
+
 //     gain[0] = captured_value;
+//     var pt: u4 = @as(u4, @intCast(p.type_of().toU3()));
 
-//     // Initial occupied after making the move
-//     // Start with current occupancy and remove the source square
-//     var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ from_bb;
-
-//     // Remove captured piece from occupancy (EP removes the pawn behind 'to')
-//     if (flags == MoveFlags.EN_PASSANT) {
-//         const ep_sq: u6 = if (side == Color.White) to - 8 else to + 8;
-//         occupied ^= bb.SQUARE_BB[ep_sq];
-//     } else if (captured != Piece.NO_PIECE) {
-//         occupied ^= to_bb;
+//     if (move.is_promotion()) {
+//         pv += pqv;
+//         gain[0] += pqv;
+//         pt = @as(u4, @intCast(promote_to)); // Update to promoted piece
+//     } else if (move.flags == MoveFlags.EN_PASSANT) {
+//         occupied ^= (@as(u64, 1) << (to ^ 8));
+//         gain[0] = piece_val[PieceType.Pawn.toU3()];
 //     }
 
-//     // Attacker now sits on 'to'
-//     occupied |= to_bb;
-
-//     // Precompute slider unions once; you reuse them later
 //     const bq: u64 = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
 //     const rq: u64 = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
 
-//     // Initial attacker set
 //     var attackers: u64 = pos.all_attackers(to, occupied);
 
-//     // Your variables expected by the loop
-//     var pt: u4 = @as(u4, @intCast(pt_u3));
 //     var cnt: u5 = 1;
 
-//     const white_occ = pos.all_pieces(Color.White);
-//     const black_occ = pos.all_pieces(Color.Black);
-//     const piece_bb = &pos.piece_bb;
-
-//     //if (captured == Piece.NO_PIECE) return 0;
-
-//     while (attackers != 0 and cnt < 16) {
-//         attackers &= occupied;
-//         side = side.change_side();
-//         //const occ_side = if (side == Color.White) pos.all_pieces(Color.White) else pos.all_pieces(Color.Black);
-//         //const side_att = attackers & occ_side;
-//         const side_att = attackers & if (side == Color.White) white_occ else black_occ;
-
-//         if (side_att == 0) {
-//             break;
-//         }
-
-//         var pb: u64 = undefined;
-//         for (PieceType.Pawn.toU3()..PieceType.King.toU3() + 1) |pc| {
-//             pt = @as(u4, @intCast(pc));
-//             //pb = side_att & (pos.piece_bb[pc] | pos.piece_bb[pc + 8]);
-//             pb = side_att & (piece_bb[pc] | piece_bb[pc + 8]);
-//             if (pb != 0) {
-//                 break;
-//             }
-//         }
-//         if (pb == 0) {
-//             pb = side_att;
-//         }
-
-//         occupied ^= bb.SQUARE_BB[bb.get_ls1b_index(pb)];
-
-//         // Check for pawn promotion (8th rank for White, 1st rank for Black)
-//         var is_promotion = false;
-//         if (pt == PieceType.Pawn.toU3()) {
-//             const rank = to >> 3;
-//             if ((side == Color.White and rank == 7) or (side == Color.Black and rank == 0)) {
-//                 is_promotion = true;
-//                 pt = PieceType.Queen.toU3(); // Assume queen for recaptures
-//                 pqv = piece_val[PieceType.Queen.toU3()] - piece_val[PieceType.Pawn.toU3()];
-//             }
-//         }
-
-//         if (pt == PieceType.Pawn.toU3() or pt == PieceType.Bishop.toU3() or pt == PieceType.Queen.toU3()) {
-//             attackers |= (attacks.piece_attacks(to, occupied, PieceType.Bishop) & bq);
-//         }
-//         if (pt == PieceType.Rook.toU3() or pt == PieceType.Queen.toU3()) {
-//             attackers |= (attacks.piece_attacks(to, occupied, PieceType.Rook) & rq);
-//         }
-
-//         gain[cnt] = pv - gain[cnt - 1];
-//         if (is_promotion) {
-//             gain[cnt] += pqv; // Add promotion value
-//         }
-//         pv = piece_val[pt];
-//         cnt += 1;
-//     }
-
-//     cnt -= 1;
-//     // while (cnt > 0) : (cnt -= 1) {
-//     //     if (gain[cnt - 1] > -gain[cnt]) {
-//     //         gain[cnt - 1] = -gain[cnt];
-//     //     }
-//     // }
-//     var i = cnt;
-//     while (i > 0) : (i -= 1) {
-//         const g = -gain[i];
-//         if (gain[i - 1] > g) gain[i - 1] = g;
-//     }
-
-//     return gain[0];
-// }
-
 pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
-    const pv = piece_val;
+    var gain: [16]i32 = undefined;
 
-    const from = move.from;
-    const to = move.to;
-    const from_bb = bb.SQUARE_BB[from];
-    const to_bb = bb.SQUARE_BB[to];
+    const from: u6 = move.from;
+    const to: u6 = move.to;
+    const from_bb: u64 = bb.SQUARE_BB[from];
+    const to_bb: u64 = bb.SQUARE_BB[to];
+    const flags = move.flags;
 
-    var mover = pos.board[from];
-    const side = mover.color();
+    // Fetch moving piece once
+    var p = pos.board[from];
+    var side = p.color();
 
-    // --- capture value -------------------------------------------------------
-    var captured = if (move.flags == MoveFlags.EN_PASSANT)
+    // Cache piece values we’ll reuse
+    const pawn_val: i32 = piece_val[PieceType.Pawn.toU3()];
+    var pt_u3: u3 = p.type_of().toU3();
+    var pv: i32 = piece_val[pt_u3];
+
+    // Resolve captured piece once (EP-aware)
+    var captured = if (flags == MoveFlags.EN_PASSANT)
         (if (side == Color.White) pos.board[to - 8] else pos.board[to + 8])
     else
         pos.board[to];
 
-    var captured_val: i32 = switch (captured) {
-        Piece.NO_PIECE => if (move.flags == MoveFlags.EN_PASSANT)
-            pv[PieceType.Pawn.toU3()]
-        else
-            0,
-        else => pv[captured.type_of().toU3()],
+    // Compute captured value once (EP captured is always a pawn)
+    var captured_value: i32 = switch (captured) {
+        Piece.NO_PIECE => if (flags == MoveFlags.EN_PASSANT) pawn_val else 0,
+        else => piece_val[captured.type_of().toU3()],
     };
 
-    // --- promotion delta -----------------------------------------------------
-    var pqv: i32 = 0;
-    var pt: u3 = mover.type_of().toU3();
-    if (move.is_promotion()) {
-        const promo = move.flags.promote_type().toU3();
-        pqv = pv[promo] - pv[PieceType.Pawn.toU3()];
-        pt = promo;
-        captured_val += pqv;
+    // Early non-losing-capture pruning (same logic, fewer table reads)
+    if (prune_positive and captured_value != 0) {
+        if (pv <= captured_value) return 0;
     }
 
-    // Early prune
-    //_ = prune_positive;
-    if (prune_positive and captured_val != 0 and pv[pt] <= captured_val)
-        return 0;
+    // Promotion delta once
+    var pqv: i32 = 0;
+    if (move.is_promotion()) {
+        const promote_to: u3 = flags.promote_type().toU3();
+        pqv = piece_val[promote_to] - pawn_val;
+        pv += pqv;
+        pt_u3 = promote_to; // attacker becomes promoted type for subsequent recaptures
+        captured_value += pqv; // gain[0] includes promotion bump
+    }
 
-    // --- occupancy -----------------------------------------------------------
+    // Initial gain
+    gain[0] = captured_value;
+
+    // Initial occupied after making the move
+    // Start with current occupancy and remove the source square
     var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ from_bb;
-    if (move.flags == MoveFlags.EN_PASSANT) {
+
+    // Remove captured piece from occupancy (EP removes the pawn behind 'to')
+    if (flags == MoveFlags.EN_PASSANT) {
         const ep_sq: u6 = if (side == Color.White) to - 8 else to + 8;
         occupied ^= bb.SQUARE_BB[ep_sq];
     } else if (captured != Piece.NO_PIECE) {
         occupied ^= to_bb;
     }
+
+    // Attacker now sits on 'to'
     occupied |= to_bb;
 
-    // --- attackers -----------------------------------------------------------
-    const bq = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
-    const rq = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
+    // Precompute slider unions once; you reuse them later
+    const bq: u64 = pos.diagonal_sliders(Color.White) | pos.diagonal_sliders(Color.Black);
+    const rq: u64 = pos.orthogonal_sliders(Color.White) | pos.orthogonal_sliders(Color.Black);
+
+    // Initial attacker set
     var attackers: u64 = pos.all_attackers(to, occupied);
 
-    // --- rolling swap list ---------------------------------------------------
-    var score: i32 = captured_val;
-    var stm = side.change_side();
-    //var current_val: i32 = pv[pt];
-    var depth: u5 = 0;
+    // Your variables expected by the loop
+    var pt: u4 = @as(u4, @intCast(pt_u3));
+    var cnt: u5 = 1;
 
-    while (attackers != 0 and depth < 16) : (depth += 1) {
+    const white_occ = pos.all_pieces(Color.White);
+    const black_occ = pos.all_pieces(Color.Black);
+    const piece_bb = &pos.piece_bb;
+
+    if (captured == Piece.NO_PIECE) return 0;
+
+    while (attackers != 0 and cnt < 16) {
         attackers &= occupied;
-        const side_occ = if (stm == Color.White)
-            pos.all_pieces(Color.White)
-        else
-            pos.all_pieces(Color.Black);
-        const side_att = attackers & side_occ;
-        if (side_att == 0) break;
+        side = side.change_side();
+        //const occ_side = if (side == Color.White) pos.all_pieces(Color.White) else pos.all_pieces(Color.Black);
+        //const side_att = attackers & occ_side;
+        const side_att = attackers & if (side == Color.White) white_occ else black_occ;
 
-        // pick least valuable attacker
-        var att_sq: u6 = 0;
-        var att_type: u3 = 0;
-        inline for (.{ PieceType.Pawn, PieceType.Knight, PieceType.Bishop, PieceType.Rook, PieceType.Queen, PieceType.King }) |pc| {
-            const bb_side = side_att & (pos.piece_bb[pc.toU6()] | pos.piece_bb[pc.toU6() + 8]);
-            if (bb_side != 0) {
-                att_sq = @as(u6, @intCast(bb.get_ls1b_index(bb_side)));
-                att_type = pc.toU3();
+        if (side_att == 0) {
+            break;
+        }
+
+        var pb: u64 = undefined;
+        for (PieceType.Pawn.toU3()..PieceType.King.toU3() + 1) |pc| {
+            pt = @as(u4, @intCast(pc));
+            //pb = side_att & (pos.piece_bb[pc] | pos.piece_bb[pc + 8]);
+            pb = side_att & (piece_bb[pc] | piece_bb[pc + 8]);
+            if (pb != 0) {
                 break;
             }
         }
+        if (pb == 0) {
+            pb = side_att;
+        }
 
-        occupied ^= bb.SQUARE_BB[att_sq]; // remove the attacker
-        // x-ray reopens lines
-        if (att_type == PieceType.Pawn.toU3() or att_type == PieceType.Bishop.toU3() or att_type == PieceType.Queen.toU3())
-            attackers |= attacks.piece_attacks(to, occupied, PieceType.Bishop) & bq;
-        if (att_type == PieceType.Rook.toU3() or att_type == PieceType.Queen.toU3())
-            attackers |= attacks.piece_attacks(to, occupied, PieceType.Rook) & rq;
+        occupied ^= bb.SQUARE_BB[bb.get_ls1b_index(pb)];
 
-        // rolling gain update
-        const val = pv[att_type];
-        const next = val - score;
-        if (next < 0) break; // early cutoff
-        const next_gain: i32 = @max(@as(i32, 0), next);
-        score = -next_gain;
+        // Check for pawn promotion (8th rank for White, 1st rank for Black)
+        var is_promotion = false;
+        if (pt == PieceType.Pawn.toU3()) {
+            const rank = to >> 3;
+            if ((side == Color.White and rank == 7) or (side == Color.Black and rank == 0)) {
+                is_promotion = true;
+                pt = PieceType.Queen.toU3(); // Assume queen for recaptures
+                pqv = piece_val[PieceType.Queen.toU3()] - piece_val[PieceType.Pawn.toU3()];
+            }
+        }
 
-        stm = stm.change_side();
+        if (pt == PieceType.Pawn.toU3() or pt == PieceType.Bishop.toU3() or pt == PieceType.Queen.toU3()) {
+            attackers |= (attacks.piece_attacks(to, occupied, PieceType.Bishop) & bq);
+        }
+        if (pt == PieceType.Rook.toU3() or pt == PieceType.Queen.toU3()) {
+            attackers |= (attacks.piece_attacks(to, occupied, PieceType.Rook) & rq);
+        }
+
+        gain[cnt] = pv - gain[cnt - 1];
+        if (is_promotion) {
+            gain[cnt] += pqv; // Add promotion value
+        }
+        pv = piece_val[pt];
+        cnt += 1;
     }
 
-    return score;
+    cnt -= 1;
+    // while (cnt > 0) : (cnt -= 1) {
+    //     if (gain[cnt - 1] > -gain[cnt]) {
+    //         gain[cnt - 1] = -gain[cnt];
+    //     }
+    // }
+    var i = cnt;
+    while (i > 0) : (i -= 1) {
+        const g = -gain[i];
+        if (gain[i - 1] > g) gain[i - 1] = g;
+    }
+
+    return gain[0];
 }
