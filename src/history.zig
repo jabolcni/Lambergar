@@ -32,7 +32,10 @@ fn corr_update(_entry: *i32, err: i32, weight: i32) void {
 }
 
 pub fn update_corr_history(search: *Search, pos: *Position, corr_eval: i32, score: i32, depth: i8) void {
-    const err = (score - corr_eval) * CORRHIST_GRAIN;
+    //const err = (score - corr_eval) * CORRHIST_GRAIN;
+    var err = score - corr_eval;
+    err = std.math.clamp(err, -400, 400); // 400 ≈ 4 pawns worth of error
+    err *= CORRHIST_GRAIN;
     const depth_i32: i32 = @as(i32, @intCast(depth));
     const weight: i32 = @min(depth_i32 * depth_i32 + 2 * depth_i32 + 1, 128);
 
