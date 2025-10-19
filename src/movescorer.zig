@@ -195,8 +195,8 @@ pub fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usize) Mov
 
 //     var cnt: u5 = 1;
 
-pub fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
-    var gain: [32]i32 = undefined;
+pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
+    var gain: [16]i32 = undefined;
 
     const from: u6 = move.from;
     const to: u6 = move.to;
@@ -269,11 +269,18 @@ pub fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
     var pt: u4 = @as(u4, @intCast(pt_u3));
     var cnt: u5 = 1;
 
-    while (attackers != 0 and cnt < 32) {
+    const white_occ = pos.all_pieces(Color.White);
+    const black_occ = pos.all_pieces(Color.Black);
+    const piece_bb = &pos.piece_bb;
+
+    //if (captured == Piece.NO_PIECE) return 0;
+
+    while (attackers != 0 and cnt < 16) {
         attackers &= occupied;
         side = side.change_side();
-        const occ_side = if (side == Color.White) pos.all_pieces(Color.White) else pos.all_pieces(Color.Black);
-        const side_att = attackers & occ_side;
+        //const occ_side = if (side == Color.White) pos.all_pieces(Color.White) else pos.all_pieces(Color.Black);
+        //const side_att = attackers & occ_side;
+        const side_att = attackers & if (side == Color.White) white_occ else black_occ;
 
         if (side_att == 0) {
             break;
@@ -282,7 +289,8 @@ pub fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
         var pb: u64 = undefined;
         for (PieceType.Pawn.toU3()..PieceType.King.toU3() + 1) |pc| {
             pt = @as(u4, @intCast(pc));
-            pb = side_att & (pos.piece_bb[pc] | pos.piece_bb[pc + 8]);
+            //pb = side_att & (pos.piece_bb[pc] | pos.piece_bb[pc + 8]);
+            pb = side_att & (piece_bb[pc] | piece_bb[pc + 8]);
             if (pb != 0) {
                 break;
             }
@@ -320,10 +328,15 @@ pub fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
     }
 
     cnt -= 1;
-    while (cnt > 0) : (cnt -= 1) {
-        if (gain[cnt - 1] > -gain[cnt]) {
-            gain[cnt - 1] = -gain[cnt];
-        }
+    // while (cnt > 0) : (cnt -= 1) {
+    //     if (gain[cnt - 1] > -gain[cnt]) {
+    //         gain[cnt - 1] = -gain[cnt];
+    //     }
+    // }
+    var i = cnt;
+    while (i > 0) : (i -= 1) {
+        const g = -gain[i];
+        if (gain[i - 1] > g) gain[i - 1] = g;
     }
 
     return gain[0];
