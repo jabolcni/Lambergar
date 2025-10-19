@@ -273,7 +273,7 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
     const black_occ = pos.all_pieces(Color.Black);
     const piece_bb = &pos.piece_bb;
 
-    if (captured == Piece.NO_PIECE) return 0;
+    //if (captured == Piece.NO_PIECE) return 0;
 
     while (attackers != 0 and cnt < 16) {
         attackers &= occupied;

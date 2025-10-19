@@ -543,10 +543,10 @@ pub const Search = struct {
 
                 if (score <= alpha) {
                     beta = @divTrunc(alpha + beta, 2);
-                    alpha = @max(-MAX_SCORE, alpha - delta);
+                    alpha = @max(-MAX_SCORE, score - delta);
                     //depth = it_depth;
                 } else if (score >= beta) {
-                    beta = @min(beta + delta, MAX_SCORE);
+                    beta = @min(score + delta, MAX_SCORE);
                     //it_depth -= 1;
                 } else {
                     break :aspirationloop;
