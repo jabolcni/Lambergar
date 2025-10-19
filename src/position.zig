@@ -216,6 +216,10 @@ pub const PieceType = enum(u3) {
         return @intFromEnum(self);
     }
 
+    pub inline fn toU6(self: PieceType) u6 {
+        return @intCast(@intFromEnum(self));
+    }
+
     pub inline fn make(pt: u3) PieceType {
         return @as(PieceType, @enumFromInt(pt));
     }
