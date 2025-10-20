@@ -18,6 +18,9 @@ const Position = position.Position;
 const Color = position.Color;
 const Move = position.Move;
 const Piece = position.Piece;
+const Rank = position.Rank;
+const Square = position.Square;
+const Castling = position.Castling;
 const Search = search.Search;
 
 const MoveList = lists.MoveList;
@@ -30,6 +33,9 @@ var stdin_reader: std.fs.File.Reader = undefined;
 var stdout_writer: std.fs.File.Writer = undefined;
 var stdin: *std.Io.Reader = undefined;
 pub var stdout: *std.Io.Writer = undefined;
+
+// UCI options
+var uci_chess960: bool = false; // Advertised to GUI; engine supports Chess960 from FEN
 
 const HASH_SIZE_MIN = 1;
 const HASH_SIZE_DEFAULT = 128;
@@ -55,6 +61,40 @@ pub fn printout(writer: *std.Io.Writer, comptime str: []const u8, args: anytype)
 
 fn io_error() noreturn { // Idea borowed from Eric Lang
     @panic("io error");
+}
+
+fn warn_fen_castling_inconsistencies(_pos: *Position) void {
+    const rights = _pos.history[_pos.game_ply].castling;
+    // White
+    if ((rights & Castling.WK.toU4()) != 0) {
+        const ks = _pos.castle_king_start[Color.White.toU4()];
+        const rs = _pos.castle_rook_k_start[Color.White.toU4()];
+        if (ks == Square.NO_SQUARE or ks.rank_of() != Rank.RANK1 or rs == Square.NO_SQUARE) {
+            printout(stdout, "info string FEN warning: 'K' right but white king/rook not on home rank\n", .{});
+        }
+    }
+    if ((rights & Castling.WQ.toU4()) != 0) {
+        const ks = _pos.castle_king_start[Color.White.toU4()];
+        const rs = _pos.castle_rook_q_start[Color.White.toU4()];
+        if (ks == Square.NO_SQUARE or ks.rank_of() != Rank.RANK1 or rs == Square.NO_SQUARE) {
+            printout(stdout, "info string FEN warning: 'Q' right but white king/rook not on home rank\n", .{});
+        }
+    }
+    // Black
+    if ((rights & Castling.BK.toU4()) != 0) {
+        const ks = _pos.castle_king_start[Color.Black.toU4()];
+        const rs = _pos.castle_rook_k_start[Color.Black.toU4()];
+        if (ks == Square.NO_SQUARE or ks.rank_of() != Rank.RANK8 or rs == Square.NO_SQUARE) {
+            printout(stdout, "info string FEN warning: 'k' right but black king/rook not on home rank\n", .{});
+        }
+    }
+    if ((rights & Castling.BQ.toU4()) != 0) {
+        const ks = _pos.castle_king_start[Color.Black.toU4()];
+        const rs = _pos.castle_rook_q_start[Color.Black.toU4()];
+        if (ks == Square.NO_SQUARE or ks.rank_of() != Rank.RANK8 or rs == Square.NO_SQUARE) {
+            printout(stdout, "info string FEN warning: 'q' right but black king/rook not on home rank\n", .{});
+        }
+    }
 }
 
 fn u32_from_str(str: []const u8) !u32 {
@@ -161,6 +201,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             printout(stdout, "option name Hash type spin default {d} min {d} max {d}\n", .{ HASH_SIZE_DEFAULT, HASH_SIZE_MIN, HASH_SIZE_MAX });
             printout(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, MAX_THREADS });
             printout(stdout, "option name UseNNUE type check default {}\n", .{nnue.engine_using_nnue});
+            printout(stdout, "option name UCI_Chess960 type check default {}\n", .{uci_chess960});
             //printout(stdout,"option name EvalFile type string default \n", .{});
             printout(stdout, "option name Debug type check default {}\n", .{debug});
             if (use_tb) {
@@ -267,6 +308,19 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                             std.debug.print("UseNNue = {}\n", .{nnue.engine_using_nnue});
                         }
                     } else continue;
+                } else if (std.mem.eql(u8, arg, "UCI_Chess960")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        arg = words.next().?;
+                        if (std.mem.eql(u8, arg, "true")) {
+                            uci_chess960 = true;
+                        } else if (std.mem.eql(u8, arg, "false")) {
+                            uci_chess960 = false;
+                        }
+                        if (debug) {
+                            std.debug.print("UCI_Chess960 = {}\n", .{uci_chess960});
+                        }
+                    } else continue;
                 } else if (std.mem.eql(u8, arg, "EvalFile")) {
                     nnue.engine_loaded_net = false;
                     const nnue_file_name = words.next() orelse continue :mainloop;
@@ -332,11 +386,15 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     continue; // or continue loop, depending on context
                 };
 
+                // Warn if castling rights conflict with piece placement on home ranks (Chess960 guard)
+                warn_fen_castling_inconsistencies(&pos[0]);
+
                 if (parts.rest().len > 0) {
                     try parse_and_apply_moves(&pos[0], parts.rest());
                 }
             } else if (std.mem.eql(u8, pos_variant, "startpos")) {
                 try pos[0].set(start_position);
+                warn_fen_castling_inconsistencies(&pos[0]);
                 if (words.next()) |keyword| {
                     if (std.mem.eql(u8, keyword, "moves")) {
                         try parse_and_apply_moves(&pos[0], words.rest());

@@ -505,11 +505,21 @@ pub const Move = packed struct {
         var uci_buf: [5]u8 = undefined;
         var uci_len: usize = 0;
 
-        // Handle castling
+        // Handle castling (Chess960-aware: king from current square to g/c file)
         if (std.mem.eql(u8, move_str, "O-O")) {
-            return try std.testing.allocator.dupe(u8, if (curr_pos.side_to_play == .White) "e1g1" else "e8g8");
+            const ks = bb.get_ls1b_index(curr_pos.bitboard_of_pt(curr_pos.side_to_play, PieceType.King));
+            const kd = if (curr_pos.side_to_play == .White) Square.g1.toU6() else Square.g8.toU6();
+            @memcpy(uci_buf[0..2], sq_to_coord[ks]);
+            @memcpy(uci_buf[2..4], sq_to_coord[kd]);
+            uci_len = 4;
+            return try std.testing.allocator.dupe(u8, uci_buf[0..uci_len]);
         } else if (std.mem.eql(u8, move_str, "O-O-O")) {
-            return try std.testing.allocator.dupe(u8, if (curr_pos.side_to_play == .White) "e1c1" else "e8c8");
+            const ks = bb.get_ls1b_index(curr_pos.bitboard_of_pt(curr_pos.side_to_play, PieceType.King));
+            const kd = if (curr_pos.side_to_play == .White) Square.c1.toU6() else Square.c8.toU6();
+            @memcpy(uci_buf[0..2], sq_to_coord[ks]);
+            @memcpy(uci_buf[2..4], sq_to_coord[kd]);
+            uci_len = 4;
+            return try std.testing.allocator.dupe(u8, uci_buf[0..uci_len]);
         }
 
         // Parse algebraic move
@@ -761,6 +771,12 @@ pub const Position = struct {
     eval: Evaluation = undefined,
     delta: nnue.DeltaPieces = nnue.DeltaPieces{},
 
+    // Chess960/FRC castling: track starting squares for king and rooks per color
+    // Initialized from FEN and constant during the game
+    castle_king_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
+    castle_rook_k_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
+    castle_rook_q_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
+
     pub fn new() Position {
         var pos = Position{};
 
@@ -779,6 +795,10 @@ pub const Position = struct {
         pos.eval.phase = [1]u8{0} ** 2;
         pos.delta = nnue.DeltaPieces{};
 
+        pos.castle_king_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
+        pos.castle_rook_k_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
+        pos.castle_rook_q_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
+
         return pos;
     }
 
@@ -796,6 +816,9 @@ pub const Position = struct {
             .history = from.history,
             .eval = from.eval,
             .delta = nnue.DeltaPieces{},
+            .castle_king_start = from.castle_king_start,
+            .castle_rook_k_start = from.castle_rook_k_start,
+            .castle_rook_q_start = from.castle_rook_q_start,
         };
     }
 
@@ -1338,27 +1361,31 @@ pub const Position = struct {
         self.history[self.game_ply].accumulator.computed_score = false;
 
         if ((self.history[self.game_ply].castling > 0) ){
-            if (update_entry & 0x10 != 0) { // King move
-                self.history[self.game_ply].castling &= ~Castling.WK.toU4() & ~Castling.WQ.toU4();
+            var new_rights: u4 = self.history[self.game_ply].castling;
+            // White: king moved from its original square disables both; rooks disable respective side
+            if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()]) != 0) {
+                new_rights &= ~Castling.WK.toU4() & ~Castling.WQ.toU4();
             }
-            else if (update_entry & 0x1 != 0) { // White queen side rook
-                self.history[self.game_ply].castling &= ~Castling.WQ.toU4();
+            if (self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()]) != 0) {
+                new_rights &= ~Castling.WK.toU4();
             }
-            else if (update_entry & 0x80 != 0) { // White king side rook
-                self.history[self.game_ply].castling &= ~Castling.WK.toU4();
+            if (self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_rook_q_start[Color.White.toU4()].toU6()]) != 0) {
+                new_rights &= ~Castling.WQ.toU4();
             }
-            else if (update_entry & 0x1000000000000000 != 0) {
-                self.history[self.game_ply].castling &= ~Castling.BK.toU4() & ~Castling.BQ.toU4();
+            // Black
+            if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()]) != 0) {
+                new_rights &= ~Castling.BK.toU4() & ~Castling.BQ.toU4();
             }
-            else if (update_entry & 0x100000000000000 != 0) {
-                self.history[self.game_ply].castling &= ~Castling.BQ.toU4();
+            if (self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_rook_k_start[Color.Black.toU4()].toU6()]) != 0) {
+                new_rights &= ~Castling.BK.toU4();
             }
-            else if (update_entry & 0x8000000000000000 != 0) {
-                self.history[self.game_ply].castling &= ~Castling.BK.toU4();
+            if (self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()]) != 0) {
+                new_rights &= ~Castling.BQ.toU4();
             }
-
-            self.hash ^= zobrist.castling_keys[self.history[self.game_ply-1].castling] ^ zobrist.castling_keys[self.history[self.game_ply].castling];
-            //}
+            if (new_rights != self.history[self.game_ply].castling) {
+                self.history[self.game_ply].castling = new_rights;
+                self.hash ^= zobrist.castling_keys[self.history[self.game_ply-1].castling] ^ zobrist.castling_keys[self.history[self.game_ply].castling];
+            }
         }
 
         var epsq = self.history[self.game_ply - 1].epsq;
@@ -1391,42 +1418,34 @@ pub const Position = struct {
                 self.hash ^= zobrist.enpassant_keys[self.history[self.game_ply].epsq.file_of().toU3()];
             },
             MoveFlags.OO => {
-                if (C == Color.White) {
-                    self.move_piece_quiet(Square.e1.toU6(), Square.g1.toU6());
-                    self.move_piece_quiet(Square.h1.toU6(), Square.f1.toU6());
+                const ci: usize = C.toU4();
+                const kd: u6 = if (C == .White) Square.g1.toU6() else Square.g8.toU6();
+                const rs: u6 = self.castle_rook_k_start[ci].toU6();
+                const rd: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
+                if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                self.move_piece_quiet(rs, rd);
 
-                    if (nnue.engine_using_nnue) {
-                        self.delta.move_piece_quiet(Piece.WHITE_KING, Square.e1.toU6(), Square.g1.toU6());
-                        self.delta.move_piece_quiet(Piece.WHITE_ROOK, Square.h1.toU6(), Square.f1.toU6());
-                    }
-                } else {
-                    self.move_piece_quiet(Square.e8.toU6(), Square.g8.toU6());
-                    self.move_piece_quiet(Square.h8.toU6(), Square.f8.toU6());
-
-                    if (nnue.engine_using_nnue) {
-                        self.delta.move_piece_quiet(Piece.BLACK_KING, Square.e8.toU6(), Square.g8.toU6());
-                        self.delta.move_piece_quiet(Piece.BLACK_ROOK, Square.h8.toU6(), Square.f8.toU6());
-                    }                    
-                 }
+                if (nnue.engine_using_nnue) {
+                    const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                    const rpc = if (C == .White) Piece.WHITE_ROOK else Piece.BLACK_ROOK;
+                    if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
+                    self.delta.move_piece_quiet(rpc, rs, rd);
+                }
             },
             MoveFlags.OOO => {
-                if (C == Color.White) {
-                    self.move_piece_quiet(Square.e1.toU6(), Square.c1.toU6());
-                    self.move_piece_quiet(Square.a1.toU6(), Square.d1.toU6());
+                const ci: usize = C.toU4();
+                const kd: u6 = if (C == .White) Square.c1.toU6() else Square.c8.toU6();
+                const rs: u6 = self.castle_rook_q_start[ci].toU6();
+                const rd: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
+                if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                self.move_piece_quiet(rs, rd);
 
-                    if (nnue.engine_using_nnue) {
-                        self.delta.move_piece_quiet(Piece.WHITE_KING, Square.e1.toU6(), Square.c1.toU6());
-                        self.delta.move_piece_quiet(Piece.WHITE_ROOK, Square.a1.toU6(), Square.d1.toU6());
-                    }                    
-                 } else {
-                    self.move_piece_quiet(Square.e8.toU6(), Square.c8.toU6());
-                    self.move_piece_quiet(Square.a8.toU6(), Square.d8.toU6());
-
-                    if (nnue.engine_using_nnue) {
-                        self.delta.move_piece_quiet(Piece.BLACK_KING, Square.e8.toU6(), Square.c8.toU6());
-                        self.delta.move_piece_quiet(Piece.BLACK_ROOK, Square.a8.toU6(), Square.d8.toU6());
-                    }                     
-                }                
+                if (nnue.engine_using_nnue) {
+                    const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                    const rpc = if (C == .White) Piece.WHITE_ROOK else Piece.BLACK_ROOK;
+                    if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
+                    self.delta.move_piece_quiet(rpc, rs, rd);
+                }
             },
             MoveFlags.EN_PASSANT => {
                 const pc = self.board[m.from];
@@ -1549,22 +1568,20 @@ pub const Position = struct {
                 self.hash ^= zobrist.enpassant_keys[self.history[self.game_ply].epsq.file_of().toU3()];
             },    
             MoveFlags.OO => {
-                if (C == Color.White) {
-                    self.move_piece_quiet(Square.g1.toU6(), Square.e1.toU6());
-                    self.move_piece_quiet(Square.f1.toU6(), Square.h1.toU6());
-                } else {
-                    self.move_piece_quiet(Square.g8.toU6(), Square.e8.toU6());
-                    self.move_piece_quiet(Square.f8.toU6(), Square.h8.toU6());
-                }
+                const ci: usize = C.toU4();
+                const kd: u6 = if (C == .White) Square.g1.toU6() else Square.g8.toU6();
+                const rs: u6 = self.castle_rook_k_start[ci].toU6();
+                const rd: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
+                if (m.from != kd) self.move_piece_quiet(kd, m.from);
+                self.move_piece_quiet(rd, rs);
             },     
             MoveFlags.OOO => {
-                if (C == Color.White) {
-                    self.move_piece_quiet(Square.c1.toU6(), Square.e1.toU6());
-                    self.move_piece_quiet(Square.d1.toU6(), Square.a1.toU6());
-                } else {
-                    self.move_piece_quiet(Square.c8.toU6(), Square.e8.toU6());
-                    self.move_piece_quiet(Square.d8.toU6(), Square.a8.toU6());
-                 }                
+                const ci: usize = C.toU4();
+                const kd: u6 = if (C == .White) Square.c1.toU6() else Square.c8.toU6();
+                const rs: u6 = self.castle_rook_q_start[ci].toU6();
+                const rd: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
+                if (m.from != kd) self.move_piece_quiet(kd, m.from);
+                self.move_piece_quiet(rd, rs);
             },          
             MoveFlags.EN_PASSANT => {
                 self.move_piece_quiet(m.to, m.from);
@@ -1770,25 +1787,81 @@ pub const Position = struct {
         }
 
         const castling_fen = parts.next() orelse return FenParseError.MissingCastlingRights;
-        self.history[self.game_ply].entry = ALL_CASTLING_MASK;
+
+        // Initialize Chess960 castling starts from current board
+        inline for (.{ Color.White, Color.Black }, 0..) |c, ci| {
+            const king_bb = self.bitboard_of_pt(c, PieceType.King);
+            if (king_bb == 0) {
+                self.castle_king_start[ci] = Square.NO_SQUARE;
+            } else {
+                self.castle_king_start[ci] = Square.fromU6(bb.get_ls1b_index(king_bb));
+            }
+            const rook_bb_rank = self.bitboard_of_pt(c, PieceType.Rook) & bb.MASK_RANK[if (c == .White) Rank.RANK1.toU3() else Rank.RANK8.toU3()];
+            if (rook_bb_rank != 0 and king_bb != 0) {
+                const ks = self.castle_king_start[ci].toU6();
+                const kfile: u3 = @truncate(ks & 7);
+                // kingside rook: closest rook with file > king
+                var found_k: bool = false;
+                var f: u6 = kfile + 1;
+                const rrank: u6 = @truncate(ks >> 3);
+                while (f < 8) : (f += 1) {
+                    const sq: u6 = (rrank * 8) + f;
+                    if ((rook_bb_rank & SQUARE_BB[sq]) != 0) { self.castle_rook_k_start[ci] = Square.fromU6(sq); found_k = true; break; }
+                }
+                if (!found_k) self.castle_rook_k_start[ci] = Square.NO_SQUARE;
+                // queenside rook: closest rook with file < king
+                var found_q: bool = false;
+                var f2i: i32 = @as(i32, kfile) - 1;
+                const rrank2: u6 = @truncate(ks >> 3);
+                while (f2i >= 0) : (f2i -= 1) {
+                    const f2: u6 = @truncate(@as(u6, @intCast(f2i)));
+                    const sq2: u6 = (rrank2 * 8) + f2;
+                    if ((rook_bb_rank & SQUARE_BB[sq2]) != 0) { self.castle_rook_q_start[ci] = Square.fromU6(sq2); found_q = true; break; }
+                }
+                if (!found_q) self.castle_rook_q_start[ci] = Square.NO_SQUARE;
+            } else {
+                self.castle_rook_k_start[ci] = Square.NO_SQUARE;
+                self.castle_rook_q_start[ci] = Square.NO_SQUARE;
+            }
+        }
+
+        // Build dynamic entry mask from tracked squares; then clear bits for allowed rights
+        var dynamic_all_castle_mask: u64 = 0;
+        if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE)
+            dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()];
+        if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE)
+            dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.White.toU4()].toU6()];
+        if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE)
+            dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.Black.toU4()].toU6()];
+        if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE)
+            dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()];
+        self.history[self.game_ply].entry = dynamic_all_castle_mask;
 
         for (castling_fen) |c| {
             switch (c) {
                 'K' =>  {
-                    self.history[self.game_ply].entry &= ~WHITE_OO_MASK;
-                    self.history[self.game_ply].castling |= Castling.WK.toU4();
+                    if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE) {
+                        self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()]);
+                        self.history[self.game_ply].castling |= Castling.WK.toU4();
+                    }
                 },
                 'Q' => {
-                    self.history[self.game_ply].entry &= ~WHITE_OOO_MASK;
-                    self.history[self.game_ply].castling |= Castling.WQ.toU4();
+                    if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE) {
+                        self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.White.toU4()].toU6()]);
+                        self.history[self.game_ply].castling |= Castling.WQ.toU4();
+                    }
                 },
                 'k' => {
-                    self.history[self.game_ply].entry &= ~BLACK_OO_MASK;
-                    self.history[self.game_ply].castling |= Castling.BK.toU4();
+                    if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+                        self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.Black.toU4()].toU6()]);
+                        self.history[self.game_ply].castling |= Castling.BK.toU4();
+                    }
                 },
                 'q' => {
-                    self.history[self.game_ply].entry &= ~BLACK_OOO_MASK;
-                    self.history[self.game_ply].castling |= Castling.BQ.toU4();
+                    if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+                        self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()]);
+                        self.history[self.game_ply].castling |= Castling.BQ.toU4();
+                    }
                 },
                 '-' => break,
                 else => return FenParseError.InvalidCastlingRights,
@@ -2174,19 +2247,65 @@ pub const Position = struct {
     }
 
     fn generate_castling_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void { // captures are quiet moves
-        if (((self.history[self.game_ply].entry & oo_mask(Us)) | ((ctx.all_bb | ctx.danger) & oo_blockers_mask(Us))) == 0) {
-            if (Us == Color.White) {
-                list.append(Move.new(Square.e1, Square.g1, MoveFlags.OO));
-            } else {
-                list.append(Move.new(Square.e8, Square.g8, MoveFlags.OO));
+        const ci: usize = Us.toU4();
+        const std_ks = if (Us == .White) Square.e1.toU6() else Square.e8.toU6();
+        const std_rk = if (Us == .White) Square.h1.toU6() else Square.h8.toU6();
+        const std_rq = if (Us == .White) Square.a1.toU6() else Square.a8.toU6();
+        // Classical when king/rook are on standard squares (use board presence to be robust)
+        const classical_oo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rk] == Piece.new(Us, PieceType.Rook));
+        const classical_ooo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rq] == Piece.new(Us, PieceType.Rook));
+
+        // Classical kingside
+        if (classical_oo and ((self.history[self.game_ply].castling & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0)) {
+            // Classical: rely on rights + empty/unattacked path; entry gate not needed
+            if ((((ctx.all_bb | ctx.danger) & oo_blockers_mask(Us))) == 0) {
+                if (Us == Color.White) {
+                    list.append(Move.new(Square.e1, Square.g1, MoveFlags.OO));
+                } else {
+                    list.append(Move.new(Square.e8, Square.g8, MoveFlags.OO));
+                }
+            }
+        }
+        // Classical queenside
+        if (classical_ooo and ((self.history[self.game_ply].castling & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0)) {
+            if ((((ctx.all_bb | (ctx.danger & ~ignore_ooo_danger(Us))) & ooo_blockers_mask(Us))) == 0) {
+                if (Us == Color.White) {
+                    list.append(Move.new(Square.e1, Square.c1, MoveFlags.OOO));
+                } else {
+                    list.append(Move.new(Square.e8, Square.c8, MoveFlags.OOO));
+                }
             }
         }
 
-        if (((self.history[self.game_ply].entry & ooo_mask(Us)) | ((ctx.all_bb | (ctx.danger & ~ignore_ooo_danger(Us))) & ooo_blockers_mask(Us))) == 0) {
-            if (Us == Color.White) {
-                list.append(Move.new(Square.e1, Square.c1, MoveFlags.OOO));
-            } else {
-                list.append(Move.new(Square.e8, Square.c8, MoveFlags.OOO));
+        // Chess960 path (for sides not handled by classical above)
+        // Kingside (OO)
+        if (!classical_oo and (self.history[self.game_ply].castling & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0 and self.castle_rook_k_start[ci] != Square.NO_SQUARE) {
+            const ks = ctx.our_king;
+            const kd: u6 = if (Us == .White) Square.g1.toU6() else Square.g8.toU6();
+            const rs = self.castle_rook_k_start[ci].toU6();
+            if (self.board[rs] == Piece.new(Us, PieceType.Rook)) {
+                const between_kr = attacks.SQUARES_BETWEEN_BB[ks][rs];
+                const k_path = attacks.SQUARES_BETWEEN_BB[ks][kd];
+                const occ_mask = (between_kr | k_path) & ~SQUARE_BB[rs];
+                const danger_mask = k_path | SQUARE_BB[kd];
+                if ((ctx.all_bb & occ_mask) == 0 and (ctx.danger & danger_mask) == 0) {
+                    list.append(Move.new(Square.fromU6(ks), Square.fromU6(kd), MoveFlags.OO));
+                }
+            }
+        }
+        // Queenside (OOO)
+        if (!classical_ooo and (self.history[self.game_ply].castling & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0 and self.castle_rook_q_start[ci] != Square.NO_SQUARE) {
+            const ks = ctx.our_king;
+            const kd: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
+            const rs = self.castle_rook_q_start[ci].toU6();
+            if (self.board[rs] == Piece.new(Us, PieceType.Rook)) {
+                const between_kr = attacks.SQUARES_BETWEEN_BB[ks][rs];
+                const k_path = attacks.SQUARES_BETWEEN_BB[ks][kd];
+                const occ_mask = (between_kr | k_path) & ~SQUARE_BB[rs];
+                const danger_mask = k_path | SQUARE_BB[kd];
+                if ((ctx.all_bb & occ_mask) == 0 and (ctx.danger & danger_mask) == 0) {
+                    list.append(Move.new(Square.fromU6(ks), Square.fromU6(kd), MoveFlags.OOO));
+                }
             }
         }
     }
