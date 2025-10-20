@@ -1120,7 +1120,7 @@ pub const Search = struct {
                         reduction -= 1;
                     }
 
-                    reduction -= @as(i8, @intCast(@max(-2, @min(2, @divTrunc(full_hist, 4000)))));
+                    reduction -= @as(i8, @intCast(@max(-4, @min(4, @divTrunc(full_hist, 4000)))));
                     reduction += @as(i8, @intCast(@min(2, @abs(@divTrunc(static_eval - alpha, 350)))));
                 }
 
