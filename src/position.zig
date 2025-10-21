@@ -1837,8 +1837,8 @@ pub const Position = struct {
             dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()];
         self.history[self.game_ply].entry = dynamic_all_castle_mask;
 
-        for (castling_fen) |c| {
-            switch (c) {
+        for (castling_fen) |cf| {
+            switch (cf) {
                 'K' =>  {
                     if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE) {
                         self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()]);
@@ -1861,6 +1861,44 @@ pub const Position = struct {
                     if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE) {
                         self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()]);
                         self.history[self.game_ply].castling |= Castling.BQ.toU4();
+                    }
+                },
+                // Shredder-FEN letters for rooks allowed to castle
+                'A'...'H' => {
+                    // White rook file
+                    if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE) {
+                        const kf: u3 = self.castle_king_start[Color.White.toU4()].file_of().toU3();
+                        const rf: u3 = @truncate(@as(u8, cf - 'A'));
+                        if (rf > kf) {
+                            // kingside
+                            if (self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE) {
+                                self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()]);
+                                self.history[self.game_ply].castling |= Castling.WK.toU4();
+                            }
+                        } else if (rf < kf) {
+                            // queenside
+                            if (self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE) {
+                                self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.White.toU4()].toU6()]);
+                                self.history[self.game_ply].castling |= Castling.WQ.toU4();
+                            }
+                        }
+                    }
+                },
+                'a'...'h' => {
+                    if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+                        const kf: u3 = self.castle_king_start[Color.Black.toU4()].file_of().toU3();
+                        const rf: u3 = @truncate(@as(u8, cf - 'a'));
+                        if (rf > kf) {
+                            if (self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+                                self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.Black.toU4()].toU6()]);
+                                self.history[self.game_ply].castling |= Castling.BK.toU4();
+                            }
+                        } else if (rf < kf) {
+                            if (self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+                                self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()]);
+                                self.history[self.game_ply].castling |= Castling.BQ.toU4();
+                            }
+                        }
                     }
                 },
                 '-' => break,
@@ -2074,7 +2112,61 @@ pub const Position = struct {
         self.generate_king_moves(ctx, list, false);
 
         return;
-    }    
+    }
+
+    pub fn debug_castling(self: *Position, comptime Us: Color) void {
+        const ctx = self.computeMoveGenContext(Us);
+        const ci: usize = Us.toU4();
+        const wk = (self.history[self.game_ply].castling & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0;
+        const wq = (self.history[self.game_ply].castling & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0;
+        const ks = ctx.our_king;
+        const kd_oo: u6 = if (Us == .White) Square.g1.toU6() else Square.g8.toU6();
+        const kd_ooo: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
+        const rs_k = self.castle_rook_k_start[ci];
+        const rs_q = self.castle_rook_q_start[ci];
+        std.debug.print("Castling debug ({s}): rights K={}, Q={}\n", .{
+            if (Us == .White) "White" else "Black", wk, wq,
+        });
+        std.debug.print("King sq: {s}  KD_OO: {s}  KD_OOO: {s}\n", .{
+            sq_to_coord[ks], sq_to_coord[kd_oo], sq_to_coord[kd_ooo],
+        });
+        std.debug.print("RookK start: {s}  RookQ start: {s}\n", .{
+            if (rs_k != Square.NO_SQUARE) sq_to_coord[rs_k.toU6()] else "--",
+            if (rs_q != Square.NO_SQUARE) sq_to_coord[rs_q.toU6()] else "--",
+        });
+        // Kingside 960 check snapshot
+        if (wk and rs_k != Square.NO_SQUARE and self.board[rs_k.toU6()] == Piece.new(Us, PieceType.Rook)) {
+            const k_path = attacks.SQUARES_BETWEEN_BB[ks][kd_oo];
+            const occ_after_k = ctx.all_bb ^ SQUARE_BB[ks];
+            const k_blockers = occ_after_k & (k_path & ~SQUARE_BB[rs_k.toU6()]);
+            const danger_mask = k_path | SQUARE_BB[kd_oo];
+            const rd = (if (Us == .White) Square.f1.toU6() else Square.f8.toU6());
+            const rook_path = attacks.SQUARES_BETWEEN_BB[rs_k.toU6()][rd];
+            std.debug.print("OO: k_path=0x{x}, k_blockers=0x{x}, danger&mask=0x{x}, rook_path=0x{x}, occ_after_k&rd=0x{x}\n", .{
+                k_path, k_blockers, (ctx.danger & danger_mask), rook_path, (occ_after_k & SQUARE_BB[rd]),
+            });
+        } else {
+            std.debug.print("OO: preconditions failed (wk={}, rs_k set={}, rook present={})\n", .{
+                wk, rs_k != Square.NO_SQUARE, if (rs_k != Square.NO_SQUARE) self.board[rs_k.toU6()] == Piece.new(Us, PieceType.Rook) else false,
+            });
+        }
+        // Queenside 960 check snapshot
+        if (wq and rs_q != Square.NO_SQUARE and self.board[rs_q.toU6()] == Piece.new(Us, PieceType.Rook)) {
+            const k_path = attacks.SQUARES_BETWEEN_BB[ks][kd_ooo];
+            const occ_after_k = ctx.all_bb ^ SQUARE_BB[ks];
+            const k_blockers = occ_after_k & (k_path & ~SQUARE_BB[rs_q.toU6()]);
+            const danger_mask = k_path | SQUARE_BB[kd_ooo];
+            const rd = (if (Us == .White) Square.d1.toU6() else Square.d8.toU6());
+            const rook_path = attacks.SQUARES_BETWEEN_BB[rs_q.toU6()][rd];
+            std.debug.print("OOO: k_path=0x{x}, k_blockers=0x{x}, danger&mask=0x{x}, rook_path=0x{x}, occ_after_k&rd=0x{x}\n", .{
+                k_path, k_blockers, (ctx.danger & danger_mask), rook_path, (occ_after_k & SQUARE_BB[rd]),
+            });
+        } else {
+            std.debug.print("OOO: preconditions failed (wq={}, rs_q set={}, rook present={})\n", .{
+                wq, rs_q != Square.NO_SQUARE, if (rs_q != Square.NO_SQUARE) self.board[rs_q.toU6()] == Piece.new(Us, PieceType.Rook) else false,
+            });
+        }
+    }
 
     pub fn generate_king_moves(self: *Position, ctx: MoveGenContext, list: *MoveList, comptime noisy: bool) void {
         _ = self;
@@ -2109,16 +2201,29 @@ pub const Position = struct {
         b1 = ctx.our_diag_sliders & ctx.not_pinned;
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
-            const b2 = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Bishop);
-            make_list(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
+            const targets = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Bishop) & quiet_mask;
+            // Filter line-of-sight safety to avoid x-ray beyond first blocker
+            var filtered: u64 = 0;
+            var tmp = targets;
+            while (tmp != 0) {
+                const t = bb.pop_lsb(&tmp);
+                if ((attacks.SQUARES_BETWEEN_BB[s1][t] & ctx.all_bb) == 0) filtered |= SQUARE_BB[t];
+            }
+            make_list(Square.fromU6(s1), filtered, MoveFlags.QUIET, list);
         }
 
         // Non-pinned rooks and queens
         b1 = ctx.our_orth_sliders & ctx.not_pinned;
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
-            const b2 = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Rook);
-            make_list(Square.fromU6(s1), b2 & quiet_mask, MoveFlags.QUIET, list);
+            const targets = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Rook) & quiet_mask;
+            var filtered: u64 = 0;
+            var tmp = targets;
+            while (tmp != 0) {
+                const t = bb.pop_lsb(&tmp);
+                if ((attacks.SQUARES_BETWEEN_BB[s1][t] & ctx.all_bb) == 0) filtered |= SQUARE_BB[t];
+            }
+            make_list(Square.fromU6(s1), filtered, MoveFlags.QUIET, list);
         }
 
         // Non-pinned pawns not on the last rank
@@ -2153,16 +2258,28 @@ pub const Position = struct {
         b1 = ctx.our_diag_sliders & ctx.not_pinned;
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
-            const b2 = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Bishop);
-            make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
+            const targets = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Bishop) & capture_mask;
+            var filtered: u64 = 0;
+            var tmp = targets;
+            while (tmp != 0) {
+                const t = bb.pop_lsb(&tmp);
+                if ((attacks.SQUARES_BETWEEN_BB[s1][t] & ctx.all_bb) == 0) filtered |= SQUARE_BB[t];
+            }
+            make_list(Square.fromU6(s1), filtered, MoveFlags.CAPTURE, list);
         }
 
         // Non-pinned rooks and queens
         b1 = ctx.our_orth_sliders & ctx.not_pinned;
         while (b1 != 0) {
             const s1 = bb.pop_lsb(&b1);
-            const b2 = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Rook);
-            make_list(Square.fromU6(s1), b2 & capture_mask, MoveFlags.CAPTURE, list);
+            const targets = attacks.piece_attacks(s1, ctx.all_bb, PieceType.Rook) & capture_mask;
+            var filtered: u64 = 0;
+            var tmp = targets;
+            while (tmp != 0) {
+                const t = bb.pop_lsb(&tmp);
+                if ((attacks.SQUARES_BETWEEN_BB[s1][t] & ctx.all_bb) == 0) filtered |= SQUARE_BB[t];
+            }
+            make_list(Square.fromU6(s1), filtered, MoveFlags.CAPTURE, list);
         }
 
         // Non-pinned pawns not on the last rank
@@ -2278,18 +2395,59 @@ pub const Position = struct {
         }
 
         // Chess960 path (for sides not handled by classical above)
+        // Helper: compute rank-only between mask (exclusive) for squares on same rank
+        const rank_between = struct {
+            fn mask(a: u6, b: u6) u64 {
+                const ra = rank_of_u6(a);
+                const rb = rank_of_u6(b);
+                if (ra != rb) return 0;
+                var fa: i32 = @intCast(file_of_u6(a));
+                var fb: i32 = @intCast(file_of_u6(b));
+                if (fa > fb) {
+                    const tmp = fa; fa = fb; fb = tmp;
+                }
+                var m: u64 = 0;
+                var f: i32 = fa + 1;
+                while (f < fb) : (f += 1) {
+                    const sq: u6 = @intCast(@as(i32, @intCast(ra)) * 8 + f);
+                    m |= SQUARE_BB[sq];
+                }
+                return m;
+            }
+        };
         // Kingside (OO)
         if (!classical_oo and (self.history[self.game_ply].castling & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0 and self.castle_rook_k_start[ci] != Square.NO_SQUARE) {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.g1.toU6() else Square.g8.toU6();
             const rs = self.castle_rook_k_start[ci].toU6();
-            if (self.board[rs] == Piece.new(Us, PieceType.Rook)) {
-                const between_kr = attacks.SQUARES_BETWEEN_BB[ks][rs];
-                const k_path = attacks.SQUARES_BETWEEN_BB[ks][kd];
-                const occ_mask = (between_kr | k_path) & ~SQUARE_BB[rs];
+            if ((self.bitboard_of_pt(Us, PieceType.Rook) & SQUARE_BB[rs]) != 0) {
+                const occ_after_k = ctx.all_bb ^ SQUARE_BB[ks];
+                const k_path = rank_between.mask(ks, kd);
                 const danger_mask = k_path | SQUARE_BB[kd];
-                if ((ctx.all_bb & occ_mask) == 0 and (ctx.danger & danger_mask) == 0) {
-                    list.append(Move.new(Square.fromU6(ks), Square.fromU6(kd), MoveFlags.OO));
+                // King path (excluding rook square) must be empty and not attacked
+                if ((occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0 and (ctx.danger & danger_mask) == 0) {
+                    // Destination square may be occupied by the participating rook in Chess960
+                    if (ks != kd) {
+                        const kd_occ = (occ_after_k & SQUARE_BB[kd]) != 0;
+                        if (kd_occ and kd != rs) {
+                            // kd occupied by non-participating piece -> cannot castle
+                            // skip
+                        } else {
+                            const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
+                            const rook_path = rank_between.mask(rs, rd);
+                            if ((occ_after_k & rook_path) == 0 and (occ_after_k & SQUARE_BB[rd]) == 0) {
+                                const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
+                                list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OO));
+                            }
+                        }
+                    } else {
+                        const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
+                        const rook_path = rank_between.mask(rs, rd);
+                        if ((occ_after_k & rook_path) == 0 and (occ_after_k & SQUARE_BB[rd]) == 0) {
+                            const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
+                            list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OO));
+                        }
+                    }
                 }
             }
         }
@@ -2298,16 +2456,124 @@ pub const Position = struct {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
             const rs = self.castle_rook_q_start[ci].toU6();
-            if (self.board[rs] == Piece.new(Us, PieceType.Rook)) {
-                const between_kr = attacks.SQUARES_BETWEEN_BB[ks][rs];
-                const k_path = attacks.SQUARES_BETWEEN_BB[ks][kd];
-                const occ_mask = (between_kr | k_path) & ~SQUARE_BB[rs];
+            if ((self.bitboard_of_pt(Us, PieceType.Rook) & SQUARE_BB[rs]) != 0) {
+                const occ_after_k = ctx.all_bb ^ SQUARE_BB[ks];
+                const k_path = rank_between.mask(ks, kd);
                 const danger_mask = k_path | SQUARE_BB[kd];
-                if ((ctx.all_bb & occ_mask) == 0 and (ctx.danger & danger_mask) == 0) {
-                    list.append(Move.new(Square.fromU6(ks), Square.fromU6(kd), MoveFlags.OOO));
+                if ((occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0 and (ctx.danger & danger_mask) == 0) {
+                    if (ks != kd) {
+                        const kd_occ = (occ_after_k & SQUARE_BB[kd]) != 0;
+                        if (kd_occ and kd != rs) {
+                            // kd occupied by non-participating piece -> cannot castle
+                        } else {
+                            const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
+                            const rook_path = rank_between.mask(rs, rd);
+                            if ((occ_after_k & rook_path) == 0 and (occ_after_k & SQUARE_BB[rd]) == 0) {
+                                const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
+                                list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OOO));
+                            }
+                        }
+                    } else {
+                        const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
+                        const rook_path = rank_between.mask(rs, rd);
+                        if ((occ_after_k & rook_path) == 0 and (occ_after_k & SQUARE_BB[rd]) == 0) {
+                            const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
+                            list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OOO));
+                        }
+                    }
                 }
             }
         }
+    }
+
+    // Helper: fill the q-th empty (0-based) with given piece
+    fn place_qth_empty(back_rank: *[8]u8, q: u16, ch: u8) void {
+        var count: u16 = 0;
+        var i: usize = 0;
+        while (i < 8) : (i += 1) {
+            if (back_rank[i] == ' ') {
+                if (count == q) {
+                    back_rank[i] = ch;
+                    return;
+                }
+                count += 1;
+            }
+        }
+    }
+
+    /// Set this position to the Chess960 start position corresponding to `index` (0..959).
+    /// Places pieces on rank 1 for White and the same files on rank 8 for Black, with pawns on rank 2/7.
+    /// Side to move is White and all castling rights are enabled (KQkq).
+    pub fn set_chess960_start(self: *Position, index: u16) !void {
+        if (index >= 960) return FenParseError.InvalidPosition;
+
+        // Build white back rank as 8 chars among 'R','N','B','Q','K'
+        var back: [8]u8 = [_]u8{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
+
+        var n: u16 = index;
+
+        // 1) Bishops on opposite colors
+        const dark_slot = n % 4; // 0..3 -> files 0,2,4,6
+        back[2 * dark_slot] = 'B';
+        n /= 4;
+
+        const light_slot = n % 4; // 0..3 -> files 1,3,5,7
+        back[2 * light_slot + 1] = 'B';
+        n /= 4;
+
+        // 2) Queen in one of the 6 remaining squares
+        const q_index = n % 6;
+        place_qth_empty(&back, q_index, 'Q');
+        n /= 6;
+
+        // 3) Two knights among the 5 remaining squares using combinadic index 0..9
+        var k_idx: u16 = n % 10;
+        n /= 10;
+
+        // Gather indices of empty squares
+        var empty: [5]u8 = undefined;
+        var ec: usize = 0;
+        for (0..8) |i| {
+            if (back[i] == ' ') { empty[ec] = @as(u8, @intCast(i)); ec += 1; }
+        }
+
+        // Map k_idx to combination (i<j) over 5 elements in lexicographic order
+        var first: usize = 0;
+        while (true) {
+            const cnt = 4 - first; // choices for second
+            if (k_idx >= cnt) {
+                k_idx -= cnt;
+                first += 1;
+            } else break;
+        }
+        const second: usize = first + 1 + k_idx;
+        back[empty[first]] = 'N';
+        back[empty[second]] = 'N';
+
+        // 4) Remaining 3 squares: R K R with king between rooks
+        var rem: [3]u8 = undefined;
+        var rc: usize = 0;
+        for (0..8) |i| {
+            if (back[i] == ' ') { rem[rc] = @as(u8, @intCast(i)); rc += 1; }
+        }
+        // rem is in ascending file order by construction
+        back[rem[0]] = 'R';
+        back[rem[1]] = 'K';
+        back[rem[2]] = 'R';
+
+        // Build black back rank as lowercase of white's back
+        var back_black: [8]u8 = undefined;
+        for (0..8) |i| back_black[i] = std.ascii.toLower(back[i]);
+
+        // Compose FEN for full board
+        var fen_buf: [80]u8 = undefined;
+        const fen = try std.fmt.bufPrint(
+            &fen_buf,
+            "{s}/pppppppp/8/8/8/8/PPPPPPPP/{s} w KQkq - 0 1",
+            .{ back_black[0..], back[0..] },
+        );
+
+        try self.set(fen);
     }
 
     fn generate_en_passant_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void { // en passant moves are noisy moves

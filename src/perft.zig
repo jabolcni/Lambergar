@@ -179,7 +179,7 @@ pub fn perft(comptime color: Color, pos: *Position, depth: u4) u64 {
 
 pub fn perft_test_div(pos: *Position, depth: u4) void {
     std.debug.print("\n\n", .{});
-    pos.print_unicode();
+    //pos.print_unicode();
     std.debug.print("Running Perft {}:\n\n", .{depth});
 
     if (pos.side_to_play == Color.White) {
@@ -200,10 +200,14 @@ pub fn perft_div(comptime color: Color, pos: *Position, depth: u4) void {
 
     for (0..list.count) |i| {
         const move = list.moves[i];
-        pos.play(move, color);
-        branch = perft(opp, pos, depth - 1);
+        var tmp = pos.copy();
+        if (depth > 1) {
+            if (color == Color.White) tmp.play(move, Color.White) else tmp.play(move, Color.Black);
+            branch = perft(opp, &tmp, depth - 1);
+        } else {
+            branch = 1;
+        }
         nodes += branch;
-        pos.undo(move, color);
 
         move.print();
         std.debug.print(" {}\n", .{branch});
