@@ -7,6 +7,7 @@ const tune: bool = false;
 pub fn main() !void {
     const allocator = std.heap.c_allocator;
     var bench: bool = false;
+    var perft_test: bool = false;
     var bench_depth: u32 = 12;
 
     // Parse command line arguments
@@ -29,6 +30,8 @@ pub fn main() !void {
                     // If parsing fails, it's not a number, so just continue
                 }
             }
+        } else if (std.mem.eql(u8, args[i], "perft")) {
+            perft_test = true;
         }
         i += 1;
     }
@@ -39,6 +42,8 @@ pub fn main() !void {
         try tuner_instance.convertDataset();
     } else if (bench) {
         try uci.bench(allocator, bench_depth);
+    } else if (perft_test) {
+        try uci.perft_test(allocator);
     } else {
         try uci.uci_loop(allocator);
     }

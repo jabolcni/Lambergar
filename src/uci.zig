@@ -944,6 +944,125 @@ pub fn bench(allocator: std.mem.Allocator, depth: u32) !void {
     printout(stdout, "{} nodes {} nps\n", .{ nodes, nps });
 }
 
+pub fn perft_test(allocator: std.mem.Allocator) !void {
+    const test_cases = [_][]const u8{
+        "b1q1rrkb/pppppppp/3nn3/8/P7/1PPP4/4PPPP/BQNNRKRB w GE - 1 9,20,479,10471,273318,6417013,177654692",
+        "bnnqrbkr/pp1p2p1/2p1p2p/5p2/1P5P/1R6/P1PPPPP1/BNNQRBK1 w Ehe - 0 9,33,1022,32724,1024721,32898113,1047360456",
+        "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9,21,528,12189,326672,8146062,227689589",
+        "2nnrbkr/p1qppppp/8/1ppb4/6PP/3PP3/PPP2P2/BQNNRBKR w HEhe - 1 9,21,807,18002,667366,16253601,590751109",
+        "qbbnnrkr/2pp2pp/p7/1p2pp2/8/P3PP2/1PPP1KPP/QBBNNR1R w hf - 0 9,22,593,13440,382958,9183776,274103539",
+        "1nbbnrkr/p1p1ppp1/3p4/1p3P1p/3Pq2P/8/PPP1P1P1/QNBBNRKR w HFhf - 0 9,28,1120,31058,1171749,34030312,1250970898",
+        "qnbnr1kr/ppp1b1pp/4p3/3p1p2/8/2NPP3/PPP1BPPP/QNB1R1KR w HEhe - 1 9,29,899,26578,824055,24851983,775718317",
+        "q1bnrkr1/ppppp2p/2n2p2/4b1p1/2NP4/8/PPP1PPPP/QNB1RRKB w ge - 1 9,30,860,24566,732757,21093346,649209803",
+        "qbn1brkr/ppp1p1p1/2n4p/3p1p2/P7/6PP/QPPPPP2/1BNNBRKR w HFhf - 0 9,25,635,17054,465806,13203304,377184252",
+        "qnnbbrkr/1p2ppp1/2pp3p/p7/1P5P/2NP4/P1P1PPP1/Q1NBBRKR w HFhf - 0 9,24,572,15243,384260,11110203,293989890",
+        "qn1rbbkr/ppp2p1p/1n1pp1p1/8/3P4/P6P/1PP1PPPK/QNNRBB1R w hd - 2 9,28,811,23175,679699,19836606,594527992",
+        "qnr1bkrb/pppp2pp/3np3/5p2/8/P2P2P1/NPP1PP1P/QN1RBKRB w GDg - 3 9,33,823,26895,713420,23114629,646390782",
+        "qb1nrkbr/1pppp1p1/1n3p2/p1B4p/8/3P1P1P/PPP1P1P1/QBNNRK1R w HEhe - 0 9,31,855,25620,735703,21796206,651054626",
+
+        // "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1,20,400,8902,197281,4865609,119060324",
+        // "8/6b1/7r/Pk2p3/1n4Np/K1P1P3/1B6/1b6 b - - 0 1,33,377,10572,125127,3449824,41620286",
+        // "8/6b1/5N1r/Pk2p3/1n5p/K1P1P3/1B6/1b6 w - - 0 1,15,418,5061,133804,1609522,42418189",
+        // "rnbqkbnr/1ppppppp/8/p7/2P5/P7/1P1PPPPP/RNBQKBNR b KQkq - 0 1,21,441,10227,242685,6164778,161038368",
+        // "2bqkbnr/rppppppp/n7/p7/2P5/PP6/3PPPPP/RNBQKBNR w KQk - 0 1,19,398,8820,204573,5072498,129375227",
+        // "2bqkbnr/rpp1pppp/n2p4/p7/2P3P1/PP5P/3PPP2/RNBQKBNR b KQk - 0 1,26,470,13090,284308,8296635,202882781",
+        // "2kq4/4Q3/1n1p3b/r1NP1bpp/pPP2PP1/p3P2P/4K3/2R1NBR1 b - - 0 1,33,1452,43353,1829511,55661262,2275321404",
+        // "8/8/6P1/8/1kb4P/8/1K6/8 w - - 0 1,6,100,649,10016,77697,1114696",
+        // "8/8/6P1/8/2b4P/2k5/8/3K4 b - - 0 1,16,73,1091,6579,97531,769922",
+        // "8/8/4b1P1/7P/8/3k4/8/3K4 w - - 0 1,4,66,359,5458,42728,620333",
+        // "8/8/5k2/p1q1N1N1/PP1rp1P1/3P4/2RKp3/7r b - - 0 1,47,934,36151,744017,28368703,600039464",
+        // "8/6kN/8/2q1N3/Pp1rp1P1/3P4/2RKp3/7r w - - 0 1,19,861,15432,656842,12401507,507590831",
+        // "6B1/8/8/8/6k1/1p1p4/6K1/8 b - - 0 1,7,89,720,8957,80437,1023277",
+        // "6B1/8/8/8/7k/1p1p1K2/8/8 w - - 0 1,11,56,730,5198,69538,634670",
+        // "8/8/8/6k1/8/1B1p2K1/8/8 b - - 0 1,6,95,631,9412,74180,1036141",
+        // "k7/3K4/8/6n1/6p1/8/7r/8 w - - 0 1,7,163,801,17800,93543,2076111",
+        // "3k4/3P4/8/2P5/7R/1K6/8/4b1b1 w - - 0 1,21,298,5635,84820,1583235,24946858",
+        // "3Q4/4k3/8/2P5/1R6/1K6/8/4b1b1 b - - 0 1,3,96,1197,38271,515558,16572719",
+        // "3n4/2k2b2/8/3p2p1/8/3K4/8/1N6 w - - 0 1,9,152,1463,25573,252916,4522589",
+        // "8/5bk1/8/2Pp4/8/1K6/8/8 w - d6 0 1,8,104,736,9287,62297,824064",
+        // "8/8/1k6/8/2pP4/8/5BK1/8 b - d3 0 1,8,104,736,9287,62297,824064",
+        // "8/8/1k6/2b5/2pP4/8/5K2/8 b - d3 0 1,15,126,1928,13931,206379,1440467",
+        // "8/5k2/8/2Pp4/2B5/1K6/8/8 w - d6 0 1,15,126,1928,13931,206379,1440467",
+        // "5k2/8/8/8/8/8/8/4K2R w K - 0 1,,,,,,661072",
+        // "4k2r/8/8/8/8/8/8/5K2 b k - 0 1,,,,,,661072",
+        // "3k4/8/8/8/8/8/8/R3K3 w Q - 0 1,,,,,,803711",
+        // "r3k3/8/8/8/8/8/8/3K4 b q - 0 1,,,,,,803711",
+        // "r3k2r/1b4bq/8/8/8/8/7B/R3K2R w KQkq - 0 1,,,,1274206",
+        // "r3k2r/7b/8/8/8/8/1B4BQ/R3K2R b KQkq - 0 1,,,,1274206",
+        // "r3k2r/8/3Q4/8/8/5q2/8/R3K2R b KQkq - 0 1,,,,1720476",
+        // "r3k2r/8/5Q2/8/8/3q4/8/R3K2R w KQkq - 0 1,,,,1720476",
+        // "2K2r2/4P3/8/8/8/8/8/3k4 w - - 0 1,,,,,,3821001",
+        // "3K4/8/8/8/8/8/4p3/2k2R2 b - - 0 1,,,,,,3821001",
+        // "8/8/1P2K3/8/2n5/1q6/8/5k2 b - - 0 1,,,,,1004658",
+        // "5K2/8/1Q6/2N5/8/1p2k3/8/8 w - - 0 1,,,,,1004658",
+        // "4k3/1P6/8/8/8/8/K7/8 w - - 0 1,,,,,,217342",
+        // "8/k7/8/8/8/8/1p6/4K3 b - - 0 1,,,,,,217342",
+        // "8/P1k5/K7/8/8/8/8/8 w - - 0 1,,,,,,92683",
+        // "8/8/8/8/8/k7/p1K5/8 b - - 0 1,,,,,,92683",
+        // "K1k5/8/P7/8/8/8/8/8 w - - 0 1,,,,,,2217",
+        // "8/8/8/8/8/p7/8/k1K5 b - - 0 1,,,,,,2217",
+        // "8/k1P5/8/1K6/8/8/8/8 w - - 0 1,,,,,,,567584",
+        // "8/8/8/8/1k6/8/K1p5/8 b - - 0 1,,,,,,,567584",
+        // "8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1,,,,23527",
+        // "8/5k2/8/5N2/5Q2/2K5/8/8 w - - 0 1,,,,23527",
+    };
+
+    try init_all(allocator);
+
+    //nnue.engine_using_nnue = false;
+    if (nnue.engine_using_nnue) {
+        try nnue.embed_and_init();
+        nnue.engine_loaded_net = true;
+    }
+
+    try tt.TT.init(128 + 1);
+    defer tt.TT.deinit();
+
+    std.debug.print("\n", .{});
+
+    // Iterate over each test case
+    for (test_cases) |test_case| {
+        // Parse the test case
+        var parts = std.mem.splitScalar(u8, test_case, ',');
+        const fen = parts.next() orelse return error.InvalidTestCase;
+        var expected_nodes: [7]?u64 = .{null} ** 7;
+
+        // Parse node counts for depths 1 to 7
+        inline for (0..4) |i| {
+            if (parts.next()) |node_str| {
+                if (node_str.len > 0) {
+                    expected_nodes[i] = try std.fmt.parseInt(u64, node_str, 10);
+                }
+            }
+        }
+
+        // Set up position
+        var curr_pos = Position.new();
+        try curr_pos.set(fen);
+        std.debug.print("Testing: {s}\n", .{fen});
+
+        // Run perft for each depth with non-null expected nodes
+        inline for (1..8) |depth| {
+            //std.debug.print("Depth: {}: ", .{depth});
+            if (expected_nodes[depth - 1]) |expected| {
+                const report = perft.perft_test(&curr_pos, @as(u4, @intCast(depth)));
+                if (report.nodes != expected) {
+                    std.debug.print(
+                        "Perft failed for FEN: {s}, depth: {d}, expected: {d}, got: {d}\n",
+                        .{ fen, depth, expected, report.nodes },
+                    );
+                    try std.testing.expectEqual(expected, report.nodes);
+                } else {
+                    std.debug.print(
+                        "Perft passed for depth: {d}, expected: {d}, got: {d}\n",
+                        .{ depth, expected, report.nodes },
+                    );
+                }
+            }
+        }
+    }
+}
+
 test "perft for positions" {
     // Initialize required databases
     attacks.initialise_all_databases();
@@ -1056,19 +1175,6 @@ fn file_from_letter(c: u8) ?u8 {
     return null;
 }
 
-fn find_king_file_on_rank(rank_str: []const u8, king_char: u8) ?u8 {
-    var file: u8 = 0;
-    for (rank_str) |ch| {
-        if (ch >= '1' and ch <= '8') {
-            file += ch - '0';
-        } else {
-            if (ch == king_char) return file;
-            file += 1;
-        }
-    }
-    return null;
-}
-
 fn is_shredder_castling_fen(fen: []const u8) bool {
     var parts = std.mem.splitScalar(u8, fen, ' ');
     _ = parts.next() orelse return false; // placement
@@ -1078,76 +1184,6 @@ fn is_shredder_castling_fen(fen: []const u8) bool {
         if ((ch >= 'A' and ch <= 'H') or (ch >= 'a' and ch <= 'h')) return true;
     }
     return false;
-}
-
-fn shredder_to_standard_fen(allocator: std.mem.Allocator, shredder_fen: []const u8) ![]u8 {
-    var parts = std.mem.splitScalar(u8, shredder_fen, ' ');
-    const placement = parts.next() orelse return error.InvalidTestCase;
-    const active = parts.next() orelse return error.InvalidTestCase;
-    const castling = parts.next() orelse return error.InvalidTestCase;
-    const ep = parts.next() orelse "-";
-    const half = parts.next() orelse "0";
-    const full = parts.next() orelse "1";
-
-    // Determine king files from placement (rank8..rank1)
-    var ranks = std.mem.splitScalar(u8, placement, '/');
-    var rank_arr: [8][]const u8 = undefined;
-    var r: usize = 0;
-    while (r < 8) : (r += 1) {
-        rank_arr[r] = ranks.next() orelse return error.InvalidTestCase;
-    }
-
-    const w_k_file = find_king_file_on_rank(rank_arr[7], 'K') orelse 255;
-    const b_k_file = find_king_file_on_rank(rank_arr[0], 'k') orelse 255;
-
-    var has_K = false;
-    var has_Q = false;
-    var has_k = false;
-    var has_q = false;
-
-    if (!std.mem.eql(u8, castling, "-")) {
-        // Scan letters and map to sides by comparing with king files
-        for (castling) |c| {
-            if (c >= 'A' and c <= 'H') {
-                if (w_k_file != 255) {
-                    if (file_from_letter(c).? > w_k_file) has_K = true else has_Q = true;
-                } else {
-                    // fallback: if king not found, enable both
-                    has_K = true;
-                    has_Q = true;
-                }
-            } else if (c >= 'a' and c <= 'h') {
-                if (b_k_file != 255) {
-                    if (file_from_letter(c).? > b_k_file) has_k = true else has_q = true;
-                } else {
-                    has_k = true;
-                    has_q = true;
-                }
-            } else if (c == 'K') has_K = true else if (c == 'Q') has_Q = true else if (c == 'k') has_k = true else if (c == 'q') has_q = true;
-        }
-    }
-
-    var cast_buf: [5]u8 = undefined;
-    var ci: usize = 0;
-    if (has_K) {
-        cast_buf[ci] = 'K';
-        ci += 1;
-    }
-    if (has_Q) {
-        cast_buf[ci] = 'Q';
-        ci += 1;
-    }
-    if (has_k) {
-        cast_buf[ci] = 'k';
-        ci += 1;
-    }
-    if (has_q) {
-        cast_buf[ci] = 'q';
-        ci += 1;
-    }
-    const cast_out = if (ci == 0) "-" else cast_buf[0..ci];
-
-    return try std.fmt.allocPrint(allocator, "{s} {s} {s} {s} {s} {s}", .{ placement, active, cast_out, ep, half, full });
 }
 
 test "perft for Chess960 positions" {
@@ -1856,13 +1892,12 @@ test "perft for Chess960 positions" {
 
     for (cases) |line| {
         var parts = std.mem.splitScalar(u8, line, ',');
-        const shredder = parts.next().?;
+        const fen_std = parts.next().?;
         var expected: [6]?u64 = .{null} ** 6;
         inline for (0..6) |i| {
             if (parts.next()) |num| expected[i] = try std.fmt.parseInt(u64, num, 10);
         }
 
-        const fen_std = try shredder_to_standard_fen(std.testing.allocator, shredder);
         defer std.testing.allocator.free(fen_std);
 
         var curr_pos = Position.new();
@@ -1872,7 +1907,7 @@ test "perft for Chess960 positions" {
             if (expected[depth - 1]) |nodes| {
                 const report = perft.perft_test(&curr_pos, @as(u4, @intCast(depth)));
                 if (report.nodes != nodes) {
-                    std.debug.print("Perft failed (Chess960) fen: {s}, depth {d}, expected {d}, got {d}\n", .{ shredder, depth, nodes, report.nodes });
+                    std.debug.print("Perft failed (Chess960) fen: {s}, depth {d}, expected {d}, got {d}\n", .{ fen_std, depth, nodes, report.nodes });
                     try std.testing.expectEqual(nodes, report.nodes);
                 }
             }
