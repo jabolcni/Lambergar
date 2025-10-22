@@ -6,6 +6,9 @@ const evaluation = @import("evaluation.zig");
 const nnue = @import("nnue.zig");
 const lists = @import("lists.zig");
 
+// Debug toggle for verbose Chess960/DFRC castling diagnostics
+pub var castling_debug: bool = false;
+
 //const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 
@@ -780,6 +783,10 @@ pub const Position = struct {
     castle_rook_k_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
     castle_rook_q_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
 
+    // Last FEN parse diagnostic message (if any)
+    fen_error: [128]u8 = undefined,
+    fen_error_len: usize = 0,
+
     pub fn new() Position {
         var pos = Position{};
 
@@ -801,6 +808,8 @@ pub const Position = struct {
         pos.castle_king_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.castle_rook_k_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.castle_rook_q_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
+
+        pos.fen_error_len = 0;
 
         return pos;
     }
@@ -1437,6 +1446,13 @@ pub const Position = struct {
                         self.delta.move_piece_quiet(kpc, m.from, kd);
                         self.delta.put_piece(rook_pc, rd);
                     }
+                } else if (rs == rd) {
+                    // Rook already on its destination square; only move the king
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    if (nnue.engine_using_nnue) {
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
+                    }
                 } else {
                     if (m.from != kd) self.move_piece_quiet(m.from, kd);
                     self.move_piece_quiet(rs, rd);
@@ -1463,6 +1479,13 @@ pub const Position = struct {
                         const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
                         self.delta.move_piece_quiet(kpc, m.from, kd);
                         self.delta.put_piece(rook_pc, rd);
+                    }
+                } else if (rs == rd) {
+                    // Rook already on its destination square; only move the king
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    if (nnue.engine_using_nnue) {
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
                     }
                 } else {
                     if (m.from != kd) self.move_piece_quiet(m.from, kd);
@@ -1601,7 +1624,7 @@ pub const Position = struct {
                 const rs: u6 = self.castle_rook_k_start[ci].toU6();
                 const rd: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
                 if (m.from != kd) self.move_piece_quiet(kd, m.from);
-                self.move_piece_quiet(rd, rs);
+                if (rs != rd) self.move_piece_quiet(rd, rs);
             },     
             MoveFlags.OOO => {
                 const ci: usize = C.toU4();
@@ -1609,7 +1632,7 @@ pub const Position = struct {
                 const rs: u6 = self.castle_rook_q_start[ci].toU6();
                 const rd: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
                 if (m.from != kd) self.move_piece_quiet(kd, m.from);
-                self.move_piece_quiet(rd, rs);
+                if (rs != rd) self.move_piece_quiet(rd, rs);
             },          
             MoveFlags.EN_PASSANT => {
                 self.move_piece_quiet(m.to, m.from);
@@ -1766,6 +1789,7 @@ pub const Position = struct {
     pub fn set(self: *Position, fen: []const u8) !void {
 
         self.* = Position.new();
+        self.fen_error_len = 0;
         var parts = std.mem.splitScalar(u8, fen, ' ');
         const fen_position = parts.next().?;
 
@@ -1774,7 +1798,8 @@ pub const Position = struct {
         while (ranks.next()) |entry| {
             var file: u6 = 0;
             for (entry) |c| {
-                const square = Square.fromU6((7 - rank) * 8 + file);
+                const sq_u6: u6 = (7 - rank) * 8 + file;
+                const square = Square.fromU6(sq_u6);
                 const piece = switch (c) {
                     'P' => Piece.WHITE_PAWN,
                     'N' => Piece.WHITE_KNIGHT,
@@ -1793,16 +1818,38 @@ pub const Position = struct {
                         continue;
                     },
                     else => {
+                        // Record clearer diagnostic: unexpected piece letter and its square
+                        var buf: [128]u8 = undefined;
+                        const coord = sq_to_coord[sq_u6];
+                        const msg = std.fmt.bufPrint(&buf, "Unexpected piece '{c}' at {s}", .{ c, coord }) catch "";
+                        const mlen = @min(msg.len, self.fen_error.len);
+                        @memcpy(self.fen_error[0..mlen], msg[0..mlen]);
+                        self.fen_error_len = mlen;
                         return FenParseError.InvalidPosition;
                     },
                 };
                 self.add_piece_to_board(piece, square.toU6());
                 file += 1;
             }
-            if (file != 8) return FenParseError.InvalidPosition;
+            if (file != 8) {
+                // Record rank width issue
+                var buf: [128]u8 = undefined;
+                const msg = std.fmt.bufPrint(&buf, "Invalid rank width at rank {} (saw {} files)", .{ 8 - rank, file }) catch "";
+                const mlen = @min(msg.len, self.fen_error.len);
+                @memcpy(self.fen_error[0..mlen], msg[0..mlen]);
+                self.fen_error_len = mlen;
+                return FenParseError.InvalidPosition;
+            }
             rank += 1;
         }
-        if (rank != 8) return FenParseError.InvalidPosition;
+        if (rank != 8) {
+            var buf: [128]u8 = undefined;
+            const msg = std.fmt.bufPrint(&buf, "Invalid position: expected 8 ranks, got {}", .{ rank }) catch "";
+            const mlen = @min(msg.len, self.fen_error.len);
+            @memcpy(self.fen_error[0..mlen], msg[0..mlen]);
+            self.fen_error_len = mlen;
+            return FenParseError.InvalidPosition;
+        }
 
         const active_color_fen = parts.next().?;
         if (std.mem.eql(u8, active_color_fen, "w")) {
@@ -2449,12 +2496,23 @@ pub const Position = struct {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.g1.toU6() else Square.g8.toU6();
             const rs = self.castle_rook_k_start[ci].toU6();
-            if ((self.bitboard_of_pt(Us, PieceType.Rook) & SQUARE_BB[rs]) != 0) {
+            const rook_present = (self.bitboard_of_pt(Us, PieceType.Rook) & SQUARE_BB[rs]) != 0;
+            if (rook_present) {
                 const occ_after_k = ctx.all_bb ^ SQUARE_BB[ks];
                 const k_path = rank_between.mask(ks, kd);
                 const danger_mask = k_path | SQUARE_BB[kd];
+                const k_blockers_ok = (occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0;
+                const danger_ok = (ctx.danger & danger_mask) == 0;
                 // King path (excluding rook square) must be empty and not attacked
-                if ((occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0 and (ctx.danger & danger_mask) == 0) {
+                if (castling_debug) {
+                    std.debug.print("CASTLE DBG 960-OO {s}: ks={s} kd={s} rs={s} k_blockers_ok={} danger_ok={}\n",
+                        .{
+                            if (Us == .White) "W" else "B",
+                            sq_to_coord[ks], sq_to_coord[kd], sq_to_coord[rs], k_blockers_ok, danger_ok,
+                        }
+                    );
+                }
+                if (k_blockers_ok and danger_ok) {
                     // Destination square may be occupied by the participating rook in Chess960
                     if (ks != kd) {
                         const kd_occ = (occ_after_k & SQUARE_BB[kd]) != 0;
@@ -2464,7 +2522,17 @@ pub const Position = struct {
                         } else {
                             const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
                             const rook_path = rank_between.mask(rs, rd);
-                            if ((occ_after_k & rook_path) == 0 and (occ_after_k & SQUARE_BB[rd]) == 0) {
+                            const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
+                            if (castling_debug) {
+                                std.debug.print("CASTLE DBG 960-OO {s}: kd_occ={} rd={s} rook_path_clear={} -> {s}\n",
+                                    .{
+                                        if (Us == .White) "W" else "B",
+                                        kd_occ, sq_to_coord[rd], rook_path_clear,
+                                        if (rook_path_clear) "ADD" else "NOADD",
+                                    }
+                                );
+                            }
+                            if (rook_path_clear) {
                                 const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
                                 list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OO));
                             }
@@ -2472,12 +2540,21 @@ pub const Position = struct {
                     } else {
                         const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
                         const rook_path = rank_between.mask(rs, rd);
-                        if ((occ_after_k & rook_path) == 0 and (occ_after_k & SQUARE_BB[rd]) == 0) {
+                        const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
+                        if (castling_debug) {
+                            std.debug.print("CASTLE DBG 960-OO {s}: ks==kd rd={s} rook_path_clear={} -> {s}\n",
+                                .{ if (Us == .White) "W" else "B", sq_to_coord[rd], rook_path_clear, if (rook_path_clear) "ADD" else "NOADD" }
+                            );
+                        }
+                        if (rook_path_clear) {
                             const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
                             list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OO));
                         }
                     }
                 }
+            } else if (castling_debug) {
+                std.debug.print("CASTLE DBG 960-OO {s}: rs={s} rook_present=false\n",
+                    .{ if (Us == .White) "W" else "B", sq_to_coord[rs] });
             }
         }
         // Queenside (OOO)
@@ -2485,11 +2562,22 @@ pub const Position = struct {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
             const rs = self.castle_rook_q_start[ci].toU6();
-            if ((self.bitboard_of_pt(Us, PieceType.Rook) & SQUARE_BB[rs]) != 0) {
+            const rook_present = (self.bitboard_of_pt(Us, PieceType.Rook) & SQUARE_BB[rs]) != 0;
+            if (rook_present) {
                 const occ_after_k = ctx.all_bb ^ SQUARE_BB[ks];
                 const k_path = rank_between.mask(ks, kd);
                 const danger_mask = k_path | SQUARE_BB[kd];
-                if ((occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0 and (ctx.danger & danger_mask) == 0) {
+                const k_blockers_ok = (occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0;
+                const danger_ok = (ctx.danger & danger_mask) == 0;
+                if (castling_debug) {
+                    std.debug.print("CASTLE DBG 960-OOO {s}: ks={s} kd={s} rs={s} k_blockers_ok={} danger_ok={}\n",
+                        .{
+                            if (Us == .White) "W" else "B",
+                            sq_to_coord[ks], sq_to_coord[kd], sq_to_coord[rs], k_blockers_ok, danger_ok,
+                        }
+                    );
+                }
+                if (k_blockers_ok and danger_ok) {
                     if (ks != kd) {
                         const kd_occ = (occ_after_k & SQUARE_BB[kd]) != 0;
                         if (kd_occ and kd != rs) {
@@ -2497,7 +2585,17 @@ pub const Position = struct {
                         } else {
                             const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
                             const rook_path = rank_between.mask(rs, rd);
-                            if ((occ_after_k & rook_path) == 0 and (occ_after_k & SQUARE_BB[rd]) == 0) {
+                            const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
+                            if (castling_debug) {
+                                std.debug.print("CASTLE DBG 960-OOO {s}: kd_occ={} rd={s} rook_path_clear={} -> {s}\n",
+                                    .{
+                                        if (Us == .White) "W" else "B",
+                                        kd_occ, sq_to_coord[rd], rook_path_clear,
+                                        if (rook_path_clear) "ADD" else "NOADD",
+                                    }
+                                );
+                            }
+                            if (rook_path_clear) {
                                 const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
                                 list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OOO));
                             }
@@ -2505,12 +2603,21 @@ pub const Position = struct {
                     } else {
                         const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
                         const rook_path = rank_between.mask(rs, rd);
-                        if ((occ_after_k & rook_path) == 0 and (occ_after_k & SQUARE_BB[rd]) == 0) {
+                        const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
+                        if (castling_debug) {
+                            std.debug.print("CASTLE DBG 960-OOO {s}: ks==kd rd={s} rook_path_clear={} -> {s}\n",
+                                .{ if (Us == .White) "W" else "B", sq_to_coord[rd], rook_path_clear, if (rook_path_clear) "ADD" else "NOADD" }
+                            );
+                        }
+                        if (rook_path_clear) {
                             const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
                             list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OOO));
                         }
                     }
                 }
+            } else if (castling_debug) {
+                std.debug.print("CASTLE DBG 960-OOO {s}: rs={s} rook_present=false\n",
+                    .{ if (Us == .White) "W" else "B", sq_to_coord[rs] });
             }
         }
     }
