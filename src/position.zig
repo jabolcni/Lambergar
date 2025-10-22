@@ -507,14 +507,17 @@ pub const Move = packed struct {
 
         // Handle castling (Chess960-aware: king from current square to g/c file)
         if (std.mem.eql(u8, move_str, "O-O")) {
-            const ks = bb.get_ls1b_index(curr_pos.bitboard_of_pt(curr_pos.side_to_play, PieceType.King));
+            // side_to_play is runtime; use bitboard_of_pc, not comptime-only bitboard_of_pt
+            const king_bb = curr_pos.bitboard_of_pc(Piece.make_piece(curr_pos.side_to_play, PieceType.King));
+            const ks = bb.get_ls1b_index(king_bb);
             const kd = if (curr_pos.side_to_play == .White) Square.g1.toU6() else Square.g8.toU6();
             @memcpy(uci_buf[0..2], sq_to_coord[ks]);
             @memcpy(uci_buf[2..4], sq_to_coord[kd]);
             uci_len = 4;
             return try std.testing.allocator.dupe(u8, uci_buf[0..uci_len]);
         } else if (std.mem.eql(u8, move_str, "O-O-O")) {
-            const ks = bb.get_ls1b_index(curr_pos.bitboard_of_pt(curr_pos.side_to_play, PieceType.King));
+            const king_bb = curr_pos.bitboard_of_pc(Piece.make_piece(curr_pos.side_to_play, PieceType.King));
+            const ks = bb.get_ls1b_index(king_bb);
             const kd = if (curr_pos.side_to_play == .White) Square.c1.toU6() else Square.c8.toU6();
             @memcpy(uci_buf[0..2], sq_to_coord[ks]);
             @memcpy(uci_buf[2..4], sq_to_coord[kd]);
@@ -1827,7 +1830,8 @@ pub const Position = struct {
                 const kfile: u3 = @truncate(ks & 7);
                 // kingside rook: closest rook with file > king
                 var found_k: bool = false;
-                var f: u6 = kfile + 1;
+                // Ensure addition happens in a wider type than u3
+                var f: u6 = @as(u6, @intCast(kfile)) + 1;
                 const rrank: u6 = @truncate(ks >> 3);
                 while (f < 8) : (f += 1) {
                     const sq: u6 = (rrank * 8) + f;
