@@ -167,11 +167,12 @@ pub fn perft(comptime color: Color, pos: *Position, depth: u4) u64 {
         return @as(u64, @intCast(move_list.count));
     }
 
+    // Use copy-per-branch to avoid any state drift from play/undo in deep trees (important for 960 castling paths)
     for (0..move_list.count) |i| {
         const move = move_list.moves[i];
-        pos.play(move, color);
-        nodes += perft(opp, pos, depth - 1);
-        pos.undo(move, color);
+        var tmp = pos.copy();
+        if (color == Color.White) tmp.play(move, Color.White) else tmp.play(move, Color.Black);
+        nodes += perft(opp, &tmp, depth - 1);
     }
 
     return nodes;
@@ -182,11 +183,33 @@ pub fn perft_test_div(pos: *Position, depth: u4) void {
     //pos.print_unicode();
     std.debug.print("Running Perft {}:\n\n", .{depth});
 
-    if (pos.side_to_play == Color.White) {
-        perft_div(Color.White, pos, depth);
-    } else {
-        perft_div(Color.Black, pos, depth);
+    var list: MoveList = .{};
+    const color = if (pos.side_to_play == Color.White) Color.White else Color.Black;
+    if (color == Color.White) pos.generate_legals(Color.White, &list) else pos.generate_legals(Color.Black, &list);
+
+    var nodes: u64 = 0;
+    for (0..list.count) |i| {
+        const move = list.moves[i];
+        var tmp = pos.copy();
+        var branch: u64 = 1;
+        if (depth > 1) {
+            if (color == Color.White) {
+                tmp.play(move, Color.White);
+                branch = perft(Color.Black, &tmp, depth - 1);
+            } else {
+                tmp.play(move, Color.Black);
+                branch = perft(Color.White, &tmp, depth - 1);
+            }
+        } else {
+            branch = 1;
+        }
+        nodes += branch;
+        move.print();
+        std.debug.print(" {}\n", .{branch});
     }
+
+    std.debug.print("\nMoves: {}\n", .{list.count});
+    std.debug.print("Nodes: {}\n", .{nodes});
 }
 
 pub fn perft_div(comptime color: Color, pos: *Position, depth: u4) void {

@@ -1422,14 +1422,27 @@ pub const Position = struct {
                 const kd: u6 = if (C == .White) Square.g1.toU6() else Square.g8.toU6();
                 const rs: u6 = self.castle_rook_k_start[ci].toU6();
                 const rd: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
-                if (m.from != kd) self.move_piece_quiet(m.from, kd);
-                self.move_piece_quiet(rs, rd);
-
-                if (nnue.engine_using_nnue) {
-                    const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
-                    const rpc = if (C == .White) Piece.WHITE_ROOK else Piece.BLACK_ROOK;
-                    if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
-                    self.delta.move_piece_quiet(rpc, rs, rd);
+                if (rs == kd) {
+                    // Rook occupies king destination: remove rook, move king, then place rook at rd
+                    const rook_pc = self.board[rs];
+                    self.remove_piece(rs);
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    self.put_piece(rook_pc, rd);
+                    if (nnue.engine_using_nnue) {
+                        self.delta.remove_piece(rook_pc, rs);
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        self.delta.move_piece_quiet(kpc, m.from, kd);
+                        self.delta.put_piece(rook_pc, rd);
+                    }
+                } else {
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    self.move_piece_quiet(rs, rd);
+                    if (nnue.engine_using_nnue) {
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        const rpc = if (C == .White) Piece.WHITE_ROOK else Piece.BLACK_ROOK;
+                        if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
+                        self.delta.move_piece_quiet(rpc, rs, rd);
+                    }
                 }
             },
             MoveFlags.OOO => {
@@ -1437,14 +1450,26 @@ pub const Position = struct {
                 const kd: u6 = if (C == .White) Square.c1.toU6() else Square.c8.toU6();
                 const rs: u6 = self.castle_rook_q_start[ci].toU6();
                 const rd: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
-                if (m.from != kd) self.move_piece_quiet(m.from, kd);
-                self.move_piece_quiet(rs, rd);
-
-                if (nnue.engine_using_nnue) {
-                    const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
-                    const rpc = if (C == .White) Piece.WHITE_ROOK else Piece.BLACK_ROOK;
-                    if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
-                    self.delta.move_piece_quiet(rpc, rs, rd);
+                if (rs == kd) {
+                    const rook_pc = self.board[rs];
+                    self.remove_piece(rs);
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    self.put_piece(rook_pc, rd);
+                    if (nnue.engine_using_nnue) {
+                        self.delta.remove_piece(rook_pc, rs);
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        self.delta.move_piece_quiet(kpc, m.from, kd);
+                        self.delta.put_piece(rook_pc, rd);
+                    }
+                } else {
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    self.move_piece_quiet(rs, rd);
+                    if (nnue.engine_using_nnue) {
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        const rpc = if (C == .White) Piece.WHITE_ROOK else Piece.BLACK_ROOK;
+                        if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
+                        self.delta.move_piece_quiet(rpc, rs, rd);
+                    }
                 }
             },
             MoveFlags.EN_PASSANT => {

@@ -1140,6 +1140,7 @@ test "perft for Chess960 positions" {
     attacks.initialise_all_databases();
     zobrist.initialise_zobrist_keys();
 
+    // Andrew Grant created a set of Perft positions for Chess960 that are used here
     const cases = [_][]const u8{
         "b1q1rrkb/pppppppp/3nn3/8/P7/1PPP4/4PPPP/BQNNRKRB w GE - 1 9,20,479,10471,273318,6417013,177654692",
         "bnnqrbkr/pp1p2p1/2p1p2p/5p2/1P5P/1R6/P1PPPPP1/BNNQRBK1 w Ehe - 0 9,33,1022,32724,1024721,32898113,1047360456",
