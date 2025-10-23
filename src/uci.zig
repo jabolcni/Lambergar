@@ -445,42 +445,6 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
         } else if (std.mem.eql(u8, command, "perftdiv")) {
             const depth = try u32_from_str(words.next() orelse "1");
             perft.perft_test_div(&pos[0], @as(u4, @intCast(depth)));
-        } else if (std.mem.eql(u8, command, "perftdivq")) {
-            const depth = try u32_from_str(words.next() orelse "1");
-            const d: u4 = @intCast(depth);
-            if (pos[0].side_to_play == Color.White) {
-                perft.perft_div(Color.White, &pos[0], d);
-            } else {
-                perft.perft_div(Color.Black, &pos[0], d);
-            }
-        } else if (std.mem.eql(u8, command, "perftdivqm")) {
-            // Manual quiet split at current node (no board rendering, no composer), like perftchild but without applying moves
-            const depth = try u32_from_str(words.next() orelse "1");
-            const d: u4 = @intCast(depth);
-            var qlist: MoveList = .{};
-            const side = pos[0].side_to_play;
-            if (side == Color.White) pos[0].generate_legals(Color.White, &qlist) else pos[0].generate_legals(Color.Black, &qlist);
-
-            var total_nodes: u64 = 0;
-            for (0..qlist.count) |mi| {
-                const m = qlist.moves[mi];
-                m.print();
-                printout(stdout, " ", .{});
-                var branch: u64 = 1;
-                if (d > 1) {
-                    var tmp2 = pos[0].copy();
-                    if (side == Color.White) tmp2.play(m, Color.White) else tmp2.play(m, Color.Black);
-                    if (side == Color.White) {
-                        branch = perft.perft(Color.Black, &tmp2, d - 1);
-                    } else {
-                        branch = perft.perft(Color.White, &tmp2, d - 1);
-                    }
-                }
-                total_nodes += branch;
-                printout(stdout, "{}\n", .{branch});
-            }
-            printout(stdout, "\nMoves: {}\n", .{qlist.count});
-            printout(stdout, "Nodes: {}\n", .{total_nodes});
         } else if (std.mem.eql(u8, command, "validate")) {
             var list: MoveList = .{};
             const side = pos[0].side_to_play;
@@ -1047,24 +1011,24 @@ pub fn perft_test(allocator: std.mem.Allocator) !void {
         // "1bbnrqkr/pp1ppppp/8/2p5/n7/3PNPP1/PPP1P2P/NBB1RQKR w HEhe - 1 9,24,598,15673,409766,11394778,310589129",
         // "nnbbrqkr/p2ppp1p/1pp5/8/6p1/N1P5/PPBPPPPP/N1B1RQKR w HEhe - 0 9,26,530,14031,326312,8846766,229270702",
         // "nnbrqbkr/2p1p1pp/p4p2/1p1p4/8/NP6/P1PPPPPP/N1BRQBKR w HDhd - 0 9,17,496,10220,303310,7103549,217108001",
-        "nnbrqk1b/pp2pprp/2pp2p1/8/3PP1P1/8/PPP2P1P/NNBRQRKB w d - 1 9,33,820,27856,706784,24714401,645835197", // !!!!
-        "1bnrbqkr/ppnpp1p1/2p2p1p/8/1P6/4PPP1/P1PP3P/NBNRBQKR w HDhd - 0 9,27,705,19760,548680,15964771,464662032",
-        "n1rbbqkr/pp1pppp1/7p/P1p5/1n6/2PP4/1P2PPPP/NNRBBQKR w HChc - 0 9,22,631,14978,431801,10911545,320838556",
-        "n1rqb1kr/p1pppp1p/1pn4b/3P2p1/P7/1P6/2P1PPPP/NNRQBBKR w HChc - 0 9,24,477,12506,263189,7419372,165945904",
-        "nnrqbkrb/pppp1pp1/7p/4p3/6P1/2N2B2/PPPPPP1P/NR1QBKR1 w Ggc - 2 9,29,658,19364,476620,14233587,373744834",
-        "2rbqkbr/p1pppppp/1nn5/1p6/7P/P4P2/1PPPP1PB/NNRBQK1R w HChc - 2 9,27,647,18030,458057,13189156,354689323",
-        "nn1qkbbr/pp2ppp1/2rp4/2p4p/P2P4/1N5P/1PP1PPP1/1NRQKBBR w HCh - 1 9,24,738,18916,586009,16420659,519075930",
-        "nnrqk1bb/p1ppp2p/5rp1/1p3p2/1P4P1/5P1P/P1PPP3/NNRQKRBB w FCc - 1 9,25,795,20510,648945,17342527,556144017",
-        "1nnrkbqr/p1pp1ppp/4p3/1p6/1Pb1P3/6PB/P1PP1P1P/BNNRK1QR w HDhd - 0 9,27,776,22133,641002,19153245,562738257",
-        "nbbnrkqr/p1ppp1pp/1p3p2/8/2P5/4P3/PP1P1PPP/NBBNRKQR w HEhe - 1 9,25,624,15561,419635,10817378,311138112",
-        "nn1brkqr/pp1bpppp/8/2pp4/P4P2/1PN5/2PPP1PP/N1BBRKQR w HEhe - 1 9,23,659,16958,476567,13242252,373557073",
-        "n1brkbqr/ppp1pp1p/6pB/3p4/2Pn4/8/PP2PPPP/NN1RKBQR w HDhd - 0 9,32,1026,30360,978278,29436320,957904151",
-        "nnbrkqrb/p2ppp2/Q5pp/1pp5/4PP2/2N5/PPPP2PP/N1BRK1RB w GDgd - 0 9,36,843,29017,715537,24321197,630396940",
-        "nbnrbk1r/pppppppq/8/7p/8/1N2QPP1/PPPPP2P/NB1RBK1R w HDhd - 2 9,36,973,35403,1018054,37143354,1124883780",
-        "nnrbbkqr/2pppp1p/p7/6p1/1p2P3/4QPP1/PPPP3P/NNRBBK1R w HChc - 0 9,36,649,22524,489526,16836636,416139320",
-        "n1rkbqrb/pp1ppp2/2n3p1/2p4p/P5PP/1P6/2PPPP2/NNRKBQRB w GCgc - 0 9,24,804,20712,684001,18761475,617932151",
-        "nnr1kqbr/pp1pp1p1/2p5/b4p1p/P7/1PNP4/2P1PPPP/N1RBKQBR w HChc - 1 9,12,421,6530,227044,4266410,149176979",
-        "n1rkqbbr/p1pp1pp1/np2p2p/8/8/N4PP1/PPPPP1BP/N1RKQ1BR w HChc - 0 9,27,670,19119,494690,14708490,397268628",
+        // "nnbrqk1b/pp2pprp/2pp2p1/8/3PP1P1/8/PPP2P1P/NNBRQRKB w d - 1 9,33,820,27856,706784,24714401,645835197",
+        // "1bnrbqkr/ppnpp1p1/2p2p1p/8/1P6/4PPP1/P1PP3P/NBNRBQKR w HDhd - 0 9,27,705,19760,548680,15964771,464662032",
+        // "n1rbbqkr/pp1pppp1/7p/P1p5/1n6/2PP4/1P2PPPP/NNRBBQKR w HChc - 0 9,22,631,14978,431801,10911545,320838556",
+        // "n1rqb1kr/p1pppp1p/1pn4b/3P2p1/P7/1P6/2P1PPPP/NNRQBBKR w HChc - 0 9,24,477,12506,263189,7419372,165945904",
+        // "nnrqbkrb/pppp1pp1/7p/4p3/6P1/2N2B2/PPPPPP1P/NR1QBKR1 w Ggc - 2 9,29,658,19364,476620,14233587,373744834",
+        // "2rbqkbr/p1pppppp/1nn5/1p6/7P/P4P2/1PPPP1PB/NNRBQK1R w HChc - 2 9,27,647,18030,458057,13189156,354689323",
+        // "nn1qkbbr/pp2ppp1/2rp4/2p4p/P2P4/1N5P/1PP1PPP1/1NRQKBBR w HCh - 1 9,24,738,18916,586009,16420659,519075930",
+        // "nnrqk1bb/p1ppp2p/5rp1/1p3p2/1P4P1/5P1P/P1PPP3/NNRQKRBB w FCc - 1 9,25,795,20510,648945,17342527,556144017",
+        // "1nnrkbqr/p1pp1ppp/4p3/1p6/1Pb1P3/6PB/P1PP1P1P/BNNRK1QR w HDhd - 0 9,27,776,22133,641002,19153245,562738257",
+        // "nbbnrkqr/p1ppp1pp/1p3p2/8/2P5/4P3/PP1P1PPP/NBBNRKQR w HEhe - 1 9,25,624,15561,419635,10817378,311138112",
+        // "nn1brkqr/pp1bpppp/8/2pp4/P4P2/1PN5/2PPP1PP/N1BBRKQR w HEhe - 1 9,23,659,16958,476567,13242252,373557073",
+        // "n1brkbqr/ppp1pp1p/6pB/3p4/2Pn4/8/PP2PPPP/NN1RKBQR w HDhd - 0 9,32,1026,30360,978278,29436320,957904151",
+        // "nnbrkqrb/p2ppp2/Q5pp/1pp5/4PP2/2N5/PPPP2PP/N1BRK1RB w GDgd - 0 9,36,843,29017,715537,24321197,630396940",
+        // "nbnrbk1r/pppppppq/8/7p/8/1N2QPP1/PPPPP2P/NB1RBK1R w HDhd - 2 9,36,973,35403,1018054,37143354,1124883780",
+        // "nnrbbkqr/2pppp1p/p7/6p1/1p2P3/4QPP1/PPPP3P/NNRBBK1R w HChc - 0 9,36,649,22524,489526,16836636,416139320",
+        // "n1rkbqrb/pp1ppp2/2n3p1/2p4p/P5PP/1P6/2PPPP2/NNRKBQRB w GCgc - 0 9,24,804,20712,684001,18761475,617932151",
+        // "nnr1kqbr/pp1pp1p1/2p5/b4p1p/P7/1PNP4/2P1PPPP/N1RBKQBR w HChc - 1 9,12,421,6530,227044,4266410,149176979",
+        // "n1rkqbbr/p1pp1pp1/np2p2p/8/8/N4PP1/PPPPP1BP/N1RKQ1BR w HChc - 0 9,27,670,19119,494690,14708490,397268628",
         "bbnnrkrq/ppp1pp2/6p1/3p4/7p/7P/PPPPPPP1/BBNNRRKQ w ge - 0 9,20,559,12242,355326,8427161,252274233",
         "bn1rkbrq/1pppppp1/p6p/1n6/3P4/6PP/PPPRPP2/BNN1KBRQ w Ggd - 2 9,29,633,19278,455476,14333034,361900466",
         "b1nrkrqb/1p1npppp/p2p4/2p5/5P2/4P2P/PPPP1RP1/BNNRK1QB w Dfd - 1 9,25,475,12603,270909,7545536,179579818",
