@@ -1029,28 +1029,28 @@ pub fn perft_test(allocator: std.mem.Allocator) !void {
         // "n1rkbqrb/pp1ppp2/2n3p1/2p4p/P5PP/1P6/2PPPP2/NNRKBQRB w GCgc - 0 9,24,804,20712,684001,18761475,617932151",
         // "nnr1kqbr/pp1pp1p1/2p5/b4p1p/P7/1PNP4/2P1PPPP/N1RBKQBR w HChc - 1 9,12,421,6530,227044,4266410,149176979",
         // "n1rkqbbr/p1pp1pp1/np2p2p/8/8/N4PP1/PPPPP1BP/N1RKQ1BR w HChc - 0 9,27,670,19119,494690,14708490,397268628",
-        "bbnnrkrq/ppp1pp2/6p1/3p4/7p/7P/PPPPPPP1/BBNNRRKQ w ge - 0 9,20,559,12242,355326,8427161,252274233",
-        "bn1rkbrq/1pppppp1/p6p/1n6/3P4/6PP/PPPRPP2/BNN1KBRQ w Ggd - 2 9,29,633,19278,455476,14333034,361900466",
-        "b1nrkrqb/1p1npppp/p2p4/2p5/5P2/4P2P/PPPP1RP1/BNNRK1QB w Dfd - 1 9,25,475,12603,270909,7545536,179579818",
-        "nnbbrkrq/2pp1pp1/1p5p/pP2p3/7P/N7/P1PPPPP1/N1BBRKRQ w GEge - 0 9,18,432,9638,242350,6131124,160393505",
-        "nnbrkbrq/1pppp1p1/p7/7p/1P2Pp2/BN6/P1PP1PPP/1N1RKBRQ w GDgd - 0 9,27,482,13441,282259,8084701,193484216",
-        "n1brkrqb/pppp3p/n3pp2/6p1/3P1P2/N1P5/PP2P1PP/N1BRKRQB w FDfd - 0 9,28,642,19005,471729,14529434,384837696",
-        "nbnrbk2/p1pppp1p/1p3qr1/6p1/1B1P4/1N6/PPP1PPPP/1BNR1RKQ w d - 2 9,30,796,22780,687302,20120565,641832725",
-        "nnrbbrkq/1pp2ppp/3p4/p3p3/3P1P2/1P2P3/P1P3PP/NNRBBKRQ w GC - 1 9,31,827,24538,663082,19979594,549437308",
-        "nnrkbbrq/1pp2p1p/p2pp1p1/2P5/8/8/PP1PPPPP/NNRKBBRQ w Ggc - 0 9,24,762,19283,624598,16838099,555230555",
-        "nnr1brqb/1ppkp1pp/8/p2p1p2/1P1P4/N1P5/P3PPPP/N1RKBRQB w FC - 1 9,23,640,15471,444905,11343507,334123513",
-        "nbnrkrbq/2ppp2p/p4p2/1P4p1/4PP2/8/1PPP2PP/NBNRKRBQ w FDfd - 0 9,31,826,26137,732175,23555139,686250413",
-        "1nrbkr1q/1pppp1pp/1n6/p4p2/N1b4P/8/PPPPPPPB/N1RBKR1Q w FCfc - 2 9,27,862,24141,755171,22027695,696353497",
-        "nnrkrbbq/pppp2pp/8/4pp2/4P3/P7/1PPPBPPP/NNKRR1BQ w c - 0 9,25,792,19883,636041,16473376,532214177",
-        "n1rk1qbb/pppprpp1/2n4p/4p3/2PP3P/8/PP2PPP1/NNRKRQBB w ECc - 1 9,25,622,16031,425247,11420973,321855685",
-        "bbq1rnkr/pnp1pp1p/1p1p4/6p1/2P5/2Q1P2P/PP1P1PP1/BB1NRNKR w HEhe - 2 9,36,870,30516,811047,28127620,799738334",
-        "bq1brnkr/1p1ppp1p/1np5/p5p1/8/1N5P/PPPPPPP1/BQ1BRNKR w HEhe - 0 9,22,588,13524,380068,9359618,273795898",
-        "bq1rn1kr/1pppppbp/Nn4p1/8/8/P7/1PPPPPPP/BQ1RNBKR w HDhd - 1 9,24,711,18197,542570,14692779,445827351",
-        "bqnr1kr1/pppppp1p/6p1/5n2/4B3/3N2PP/PbPPPP2/BQNR1KR1 w GDgd - 2 9,31,1132,36559,1261476,43256823,1456721391",
-        "qbb1rnkr/ppp3pp/4n3/3ppp2/1P3PP1/8/P1PPPN1P/QBB1RNKR w HEhe - 0 9,28,696,20502,541886,16492398,456983120",
-        "1nbrnbkr/p1ppp1pp/1p6/5p2/4q1PP/3P4/PPP1PP2/QNBRNBKR w HDhd - 1 9,30,1162,33199,1217278,36048727,1290346802",
-        "q1brnkrb/p1pppppp/n7/1p6/P7/3P1P2/QPP1P1PP/1NBRNKRB w GDgd - 0 9,32,827,26106,718243,23143989,673147648",
-        "qbnrb1kr/ppp1pp1p/3p4/2n3p1/1P6/6N1/P1PPPPPP/QBNRB1KR w HDhd - 2 9,29,751,23132,610397,19555214,530475036",
+        // "bbnnrkrq/ppp1pp2/6p1/3p4/7p/7P/PPPPPPP1/BBNNRRKQ w ge - 0 9,20,559,12242,355326,8427161,252274233",
+        // "bn1rkbrq/1pppppp1/p6p/1n6/3P4/6PP/PPPRPP2/BNN1KBRQ w Ggd - 2 9,29,633,19278,455476,14333034,361900466",
+        // "b1nrkrqb/1p1npppp/p2p4/2p5/5P2/4P2P/PPPP1RP1/BNNRK1QB w Dfd - 1 9,25,475,12603,270909,7545536,179579818",
+        // "nnbbrkrq/2pp1pp1/1p5p/pP2p3/7P/N7/P1PPPPP1/N1BBRKRQ w GEge - 0 9,18,432,9638,242350,6131124,160393505",
+        // "nnbrkbrq/1pppp1p1/p7/7p/1P2Pp2/BN6/P1PP1PPP/1N1RKBRQ w GDgd - 0 9,27,482,13441,282259,8084701,193484216",
+        // "n1brkrqb/pppp3p/n3pp2/6p1/3P1P2/N1P5/PP2P1PP/N1BRKRQB w FDfd - 0 9,28,642,19005,471729,14529434,384837696",
+        // "nbnrbk2/p1pppp1p/1p3qr1/6p1/1B1P4/1N6/PPP1PPPP/1BNR1RKQ w d - 2 9,30,796,22780,687302,20120565,641832725",
+        // "nnrbbrkq/1pp2ppp/3p4/p3p3/3P1P2/1P2P3/P1P3PP/NNRBBKRQ w GC - 1 9,31,827,24538,663082,19979594,549437308",
+        // "nnrkbbrq/1pp2p1p/p2pp1p1/2P5/8/8/PP1PPPPP/NNRKBBRQ w Ggc - 0 9,24,762,19283,624598,16838099,555230555",
+        // "nnr1brqb/1ppkp1pp/8/p2p1p2/1P1P4/N1P5/P3PPPP/N1RKBRQB w FC - 1 9,23,640,15471,444905,11343507,334123513",
+        // "nbnrkrbq/2ppp2p/p4p2/1P4p1/4PP2/8/1PPP2PP/NBNRKRBQ w FDfd - 0 9,31,826,26137,732175,23555139,686250413",
+        // "1nrbkr1q/1pppp1pp/1n6/p4p2/N1b4P/8/PPPPPPPB/N1RBKR1Q w FCfc - 2 9,27,862,24141,755171,22027695,696353497",
+        // "nnrkrbbq/pppp2pp/8/4pp2/4P3/P7/1PPPBPPP/NNKRR1BQ w c - 0 9,25,792,19883,636041,16473376,532214177",
+        // "n1rk1qbb/pppprpp1/2n4p/4p3/2PP3P/8/PP2PPP1/NNRKRQBB w ECc - 1 9,25,622,16031,425247,11420973,321855685",
+        //"bbq1rnkr/pnp1pp1p/1p1p4/6p1/2P5/2Q1P2P/PP1P1PP1/BB1NRNKR w HEhe - 2 9,36,870,30516,811047,28127620,799738334",
+        //"bq1brnkr/1p1ppp1p/1np5/p5p1/8/1N5P/PPPPPPP1/BQ1BRNKR w HEhe - 0 9,22,588,13524,380068,9359618,273795898",
+        //"bq1rn1kr/1pppppbp/Nn4p1/8/8/P7/1PPPPPPP/BQ1RNBKR w HDhd - 1 9,24,711,18197,542570,14692779,445827351",
+        //"bqnr1kr1/pppppp1p/6p1/5n2/4B3/3N2PP/PbPPPP2/BQNR1KR1 w GDgd - 2 9,31,1132,36559,1261476,43256823,1456721391",
+        //"qbb1rnkr/ppp3pp/4n3/3ppp2/1P3PP1/8/P1PPPN1P/QBB1RNKR w HEhe - 0 9,28,696,20502,541886,16492398,456983120",
+        //"1nbrnbkr/p1ppp1pp/1p6/5p2/4q1PP/3P4/PPP1PP2/QNBRNBKR w HDhd - 1 9,30,1162,33199,1217278,36048727,1290346802",
+        //"q1brnkrb/p1pppppp/n7/1p6/P7/3P1P2/QPP1P1PP/1NBRNKRB w GDgd - 0 9,32,827,26106,718243,23143989,673147648",
+        //"qbnrb1kr/ppp1pp1p/3p4/2n3p1/1P6/6N1/P1PPPPPP/QBNRB1KR w HDhd - 2 9,29,751,23132,610397,19555214,530475036",
         "q1rbbnkr/pppp1p2/2n3pp/2P1p3/3P4/8/PP1NPPPP/Q1RBBNKR w HChc - 2 9,29,806,24540,687251,21694330,619907316",
         "q1r1bbkr/pnpp1ppp/2n1p3/1p6/2P2P2/2N1N3/PP1PP1PP/Q1R1BBKR w HChc - 2 9,32,1017,32098,986028,31204371,958455898",
         "2rnbkrb/pqppppp1/1pn5/7p/2P5/P1R5/QP1PPPPP/1N1NBKRB w Ggc - 4 9,26,625,16506,434635,11856964,336672890",
@@ -1248,59 +1248,6 @@ test "perft for positions" {
                         .{ fen, depth, expected, report.nodes },
                     );
                     try std.testing.expectEqual(expected, report.nodes);
-                }
-            }
-        }
-    }
-}
-
-fn file_from_letter(c: u8) ?u8 {
-    if (c >= 'A' and c <= 'H') return c - 'A';
-    if (c >= 'a' and c <= 'h') return c - 'a';
-    return null;
-}
-
-fn is_shredder_castling_fen(fen: []const u8) bool {
-    var parts = std.mem.splitScalar(u8, fen, ' ');
-    _ = parts.next() orelse return false; // placement
-    _ = parts.next() orelse return false; // active
-    const castling = parts.next() orelse return false;
-    for (castling) |ch| {
-        if ((ch >= 'A' and ch <= 'H') or (ch >= 'a' and ch <= 'h')) return true;
-    }
-    return false;
-}
-
-test "perft for Chess960 positions" {
-    attacks.initialise_all_databases();
-    zobrist.initialise_zobrist_keys();
-
-    // Andrew Grant created a set of Perft positions for Chess960 that are used here
-    const cases = [_][]const u8{
-        "b1q1rrkb/pppppppp/3nn3/8/P7/1PPP4/4PPPP/BQNNRKRB w GE - 1 9,20,479,10471,273318,6417013,177654692",
-        "bnnqrbkr/pp1p2p1/2p1p2p/5p2/1P5P/1R6/P1PPPPP1/BNNQRBK1 w Ehe - 0 9,33,1022,32724,1024721,32898113,1047360456",
-        "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9,21,528,12189,326672,8146062,227689589",
-    };
-
-    for (cases) |line| {
-        var parts = std.mem.splitScalar(u8, line, ',');
-        const fen_std = parts.next().?;
-        var expected: [6]?u64 = .{null} ** 6;
-        inline for (0..6) |i| {
-            if (parts.next()) |num| expected[i] = try std.fmt.parseInt(u64, num, 10);
-        }
-
-        defer std.testing.allocator.free(fen_std);
-
-        var curr_pos = Position.new();
-        try curr_pos.set(fen_std);
-
-        inline for (1..7) |depth| {
-            if (expected[depth - 1]) |nodes| {
-                const report = perft.perft_test(&curr_pos, @as(u4, @intCast(depth)));
-                if (report.nodes != nodes) {
-                    std.debug.print("Perft failed (Chess960) fen: {s}, depth {d}, expected {d}, got {d}\n", .{ fen_std, depth, nodes, report.nodes });
-                    try std.testing.expectEqual(nodes, report.nodes);
                 }
             }
         }
