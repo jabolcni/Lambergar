@@ -2504,14 +2504,14 @@ pub const Position = struct {
                 const k_blockers_ok = (occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0;
                 const danger_ok = (ctx.danger & danger_mask) == 0;
                 // King path (excluding rook square) must be empty and not attacked
-                if (castling_debug) {
-                    std.debug.print("CASTLE DBG 960-OO {s}: ks={s} kd={s} rs={s} k_blockers_ok={} danger_ok={}\n",
-                        .{
-                            if (Us == .White) "W" else "B",
-                            sq_to_coord[ks], sq_to_coord[kd], sq_to_coord[rs], k_blockers_ok, danger_ok,
-                        }
-                    );
-                }
+                // if (castling_debug) {
+                //     std.debug.print("CASTLE DBG 960-OO {s}: ks={s} kd={s} rs={s} k_blockers_ok={} danger_ok={}\n",
+                //         .{
+                //             if (Us == .White) "W" else "B",
+                //             sq_to_coord[ks], sq_to_coord[kd], sq_to_coord[rs], k_blockers_ok, danger_ok,
+                //         }
+                //     );
+                // }
                 if (k_blockers_ok and danger_ok) {
                     // Destination square may be occupied by the participating rook in Chess960
                     if (ks != kd) {
@@ -2523,15 +2523,15 @@ pub const Position = struct {
                             const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
                             const rook_path = rank_between.mask(rs, rd);
                             const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
-                            if (castling_debug) {
-                                std.debug.print("CASTLE DBG 960-OO {s}: kd_occ={} rd={s} rook_path_clear={} -> {s}\n",
-                                    .{
-                                        if (Us == .White) "W" else "B",
-                                        kd_occ, sq_to_coord[rd], rook_path_clear,
-                                        if (rook_path_clear) "ADD" else "NOADD",
-                                    }
-                                );
-                            }
+                            // if (castling_debug) {
+                            //     std.debug.print("CASTLE DBG 960-OO {s}: kd_occ={} rd={s} rook_path_clear={} -> {s}\n",
+                            //         .{
+                            //             if (Us == .White) "W" else "B",
+                            //             kd_occ, sq_to_coord[rd], rook_path_clear,
+                            //             if (rook_path_clear) "ADD" else "NOADD",
+                            //         }
+                            //     );
+                            // }
                             if (rook_path_clear) {
                                 const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
                                 list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OO));
@@ -2541,20 +2541,20 @@ pub const Position = struct {
                         const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
                         const rook_path = rank_between.mask(rs, rd);
                         const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
-                        if (castling_debug) {
-                            std.debug.print("CASTLE DBG 960-OO {s}: ks==kd rd={s} rook_path_clear={} -> {s}\n",
-                                .{ if (Us == .White) "W" else "B", sq_to_coord[rd], rook_path_clear, if (rook_path_clear) "ADD" else "NOADD" }
-                            );
-                        }
+                        // if (castling_debug) {
+                        //     std.debug.print("CASTLE DBG 960-OO {s}: ks==kd rd={s} rook_path_clear={} -> {s}\n",
+                        //         .{ if (Us == .White) "W" else "B", sq_to_coord[rd], rook_path_clear, if (rook_path_clear) "ADD" else "NOADD" }
+                        //     );
+                        // }
                         if (rook_path_clear) {
                             const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
                             list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OO));
                         }
                     }
                 }
-            } else if (castling_debug) {
-                std.debug.print("CASTLE DBG 960-OO {s}: rs={s} rook_present=false\n",
-                    .{ if (Us == .White) "W" else "B", sq_to_coord[rs] });
+            // } else if (castling_debug) {
+            //     std.debug.print("CASTLE DBG 960-OO {s}: rs={s} rook_present=false\n",
+            //         .{ if (Us == .White) "W" else "B", sq_to_coord[rs] });
             }
         }
         // Queenside (OOO)
@@ -2569,14 +2569,14 @@ pub const Position = struct {
                 const danger_mask = k_path | SQUARE_BB[kd];
                 const k_blockers_ok = (occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0;
                 const danger_ok = (ctx.danger & danger_mask) == 0;
-                if (castling_debug) {
-                    std.debug.print("CASTLE DBG 960-OOO {s}: ks={s} kd={s} rs={s} k_blockers_ok={} danger_ok={}\n",
-                        .{
-                            if (Us == .White) "W" else "B",
-                            sq_to_coord[ks], sq_to_coord[kd], sq_to_coord[rs], k_blockers_ok, danger_ok,
-                        }
-                    );
-                }
+                // if (castling_debug) {
+                //     std.debug.print("CASTLE DBG 960-OOO {s}: ks={s} kd={s} rs={s} k_blockers_ok={} danger_ok={}\n",
+                //         .{
+                //             if (Us == .White) "W" else "B",
+                //             sq_to_coord[ks], sq_to_coord[kd], sq_to_coord[rs], k_blockers_ok, danger_ok,
+                //         }
+                //     );
+                // }
                 if (k_blockers_ok and danger_ok) {
                     if (ks != kd) {
                         const kd_occ = (occ_after_k & SQUARE_BB[kd]) != 0;
@@ -2586,15 +2586,15 @@ pub const Position = struct {
                             const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
                             const rook_path = rank_between.mask(rs, rd);
                             const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
-                            if (castling_debug) {
-                                std.debug.print("CASTLE DBG 960-OOO {s}: kd_occ={} rd={s} rook_path_clear={} -> {s}\n",
-                                    .{
-                                        if (Us == .White) "W" else "B",
-                                        kd_occ, sq_to_coord[rd], rook_path_clear,
-                                        if (rook_path_clear) "ADD" else "NOADD",
-                                    }
-                                );
-                            }
+                            // if (castling_debug) {
+                            //     std.debug.print("CASTLE DBG 960-OOO {s}: kd_occ={} rd={s} rook_path_clear={} -> {s}\n",
+                            //         .{
+                            //             if (Us == .White) "W" else "B",
+                            //             kd_occ, sq_to_coord[rd], rook_path_clear,
+                            //             if (rook_path_clear) "ADD" else "NOADD",
+                            //         }
+                            //     );
+                            // }
                             if (rook_path_clear) {
                                 const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
                                 list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OOO));
@@ -2604,20 +2604,20 @@ pub const Position = struct {
                         const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
                         const rook_path = rank_between.mask(rs, rd);
                         const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
-                        if (castling_debug) {
-                            std.debug.print("CASTLE DBG 960-OOO {s}: ks==kd rd={s} rook_path_clear={} -> {s}\n",
-                                .{ if (Us == .White) "W" else "B", sq_to_coord[rd], rook_path_clear, if (rook_path_clear) "ADD" else "NOADD" }
-                            );
-                        }
+                        // if (castling_debug) {
+                        //     std.debug.print("CASTLE DBG 960-OOO {s}: ks==kd rd={s} rook_path_clear={} -> {s}\n",
+                        //         .{ if (Us == .White) "W" else "B", sq_to_coord[rd], rook_path_clear, if (rook_path_clear) "ADD" else "NOADD" }
+                        //     );
+                        // }
                         if (rook_path_clear) {
                             const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
                             list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OOO));
                         }
                     }
                 }
-            } else if (castling_debug) {
-                std.debug.print("CASTLE DBG 960-OOO {s}: rs={s} rook_present=false\n",
-                    .{ if (Us == .White) "W" else "B", sq_to_coord[rs] });
+            // } else if (castling_debug) {
+            //     std.debug.print("CASTLE DBG 960-OOO {s}: rs={s} rook_present=false\n",
+            //         .{ if (Us == .White) "W" else "B", sq_to_coord[rs] });
             }
         }
     }
@@ -2996,10 +2996,6 @@ pub const Position = struct {
 
         return;
     }
-
-
-
-
 
 };
 
