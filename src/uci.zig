@@ -321,10 +321,8 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             const arg = words.next().?;
             if (std.mem.eql(u8, arg, "on")) {
                 debug = true;
-                position.castling_debug = true;
             } else if (std.mem.eql(u8, arg, "off")) {
                 debug = false;
-                position.castling_debug = false;
             } else continue;
         } else if (std.mem.eql(u8, command, "setoption")) {
             var arg = words.next().?;

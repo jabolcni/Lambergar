@@ -34,9 +34,16 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+    // Config options (runtime), currently only use_tb is exposed via "config"
     const options = b.addOptions();
     options.addOption(bool, "use_tb", use_tb);
     exe.root_module.addOptions("config", options);
+
+    // Build-time options to completely strip debug code in release builds
+    const build_options = b.addOptions();
+    const opt_castling_debug = b.option(bool, "castling_debug", "Enable verbose Chess960 castling debugging (slow)") orelse false;
+    build_options.addOption(bool, "castling_debug", opt_castling_debug);
+    exe.root_module.addOptions("build_options", build_options);
 
     if (use_tb) {
         exe.addCSourceFile(.{
@@ -87,6 +94,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+
+    // Ensure tests see the same build-time options
+    unit_tests.root_module.addOptions("build_options", build_options);
 
     const run_unit_tests = b.addRunArtifact(unit_tests);
 
