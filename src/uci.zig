@@ -126,13 +126,13 @@ fn parse_and_apply_moves(curr_pos: *Position, moves_str: []const u8) !void {
             if (debug) {
                 // Dump side to move and legal moves to pinpoint the failure context
                 const side = curr_pos.side_to_play;
-                printout(stdout, "info string side to move: {s}\n", .{ if (side == Color.White) "white" else "black" });
+                printout(stdout, "info string side to move: {s}\n", .{if (side == Color.White) "white" else "black"});
                 var list_dbg: MoveList = .{};
                 if (side == Color.White) curr_pos.generate_legals(Color.White, &list_dbg) else curr_pos.generate_legals(Color.Black, &list_dbg);
                 printout(stdout, "info string token bytes (len {}): ", .{move_tok.len});
                 var i_b: usize = 0;
                 while (i_b < move_tok.len) : (i_b += 1) {
-                    printout(stdout, "{X:0>2} ", .{ move_tok[i_b] });
+                    printout(stdout, "{X:0>2} ", .{move_tok[i_b]});
                 }
                 printout(stdout, "\n", .{});
                 curr_pos.print_unicode();
@@ -146,14 +146,7 @@ fn parse_and_apply_moves(curr_pos: *Position, moves_str: []const u8) !void {
                     const to_sq = position.Square.fromU6(m.to);
                     const from_pc = curr_pos.board[m.from];
                     const to_pc = curr_pos.board[m.to];
-                    printout(stdout, "info string  #{:>2} {s} flags={} from={s}({c}) to={s}({c})\n",
-                        .{ i,
-                           s,
-                           m.flags.toU4(),
-                           position.sq_to_coord[from_sq.toU()],
-                           if (from_pc == Piece.NO_PIECE) '.' else position.PIECE_STR[@intFromEnum(from_pc)],
-                           position.sq_to_coord[to_sq.toU()],
-                           if (to_pc == Piece.NO_PIECE) '.' else position.PIECE_STR[@intFromEnum(to_pc)] });
+                    printout(stdout, "info string  #{:>2} {s} flags={} from={s}({c}) to={s}({c})\n", .{ i, s, m.flags.toU4(), position.sq_to_coord[from_sq.toU()], if (from_pc == Piece.NO_PIECE) '.' else position.PIECE_STR[@intFromEnum(from_pc)], position.sq_to_coord[to_sq.toU()], if (to_pc == Piece.NO_PIECE) '.' else position.PIECE_STR[@intFromEnum(to_pc)] });
                 }
             }
             continue;
@@ -1397,9 +1390,9 @@ test "SEE for positions" {
         var curr_pos = Position.new();
         try curr_pos.set(test_case.fen);
 
-        // const uci_move = try algebraic_to_uci(test_case.move, &curr_pos);
-        // defer std.testing.allocator.free(uci_move);
-        // //std.debug.print("algebraic: {s}, uci: {s}\n", .{ test_case.move, uci_move });
+        //const uci_move = try algebraic_to_uci(test_case.move, &curr_pos);
+        //defer std.testing.allocator.free(uci_move);
+        std.debug.print("algebraic: {s}\n", .{test_case.move});
 
         // Parse the UCI move
         const move = Move.parse_alg_move(test_case.move, &curr_pos) catch {

@@ -7,9 +7,9 @@ const nnue = @import("nnue.zig");
 const lists = @import("lists.zig");
 
 // Debug toggle for verbose Chess960/DFRC castling diagnostics
-// Make this a compile-time constant so the compiler can strip all
-// debug branches in release builds. Controlled via build option.
-pub const castling_debug: bool = @import("build_options").castling_debug;
+// Compile-time constant; resolved via local fallback file so `zig test` works,
+// while build.zig can still override by generating the same file in the build graph.
+pub const castling_debug: bool = @import("./build_options.zig").castling_debug;
 
 //const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;

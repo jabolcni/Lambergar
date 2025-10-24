@@ -1,3 +1,8 @@
 {
-    "zig.version": "0.15.1"
+    "zig.version": "0.15.1",
+    "zig.testArgs": [
+        "build",
+        "test",
+        "-Dtest-filter=${filter}"
+    ]
 }
