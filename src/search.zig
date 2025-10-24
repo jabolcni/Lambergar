@@ -662,11 +662,21 @@ pub const Search = struct {
                 }
                 printout(uci.stdout, "pv ", .{});
 
+                // Trim PV at first threefold repetition point to avoid GUI warnings.
                 var next_ply: usize = 0;
                 var pv_side = color;
+                var pv_pos = pos.copy();
                 while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
                     const pv_move = self.pv_table[0][next_ply];
                     self.print_uci_move(pos, pv_move, pv_side);
+                    // Play on a temp position to detect threefold along PV
+                    if (pv_side == Color.White) {
+                        pv_pos.play(pv_move, Color.White);
+                    } else {
+                        pv_pos.play(pv_move, Color.Black);
+                    }
+                    // If the side to move can now claim threefold, stop printing further moves
+                    if (pv_pos.is_repetition()) break;
                     pv_side = pv_side.change_side();
                 }
 
