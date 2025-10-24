@@ -92,6 +92,10 @@ pub fn start_main_search(search: *Search, pos: *Position) void {
             thread.join();
         }
     }
+
+    // Mark engine as idle: allow `isready` to reply after search completes.
+    @atomicStore(bool, &uci.thinkers[0].stop, true, .seq_cst);
+    @atomicStore(bool, &uci.search_running, false, .seq_cst);
 }
 
 pub fn start_search(search: *Search, pos: *Position, _delta: i32) void {
@@ -280,6 +284,18 @@ pub const Search = struct {
         return Search{};
     }
 
+    fn is_move_legal(self: *Search, pos: *Position, comptime color: Color, mv: Move) bool {
+        _ = self;
+        if (mv.is_empty()) return false;
+        var ml: MoveList = .{};
+        pos.generate_legals(color, &ml);
+        var i: usize = 0;
+        while (i < ml.count) : (i += 1) {
+            if (ml.moves[i].equal(mv)) return true;
+        }
+        return false;
+    }
+
     fn clear_pv_table(self: *Search) void {
         for (0..MAX_PLY) |i| {
             for (0..MAX_PLY) |j| {
@@ -398,7 +414,7 @@ pub const Search = struct {
     }
 
     pub fn clear_for_new_search(self: *Search) void {
-        // self.clear_pv_table();
+        self.clear_pv_table();
         // self.clear_mv_killer();
         // self.clear_mv_counter();
         // self.clear_sc_history();
@@ -533,7 +549,14 @@ pub const Search = struct {
                     break :mainloop;
                 }
 
-                self.best_move = self.pv_table[0][0];
+                // // Guard against stale PV at root: ensure the PV move is legal
+                // var root_mv = self.pv_table[0][0];
+                // if (!self.is_move_legal(pos, color, root_mv)) {
+                //     var ml_root: MoveList = .{};
+                //     pos.generate_legals(color, &ml_root);
+                //     if (ml_root.count > 0) root_mv = ml_root.moves[0] else root_mv = Move.empty();
+                // }
+                // self.best_move = root_mv;
 
                 delta += 2 + @divTrunc(delta, 2);
 
@@ -792,13 +815,20 @@ pub const Search = struct {
         var tt_depth: i8 = 0;
 
         const entry = tt.TT.fetch(pos.hash);
-        const tt_hit: bool = !skip_move and (entry != null);
+        const tt_hit: bool = false; // !skip_move and (entry != null);
 
         if (tt_hit) {
             tt_move = entry.?.move;
             tt_bound = entry.?.bound;
             tt_score = tt.TT.adjust_hash_score(entry.?.score, self.ply);
             tt_depth = entry.?.depth;
+
+            // // Ensure TT move is legal at this node; otherwise ignore it for ordering/cutoffs
+            // if (!self.is_move_legal(pos, me, tt_move)) {
+            //     tt_move = Move.empty();
+            //     // Do not return early based solely on an illegal TT move
+            //     tt_hit = false;
+            // }
 
             if ((!is_pv or depth == 0) and tt_depth >= depth and (cutnode or tt_score <= alpha)) {
                 if ((tt_bound == tt.Bound.BOUND_LOWER and tt_score >= beta) or
@@ -1054,6 +1084,7 @@ pub const Search = struct {
             self.ns_stack[self.ply].piece = piece;
             self.ply += 1;
             pos.play(move, me);
+            if (position.castling_debug) pos.debug_verify_integrity("after play");
             tt.TT.prefetch(pos.hash);
             self.nodes += 1;
             // make move
@@ -1071,6 +1102,7 @@ pub const Search = struct {
                 // unmake move
                 self.ply -= 1;
                 pos.undo(move, me);
+                if (position.castling_debug) pos.debug_verify_integrity("after undo (singular)");
                 // unmake move
 
                 self.excluded[self.ply] = tt_move;
@@ -1144,6 +1176,7 @@ pub const Search = struct {
             // unmake move
             self.ply -= 1;
             pos.undo(move, me);
+            if (position.castling_debug) pos.debug_verify_integrity("after undo");
             tt.TT.prefetch_write(pos.hash);
             // unmake move
 
@@ -1326,7 +1359,7 @@ pub const Search = struct {
         // }
 
         const entry = tt.TT.fetch(pos.hash);
-        const tt_hit: bool = if (entry != null) true else false;
+        const tt_hit: bool = false; // if (entry != null) true else false;
 
         var tt_move = Move.empty();
         var tt_score: i32 = 0;
@@ -1402,6 +1435,7 @@ pub const Search = struct {
 
             // make move
             self.ply += 1;
+            pos.debug_print_move("play", move, me);
             pos.play(move, me);
             tt.TT.prefetch(pos.hash);
             self.nodes += 1;
@@ -1411,6 +1445,7 @@ pub const Search = struct {
 
             // unmake move
             self.ply -= 1;
+            pos.debug_print_move("undo", move, me);
             pos.undo(move, me);
             tt.TT.prefetch_write(pos.hash);
             // unmake move

@@ -968,6 +968,14 @@ pub const Position = struct {
     pub inline fn put_piece(self: *Position, pc: Piece, s_idx: u6) void {
         const pc_idx = pc.toU4();
 
+        // Debug: track rook bitboard changes caused by this put
+        var wr_before: u64 = 0;
+        var br_before: u64 = 0;
+        if (castling_debug) {
+            wr_before = self.piece_bb[Piece.WHITE_ROOK.toU4()];
+            br_before = self.piece_bb[Piece.BLACK_ROOK.toU4()];
+        }
+
         self.board[s_idx] = pc;
         self.piece_bb[pc_idx] |= SQUARE_BB[s_idx];
 
@@ -994,11 +1002,32 @@ pub const Position = struct {
         } else {
             self.eval.put_piece(pc, s_idx);
         } 
+
+        if (castling_debug) {
+            const wr_after = self.piece_bb[Piece.WHITE_ROOK.toU4()];
+            const br_after = self.piece_bb[Piece.BLACK_ROOK.toU4()];
+            if (wr_after != wr_before) {
+                std.debug.print("[rookbb-change put] {s} pc={c} WR before=0x{X} after=0x{X}\n",
+                    .{ sq_to_coord[s_idx], piece_sym(pc), wr_before, wr_after });
+            }
+            if (br_after != br_before) {
+                std.debug.print("[rookbb-change put] {s} pc={c} BR before=0x{X} after=0x{X}\n",
+                    .{ sq_to_coord[s_idx], piece_sym(pc), br_before, br_after });
+            }
+        }
     }
 
     pub inline fn remove_piece(self: *Position, s_idx: u6) void {
         const pc = self.board[s_idx];
         const pc_idx = pc.toU4();
+
+        // Debug: track rook bitboard changes caused by this remove
+        var wr_before: u64 = 0;
+        var br_before: u64 = 0;
+        if (castling_debug) {
+            wr_before = self.piece_bb[Piece.WHITE_ROOK.toU4()];
+            br_before = self.piece_bb[Piece.BLACK_ROOK.toU4()];
+        }
 
         self.piece_bb[pc_idx] &= ~SQUARE_BB[s_idx];
         self.board[s_idx] = Piece.NO_PIECE;
@@ -1026,14 +1055,37 @@ pub const Position = struct {
         } else {
             self.eval.remove_piece(pc, s_idx);
         }    
+
+        if (castling_debug) {
+            const wr_after = self.piece_bb[Piece.WHITE_ROOK.toU4()];
+            const br_after = self.piece_bb[Piece.BLACK_ROOK.toU4()];
+            if (wr_after != wr_before) {
+                std.debug.print("[rookbb-change remove] {s} pc={c} WR before=0x{X} after=0x{X}\n",
+                    .{ sq_to_coord[s_idx], piece_sym(pc), wr_before, wr_after });
+            }
+            if (br_after != br_before) {
+                std.debug.print("[rookbb-change remove] {s} pc={c} BR before=0x{X} after=0x{X}\n",
+                    .{ sq_to_coord[s_idx], piece_sym(pc), br_before, br_after });
+            }
+        }
     }
 
     pub inline fn move_piece(self: *Position, from: u6, to: u6) void {
-        
+        if (castling_debug and self.board[from] == Piece.NO_PIECE) {
+            std.debug.print("[warn] move_piece called with empty from square {s}\n", .{ sq_to_coord[from] });
+        }
+
         var from_pc = self.board[from];
         const from_idx = from_pc.toU4();
         var to_pc = self.board[to];
         const to_idx = to_pc.toU4();
+
+        if (castling_debug and to_pc == Piece.NO_PIECE) {
+            std.debug.print("[warn] move_piece capture with empty to square {s}\n", .{ sq_to_coord[to] });
+        }
+
+        const rook_idx: u4 = Piece.WHITE_ROOK.toU4();
+        const rook_bb_before = self.piece_bb[rook_idx];
 
         self.hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to] ^ zobrist.zobrist_table[to_idx][to];
 
@@ -1071,6 +1123,14 @@ pub const Position = struct {
         self.board[to] = self.board[from];
         self.board[from] = Piece.NO_PIECE;
 
+        if (castling_debug) {
+            const rook_bb_after = self.piece_bb[rook_idx];
+            if (rook_bb_after != rook_bb_before) {
+                std.debug.print("[rookbb-change move_piece] {s}->{s} from_idx={} to_idx={} before=0x{X} after=0x{X} mask=0x{X}\n",
+                    .{ sq_to_coord[from], sq_to_coord[to], from_idx, to_idx, rook_bb_before, rook_bb_after, mask });
+            }
+        }
+
         if (nnue.engine_using_nnue) {        
             self.eval.move_piece_update_phase(to_pc);
             //self.eval.move_piece(from_pc, to_pc, from, to);
@@ -1080,6 +1140,9 @@ pub const Position = struct {
     }
 
     pub inline fn move_piece_quiet(self: *Position, from: u6, to: u6) void {
+        if (castling_debug and self.board[from] == Piece.NO_PIECE) {
+            std.debug.print("[warn] move_piece_quiet with empty from at {s}\n", .{ sq_to_coord[from] });
+        }
         var from_pc = self.board[from];
         const from_idx = from_pc.toU4();
         
@@ -1101,9 +1164,20 @@ pub const Position = struct {
         //     self.minor_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
         // }
 
-        self.piece_bb[from_idx] ^= (SQUARE_BB[from] | SQUARE_BB[to]);
+        const rook_idx_q: u4 = Piece.WHITE_ROOK.toU4();
+        const rook_bb_before_q = self.piece_bb[rook_idx_q];
+        const toggle_mask = (SQUARE_BB[from] | SQUARE_BB[to]);
+        self.piece_bb[from_idx] ^= toggle_mask;
         self.board[to] = self.board[from];
         self.board[from] = Piece.NO_PIECE;
+
+        if (castling_debug) {
+            const rook_bb_after_q = self.piece_bb[rook_idx_q];
+            if (rook_bb_after_q != rook_bb_before_q) {
+                std.debug.print("[rookbb-change quiet] {s}->{s} from_idx={} before=0x{X} after=0x{X} mask=0x{X}\n",
+                    .{ sq_to_coord[from], sq_to_coord[to], from_idx, rook_bb_before_q, rook_bb_after_q, toggle_mask });
+            }
+        }
 
         if (nnue.engine_using_nnue) {        
              //self.delta.move_piece_quiet(from_pc, from, to);
@@ -1112,6 +1186,57 @@ pub const Position = struct {
             self.eval.move_piece_quiet(from_pc, from, to);
         } 
 
+    }
+
+    fn piece_sym(pc: Piece) u8 {
+        return PIECE_STR[@intFromEnum(pc)];
+    }
+
+    pub fn debug_print_move(self: *Position, where: []const u8, m: Move, comptime c: Color) void {
+        if (!castling_debug) return;
+        const from_sq = sq_to_coord[m.from];
+        const to_sq = sq_to_coord[m.to];
+        const from_pc = self.board[m.from];
+        const to_pc = self.board[m.to];
+        std.debug.print("[move-{s}] {s} {s}{s} flags={d} from_pc={c} to_pc={c}\n",
+            .{
+                where,
+                if (c == Color.White) "W" else "B",
+                from_sq,
+                to_sq,
+                m.flags.toU4(),
+                piece_sym(from_pc),
+                if (to_pc == Piece.NO_PIECE) '.' else piece_sym(to_pc),
+            });
+    }
+
+    pub fn debug_verify_integrity(self: *Position, where: []const u8) void {
+        if (!castling_debug) return;
+        var rebuilt: [NPIECES]u64 = .{0} ** NPIECES;
+        var white_kings: u8 = 0;
+        var black_kings: u8 = 0;
+        for (0..64) |s| {
+            const pc = self.board[s];
+            if (pc == Piece.NO_PIECE) continue;
+            rebuilt[pc.toU4()] |= SQUARE_BB[s];
+            if (pc == Piece.WHITE_KING) white_kings += 1;
+            if (pc == Piece.BLACK_KING) black_kings += 1;
+        }
+        var ok = true;
+        for (0..NPIECES) |i| {
+            if (rebuilt[i] != self.piece_bb[i]) {
+                ok = false;
+                std.debug.print("[integrity] mismatch bb idx {} at {s}: expected 0x{X}, have 0x{X}\n", .{ i, where, rebuilt[i], self.piece_bb[i] });
+            }
+        }
+        if (white_kings != 1 or black_kings != 1) {
+            ok = false;
+            std.debug.print("[integrity] kings count W={}, B={} at {s}\n", .{ white_kings, black_kings, where });
+        }
+        if (!ok) {
+            // Dump a quick map for debugging
+            std.debug.print("[integrity] side to move: {s}\n", .{ if (self.side_to_play == Color.White) "w" else "b" });
+        }
     }
 
     pub inline fn move_promote_capture(self: *Position, from: u6, to: u6, prom_pc: Piece) void {
@@ -1441,6 +1566,15 @@ pub const Position = struct {
                 self.hash ^= zobrist.enpassant_keys[self.history[self.game_ply].epsq.file_of().toU3()];
             },
             MoveFlags.OO => {
+                if (castling_debug) {
+                    const ci_dbg: usize = C.toU4();
+                    const kd_dbg: u6 = if (C == .White) Square.g1.toU6() else Square.g8.toU6();
+                    const rs_dbg: u6 = self.castle_rook_k_start[ci_dbg].toU6();
+                    const rd_dbg: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
+                    std.debug.print("[castling-play OO] {s} from={s} kd={s} rs={s} rd={s}\n",
+                        .{ if (C==.White) "W" else "B",
+                           sq_to_coord[m.from], sq_to_coord[kd_dbg], sq_to_coord[rs_dbg], sq_to_coord[rd_dbg] });
+                }
                 const ci: usize = C.toU4();
                 const kd: u6 = if (C == .White) Square.g1.toU6() else Square.g8.toU6();
                 const rs: u6 = self.castle_rook_k_start[ci].toU6();
@@ -1474,8 +1608,17 @@ pub const Position = struct {
                         self.delta.move_piece_quiet(rpc, rs, rd);
                     }
                 }
-            },
+            },     
             MoveFlags.OOO => {
+                if (castling_debug) {
+                    const ci_dbg: usize = C.toU4();
+                    const kd_dbg: u6 = if (C == .White) Square.c1.toU6() else Square.c8.toU6();
+                    const rs_dbg: u6 = self.castle_rook_q_start[ci_dbg].toU6();
+                    const rd_dbg: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
+                    std.debug.print("[castling-play OOO] {s} from={s} kd={s} rs={s} rd={s}\n",
+                        .{ if (C==.White) "W" else "B",
+                           sq_to_coord[m.from], sq_to_coord[kd_dbg], sq_to_coord[rs_dbg], sq_to_coord[rd_dbg] });
+                }
                 const ci: usize = C.toU4();
                 const kd: u6 = if (C == .White) Square.c1.toU6() else Square.c8.toU6();
                 const rs: u6 = self.castle_rook_q_start[ci].toU6();
@@ -1630,20 +1773,38 @@ pub const Position = struct {
                 self.hash ^= zobrist.enpassant_keys[self.history[self.game_ply].epsq.file_of().toU3()];
             },    
             MoveFlags.OO => {
+                if (castling_debug) {
+                    const ci_dbg: usize = C.toU4();
+                    const kd_dbg: u6 = if (C == .White) Square.g1.toU6() else Square.g8.toU6();
+                    const rs_dbg: u6 = self.castle_rook_k_start[ci_dbg].toU6();
+                    const rd_dbg: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
+                    std.debug.print("[castling-undo OO] {s} to={s} kd={s} rs={s} rd={s}\n",
+                        .{ if (C==.White) "W" else "B",
+                           sq_to_coord[m.to], sq_to_coord[kd_dbg], sq_to_coord[rs_dbg], sq_to_coord[rd_dbg] });
+                }
                 const ci: usize = C.toU4();
                 const kd: u6 = if (C == .White) Square.g1.toU6() else Square.g8.toU6();
                 const rs: u6 = self.castle_rook_k_start[ci].toU6();
                 const rd: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
-                if (m.from != kd) self.move_piece_quiet(kd, m.from);
                 if (rs != rd) self.move_piece_quiet(rd, rs);
+                if (m.from != kd) self.move_piece_quiet(kd, m.from);
             },     
             MoveFlags.OOO => {
+                if (castling_debug) {
+                    const ci_dbg: usize = C.toU4();
+                    const kd_dbg: u6 = if (C == .White) Square.c1.toU6() else Square.c8.toU6();
+                    const rs_dbg: u6 = self.castle_rook_q_start[ci_dbg].toU6();
+                    const rd_dbg: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
+                    std.debug.print("[castling-undo OOO] {s} to={s} kd={s} rs={s} rd={s}\n",
+                        .{ if (C==.White) "W" else "B",
+                           sq_to_coord[m.to], sq_to_coord[kd_dbg], sq_to_coord[rs_dbg], sq_to_coord[rd_dbg] });
+                }
                 const ci: usize = C.toU4();
                 const kd: u6 = if (C == .White) Square.c1.toU6() else Square.c8.toU6();
                 const rs: u6 = self.castle_rook_q_start[ci].toU6();
                 const rd: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
-                if (m.from != kd) self.move_piece_quiet(kd, m.from);
                 if (rs != rd) self.move_piece_quiet(rd, rs);
+                if (m.from != kd) self.move_piece_quiet(kd, m.from);
             },          
             MoveFlags.EN_PASSANT => {
                 self.move_piece_quiet(m.to, m.from);
