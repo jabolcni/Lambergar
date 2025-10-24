@@ -117,10 +117,45 @@ pub fn i8_from_str(str: []const u8) i8 {
 }
 
 fn parse_and_apply_moves(curr_pos: *Position, moves_str: []const u8) !void {
-    var moves = std.mem.splitScalar(u8, std.mem.trim(u8, moves_str, " "), ' ');
-    while (moves.next()) |move_str| {
-        const move = Move.parse_move(move_str, curr_pos) catch |err| {
-            printout(stdout, "info string Invalid move '{s}': {any}\n", .{ move_str, err });
+    var it = std.mem.tokenizeAny(u8, moves_str, " \t\r\n");
+    while (it.next()) |raw_tok| {
+        const move_tok = std.mem.trim(u8, raw_tok, " \t\r\n");
+        if (move_tok.len == 0) continue;
+        const move = Move.parse_move(move_tok, curr_pos) catch |err| {
+            printout(stdout, "info string Invalid move '{s}': {any}\n", .{ move_tok, err });
+            if (debug) {
+                // Dump side to move and legal moves to pinpoint the failure context
+                const side = curr_pos.side_to_play;
+                printout(stdout, "info string side to move: {s}\n", .{ if (side == Color.White) "white" else "black" });
+                var list_dbg: MoveList = .{};
+                if (side == Color.White) curr_pos.generate_legals(Color.White, &list_dbg) else curr_pos.generate_legals(Color.Black, &list_dbg);
+                printout(stdout, "info string token bytes (len {}): ", .{move_tok.len});
+                var i_b: usize = 0;
+                while (i_b < move_tok.len) : (i_b += 1) {
+                    printout(stdout, "{X:0>2} ", .{ move_tok[i_b] });
+                }
+                printout(stdout, "\n", .{});
+                curr_pos.print_unicode();
+                printout(stdout, "info string legal moves ({}):\n", .{list_dbg.count});
+                var i: usize = 0;
+                while (i < list_dbg.count) : (i += 1) {
+                    const m = list_dbg.moves[i];
+                    const repr = m.to_str();
+                    const s = if (m.is_promotion()) repr[0..5] else repr[0..4];
+                    const from_sq = position.Square.fromU6(m.from);
+                    const to_sq = position.Square.fromU6(m.to);
+                    const from_pc = curr_pos.board[m.from];
+                    const to_pc = curr_pos.board[m.to];
+                    printout(stdout, "info string  #{:>2} {s} flags={} from={s}({c}) to={s}({c})\n",
+                        .{ i,
+                           s,
+                           m.flags.toU4(),
+                           position.sq_to_coord[from_sq.toU()],
+                           if (from_pc == Piece.NO_PIECE) '.' else position.PIECE_STR[@intFromEnum(from_pc)],
+                           position.sq_to_coord[to_sq.toU()],
+                           if (to_pc == Piece.NO_PIECE) '.' else position.PIECE_STR[@intFromEnum(to_pc)] });
+                }
+            }
             continue;
         };
         //const move = Move.parse_move(move_str, &pos[0]) catch continue;

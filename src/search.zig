@@ -19,6 +19,7 @@ const PieceType = position.PieceType;
 const Color = position.Color;
 const Move = position.Move;
 const MoveFlags = position.MoveFlags;
+const Square = position.Square;
 
 const MoveList = lists.MoveList;
 const ScoreList = lists.ScoreList;
@@ -282,6 +283,32 @@ pub const Search = struct {
 
     pub fn new() Search {
         return Search{};
+    }
+
+    fn print_uci_move(self: *Search, pos: *Position, mv: Move, side: Color) void {
+        _ = self;
+        // In Chess960, UCI requires castling as king-from + rook-from
+        if (pos.is_chess960 and (mv.flags == MoveFlags.OO or mv.flags == MoveFlags.OOO)) {
+            const ci = side.toU4();
+            const rook_sq = if (mv.flags == MoveFlags.OO)
+                pos.castle_rook_k_start[ci]
+            else
+                pos.castle_rook_q_start[ci];
+            if (rook_sq != Square.NO_SQUARE) {
+                if (uci.debug) {
+                    const k_from_dbg = position.sq_to_coord[mv.from];
+                    const r_from_dbg = position.sq_to_coord[rook_sq.toU()];
+                    printout(uci.stdout, "info string 960-castle format from={s} rook_from={s}\n", .{ k_from_dbg, r_from_dbg });
+                }
+                const k_from = position.sq_to_coord[mv.from];
+                const r_from = position.sq_to_coord[rook_sq.toU()];
+                printout(uci.stdout, "{s}{s} ", .{ k_from, r_from });
+                return;
+            }
+        }
+        const repr = mv.to_str();
+        const s = if (mv.is_promotion()) repr[0..5] else repr[0..4];
+        printout(uci.stdout, "{s} ", .{s});
     }
 
     fn is_move_legal(self: *Search, pos: *Position, comptime color: Color, mv: Move) bool {
@@ -601,6 +628,9 @@ pub const Search = struct {
                 break :mainloop;
             }
 
+            // Finalize root best move for this depth
+            self.best_move = self.pv_table[0][0];
+
             if (self.manager.printout) {
                 var nodes = self.nodes;
                 var tbhits = self.tbhits;
@@ -640,14 +670,11 @@ pub const Search = struct {
                 printout(uci.stdout, "pv ", .{});
 
                 var next_ply: usize = 0;
+                var pv_side = color;
                 while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
-                    var pv_move = self.pv_table[0][next_ply];
-                    //const pv_move_str = pv_move.to_str(allocator);
-                    //pv_move_str = pv_move.to_str(allocator);
-                    //defer allocator.free(pv_move_str);
-                    const pv_move_repr = pv_move.to_str();
-                    const pv_move_str = if (pv_move.is_promotion()) pv_move_repr[0..5] else pv_move_repr[0..4];
-                    printout(uci.stdout, "{s} ", .{pv_move_str});
+                    const pv_move = self.pv_table[0][next_ply];
+                    self.print_uci_move(pos, pv_move, pv_side);
+                    pv_side = pv_side.change_side();
                 }
 
                 printout(uci.stdout, "\n", .{});
@@ -673,9 +700,27 @@ pub const Search = struct {
         }
 
         if (self.manager.printout) {
-            const move_name_repr = self.best_move.to_str();
-            const move_name = if (self.best_move.is_promotion()) move_name_repr[0..5] else move_name_repr[0..4];
-            printout(uci.stdout, "bestmove {s}\n", .{move_name});
+            // Print bestmove with Chess960 UCI formatting if applicable
+            if (pos.is_chess960 and (self.best_move.flags == MoveFlags.OO or self.best_move.flags == MoveFlags.OOO)) {
+                const ci = color.toU4();
+                const rook_sq = if (self.best_move.flags == MoveFlags.OO)
+                    pos.castle_rook_k_start[ci]
+                else
+                    pos.castle_rook_q_start[ci];
+                if (rook_sq != Square.NO_SQUARE) {
+                    const k_from = position.sq_to_coord[self.best_move.from];
+                    const r_from = position.sq_to_coord[rook_sq.toU()];
+                    printout(uci.stdout, "bestmove {s}{s}\n", .{ k_from, r_from });
+                } else {
+                    const repr = self.best_move.to_str();
+                    const move_name = if (self.best_move.is_promotion()) repr[0..5] else repr[0..4];
+                    printout(uci.stdout, "bestmove {s}\n", .{move_name});
+                }
+            } else {
+                const repr = self.best_move.to_str();
+                const move_name = if (self.best_move.is_promotion()) repr[0..5] else repr[0..4];
+                printout(uci.stdout, "bestmove {s}\n", .{move_name});
+            }
         }
     }
 
@@ -815,7 +860,7 @@ pub const Search = struct {
         var tt_depth: i8 = 0;
 
         const entry = tt.TT.fetch(pos.hash);
-        const tt_hit: bool = false; // !skip_move and (entry != null);
+        const tt_hit: bool = !skip_move and (entry != null);
 
         if (tt_hit) {
             tt_move = entry.?.move;
@@ -1013,6 +1058,11 @@ pub const Search = struct {
 
         for (0..move_list.count) |mv_idx| {
             const move = ms.get_next_best(&move_list, &score_list, mv_idx);
+            if (uci.debug and self.ply <= 2) {
+                const repr = move.to_str();
+                const s = if (move.is_promotion()) repr[0..5] else repr[0..4];
+                printout(uci.stdout, "info string [try] ply={} mv#{} {s}\n", .{ self.ply, mv_idx, s });
+            }
 
             if (move.equal(self.excluded[self.ply])) continue;
 
@@ -1084,6 +1134,11 @@ pub const Search = struct {
             self.ns_stack[self.ply].piece = piece;
             self.ply += 1;
             pos.play(move, me);
+            if (uci.debug and self.ply <= 2) {
+                const reprp = move.to_str();
+                const sp = if (move.is_promotion()) reprp[0..5] else reprp[0..4];
+                printout(uci.stdout, "info string [play] ply={} {s}\n", .{ self.ply, sp });
+            }
             if (position.castling_debug) pos.debug_verify_integrity("after play");
             tt.TT.prefetch(pos.hash);
             self.nodes += 1;
@@ -1176,6 +1231,11 @@ pub const Search = struct {
             // unmake move
             self.ply -= 1;
             pos.undo(move, me);
+            if (uci.debug and self.ply <= 2) {
+                const repru = move.to_str();
+                const su = if (move.is_promotion()) repru[0..5] else repru[0..4];
+                printout(uci.stdout, "info string [undo] ply={} {s}\n", .{ self.ply, su });
+            }
             if (position.castling_debug) pos.debug_verify_integrity("after undo");
             tt.TT.prefetch_write(pos.hash);
             // unmake move
@@ -1359,7 +1419,7 @@ pub const Search = struct {
         // }
 
         const entry = tt.TT.fetch(pos.hash);
-        const tt_hit: bool = false; // if (entry != null) true else false;
+        const tt_hit: bool = if (entry != null) true else false;
 
         var tt_move = Move.empty();
         var tt_score: i32 = 0;

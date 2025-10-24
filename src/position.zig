@@ -483,6 +483,49 @@ pub const Move = packed struct {
             pos.generate_legals(Color.Black, &list2);
         }
 
+        // Chess960 UCI castling: king-from + rook-from
+        // If the position is 960 and the input encodes castling this way, map it to the legal O-O/OOO move.
+        if (pos.is_chess960) {
+            // Current king square
+            const side = pos.side_to_play;
+            const king_bb = pos.bitboard_of_pc(Piece.make_piece(side, PieceType.King));
+            if (king_bb != 0) {
+                const ks: u6 = bb.get_ls1b_index(king_bb);
+                // Rook start squares for this side
+                const ci: usize = side.toU4();
+                const rk: Square = pos.castle_rook_k_start[ci];
+                const rq: Square = pos.castle_rook_q_start[ci];
+                const to_sq = Square.fromU6(to);
+                if (from == ks and to_sq != Square.NO_SQUARE) {
+                    const rights = pos.history[pos.game_ply].castling;
+                    if (rk != Square.NO_SQUARE and to_sq == rk) {
+                        const need = if (side == Color.White) Castling.WK.toU4() else Castling.BK.toU4();
+                        if ((rights & need) != 0) {
+                            // Find the legal O-O
+                            for (0..list2.count) |i| {
+                                const m = list2.moves[i];
+                                if (m.flags == MoveFlags.OO) return m;
+                            }
+                            return MoveParseError.IllegalMove;
+                        }
+                        // Else: fall through and treat as a normal king move
+                    } else if (rq != Square.NO_SQUARE and to_sq == rq) {
+                        const need = if (side == Color.White) Castling.WQ.toU4() else Castling.BQ.toU4();
+                        if ((rights & need) != 0) {
+                            // Find the legal O-O-O
+                            for (0..list2.count) |i| {
+                                const m = list2.moves[i];
+                                if (m.flags == MoveFlags.OOO) return m;
+                            }
+                            return MoveParseError.IllegalMove;
+                        }
+                        // Else: fall through and treat as a normal king move
+                    }
+                    // Do not map king-from -> king-destination in 960; a normal king step (e.g., b1->c1) must be parsed as a standard move.
+                }
+            }
+        }
+
         for (0..list2.count) |i| {
             const move = list2.moves[i];
             if (move.from == from and move.to == to) {
@@ -491,6 +534,15 @@ pub const Move = packed struct {
                         continue;
                 }
                 return move;
+            }
+        }
+        // Fallback: compare UCI strings of legals against input (handles any internal encoding quirks)
+        for (0..list2.count) |i| {
+            const m = list2.moves[i];
+            const u = m.to_str();
+            const u_slice = if (m.is_promotion()) u[0..5] else u[0..4];
+            if (u_slice.len == move_str.len and std.mem.eql(u8, u_slice, move_str)) {
+                return m;
             }
         }
         return MoveParseError.IllegalMove;
@@ -1227,6 +1279,16 @@ pub const Position = struct {
             if (rebuilt[i] != self.piece_bb[i]) {
                 ok = false;
                 std.debug.print("[integrity] mismatch bb idx {} at {s}: expected 0x{X}, have 0x{X}\n", .{ i, where, rebuilt[i], self.piece_bb[i] });
+                const diff = rebuilt[i] ^ self.piece_bb[i];
+                if (diff != 0) {
+                    std.debug.print("[integrity]   diff squares:", .{});
+                    var d = diff;
+                    while (d != 0) {
+                        const bsq = bb.pop_lsb(&d);
+                        std.debug.print(" {s}", .{ sq_to_coord[bsq] });
+                    }
+                    std.debug.print("\n", .{});
+                }
             }
         }
         if (white_kings != 1 or black_kings != 1) {
@@ -1236,6 +1298,8 @@ pub const Position = struct {
         if (!ok) {
             // Dump a quick map for debugging
             std.debug.print("[integrity] side to move: {s}\n", .{ if (self.side_to_play == Color.White) "w" else "b" });
+            // Also print rook bitboards explicitly
+            std.debug.print("[integrity] WR=0x{X} BR=0x{X} at {s}\n", .{ self.piece_bb[Piece.WHITE_ROOK.toU4()], self.piece_bb[Piece.BLACK_ROOK.toU4()], where });
         }
     }
 
@@ -1545,6 +1609,44 @@ pub const Position = struct {
             self.history[self.game_ply].fifty = 0;
         }
 
+        // Debug-only sanity checks to catch misuse of flags leading to corruption
+        if (castling_debug) {
+            const to_pc_dbg = self.board[m.to];
+            const from_pc_dbg = self.board[m.from];
+            // Ensure from square contains a piece of the moving side
+            if (from_pc_dbg == Piece.NO_PIECE or from_pc_dbg.color() != C) {
+                std.debug.print("[error] move from empty/wrong-color square {s} (pc={c}) for side {s}, flags={d}\n",
+                    .{ sq_to_coord[m.from], if (from_pc_dbg == Piece.NO_PIECE) '.' else PIECE_STR[@intFromEnum(from_pc_dbg)], if (C==.White) "W" else "B", m.flags.toU4() });
+                @panic("move from empty or wrong-color square");
+            }
+            // Quiet-like moves must not overwrite an occupied square (except within castling branches which handle overlaps)
+            if (m.flags == MoveFlags.QUIET or m.flags == MoveFlags.DOUBLE_PUSH or
+                m.flags == MoveFlags.PR_KNIGHT or m.flags == MoveFlags.PR_BISHOP or m.flags == MoveFlags.PR_ROOK or m.flags == MoveFlags.PR_QUEEN)
+            {
+                if (to_pc_dbg != Piece.NO_PIECE) {
+                    std.debug.print("[error] QUIET-like move overwrites occupied square {s} by {c}, flags={d}\n", .{
+                        sq_to_coord[m.to], PIECE_STR[@intFromEnum(from_pc_dbg)], m.flags.toU4(),
+                    });
+                    @panic("quiet move overwriting occupied square");
+                }
+            }
+            // Capture must capture a piece (EN_PASSANT handled in its own branch)
+            if (m.flags == MoveFlags.CAPTURE or m.flags == MoveFlags.PC_KNIGHT or m.flags == MoveFlags.PC_BISHOP or m.flags == MoveFlags.PC_ROOK or m.flags == MoveFlags.PC_QUEEN) {
+                if (m.flags != MoveFlags.CAPTURE and (m.flags == MoveFlags.PC_KNIGHT or m.flags == MoveFlags.PC_BISHOP or m.flags == MoveFlags.PC_ROOK or m.flags == MoveFlags.PC_QUEEN)) {
+                    // promotion with capture: destination must have a piece
+                    if (to_pc_dbg == Piece.NO_PIECE) {
+                        std.debug.print("[error] PROMOTION capture to empty square {s} from {s}\n", .{ sq_to_coord[m.to], sq_to_coord[m.from] });
+                        @panic("promotion capture to empty square");
+                    }
+                } else if (m.flags == MoveFlags.CAPTURE) {
+                    if (to_pc_dbg == Piece.NO_PIECE) {
+                        std.debug.print("[error] CAPTURE to empty square {s} from {s}\n", .{ sq_to_coord[m.to], sq_to_coord[m.from] });
+                        @panic("capture to empty square");
+                    }
+                }
+            }
+        }
+
         switch (m.flags) {
             MoveFlags.QUIET => {
                 const pc = self.board[m.from];
@@ -1781,13 +1883,32 @@ pub const Position = struct {
                     std.debug.print("[castling-undo OO] {s} to={s} kd={s} rs={s} rd={s}\n",
                         .{ if (C==.White) "W" else "B",
                            sq_to_coord[m.to], sq_to_coord[kd_dbg], sq_to_coord[rs_dbg], sq_to_coord[rd_dbg] });
+                    std.debug.print("  BKbb=0x{X} BRbb=0x{X}\n", .{ self.piece_bb[Piece.BLACK_KING.toU4()], self.piece_bb[Piece.BLACK_ROOK.toU4()] });
+                    const pc_kd = self.board[kd_dbg];
+                    const pc_rd = self.board[rd_dbg];
+                    const pc_rs = self.board[rs_dbg];
+                    std.debug.print("  before: kd={s}({c}) rd={s}({c}) rs={s}({c})\n",
+                        .{ sq_to_coord[kd_dbg], if (pc_kd==Piece.NO_PIECE) '.' else PIECE_STR[@intFromEnum(pc_kd)],
+                           sq_to_coord[rd_dbg], if (pc_rd==Piece.NO_PIECE) '.' else PIECE_STR[@intFromEnum(pc_rd)],
+                           sq_to_coord[rs_dbg], if (pc_rs==Piece.NO_PIECE) '.' else PIECE_STR[@intFromEnum(pc_rs)] });
                 }
                 const ci: usize = C.toU4();
                 const kd: u6 = if (C == .White) Square.g1.toU6() else Square.g8.toU6();
                 const rs: u6 = self.castle_rook_k_start[ci].toU6();
                 const rd: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
-                if (rs != rd) self.move_piece_quiet(rd, rs);
+                // Overlap-safe undo: remove rook from its castled square (if it moved),
+                // move king back, then restore rook to its starting square.
+                const rook_moved: bool = (rs != rd);
+                var rook_pc: Piece = Piece.NO_PIECE;
+                if (rook_moved) {
+                    rook_pc = self.board[rd];
+                    if (rook_pc != Piece.NO_PIECE) self.remove_piece(rd);
+                }
                 if (m.from != kd) self.move_piece_quiet(kd, m.from);
+                if (rook_moved) self.put_piece(rook_pc, rs);
+                if (castling_debug) {
+                    std.debug.print("  after: BKbb=0x{X} BRbb=0x{X}\n", .{ self.piece_bb[Piece.BLACK_KING.toU4()], self.piece_bb[Piece.BLACK_ROOK.toU4()] });
+                }
             },     
             MoveFlags.OOO => {
                 if (castling_debug) {
@@ -1798,13 +1919,31 @@ pub const Position = struct {
                     std.debug.print("[castling-undo OOO] {s} to={s} kd={s} rs={s} rd={s}\n",
                         .{ if (C==.White) "W" else "B",
                            sq_to_coord[m.to], sq_to_coord[kd_dbg], sq_to_coord[rs_dbg], sq_to_coord[rd_dbg] });
+                    std.debug.print("  BKbb=0x{X} BRbb=0x{X}\n", .{ self.piece_bb[Piece.BLACK_KING.toU4()], self.piece_bb[Piece.BLACK_ROOK.toU4()] });
+                    const pc_kd = self.board[kd_dbg];
+                    const pc_rd = self.board[rd_dbg];
+                    const pc_rs = self.board[rs_dbg];
+                    std.debug.print("  before: kd={s}({c}) rd={s}({c}) rs={s}({c})\n",
+                        .{ sq_to_coord[kd_dbg], if (pc_kd==Piece.NO_PIECE) '.' else PIECE_STR[@intFromEnum(pc_kd)],
+                           sq_to_coord[rd_dbg], if (pc_rd==Piece.NO_PIECE) '.' else PIECE_STR[@intFromEnum(pc_rd)],
+                           sq_to_coord[rs_dbg], if (pc_rs==Piece.NO_PIECE) '.' else PIECE_STR[@intFromEnum(pc_rs)] });
                 }
                 const ci: usize = C.toU4();
                 const kd: u6 = if (C == .White) Square.c1.toU6() else Square.c8.toU6();
                 const rs: u6 = self.castle_rook_q_start[ci].toU6();
                 const rd: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
-                if (rs != rd) self.move_piece_quiet(rd, rs);
+                // Overlap-safe undo: same sequence as OO
+                const rook_moved_q: bool = (rs != rd);
+                var rook_pc_q: Piece = Piece.NO_PIECE;
+                if (rook_moved_q) {
+                    rook_pc_q = self.board[rd];
+                    if (rook_pc_q != Piece.NO_PIECE) self.remove_piece(rd);
+                }
                 if (m.from != kd) self.move_piece_quiet(kd, m.from);
+                if (rook_moved_q) self.put_piece(rook_pc_q, rs);
+                if (castling_debug) {
+                    std.debug.print("  after: BKbb=0x{X} BRbb=0x{X}\n", .{ self.piece_bb[Piece.BLACK_KING.toU4()], self.piece_bb[Piece.BLACK_ROOK.toU4()] });
+                }
             },          
             MoveFlags.EN_PASSANT => {
                 self.move_piece_quiet(m.to, m.from);
@@ -2071,6 +2210,20 @@ pub const Position = struct {
                 self.castle_rook_k_start[ci] = Square.NO_SQUARE;
                 self.castle_rook_q_start[ci] = Square.NO_SQUARE;
             }
+        }
+
+        // Debug: dump initial 960 king/rook start squares
+        if (castling_debug) {
+            std.debug.print("[960-start] W: K={s} Rk={s} Rq={s}\n", .{
+                sq_to_coord[self.castle_king_start[Color.White.toU4()].toU()],
+                if (self.castle_rook_k_start[Color.White.toU4()] == Square.NO_SQUARE) "--" else sq_to_coord[self.castle_rook_k_start[Color.White.toU4()].toU()],
+                if (self.castle_rook_q_start[Color.White.toU4()] == Square.NO_SQUARE) "--" else sq_to_coord[self.castle_rook_q_start[Color.White.toU4()].toU()],
+            });
+            std.debug.print("[960-start] B: K={s} Rk={s} Rq={s}\n", .{
+                sq_to_coord[self.castle_king_start[Color.Black.toU4()].toU()],
+                if (self.castle_rook_k_start[Color.Black.toU4()] == Square.NO_SQUARE) "--" else sq_to_coord[self.castle_rook_k_start[Color.Black.toU4()].toU()],
+                if (self.castle_rook_q_start[Color.Black.toU4()] == Square.NO_SQUARE) "--" else sq_to_coord[self.castle_rook_q_start[Color.Black.toU4()].toU()],
+            });
         }
 
         // Build dynamic entry mask from tracked squares; then clear bits for allowed rights
