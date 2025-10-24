@@ -217,7 +217,7 @@ pub const Evaluation = struct {
     eval_eg: i32 = 0,
     phase: [2]u8 = [1]u8{0} ** 2,
 
-    pub  fn put_piece(self: *Evaluation, pc: Piece, s_idx: u6) void {
+    pub inline fn put_piece(self: *Evaluation, pc: Piece, s_idx: u6) void {
 
         const pc_type_idx = pc.type_of().toU3();
 
@@ -240,7 +240,7 @@ pub const Evaluation = struct {
         }
     }
 
-    pub  fn remove_piece(self: *Evaluation, pc: Piece, s_idx: u6) void {
+    pub inline fn remove_piece(self: *Evaluation, pc: Piece, s_idx: u6) void {
 
         const pc_type_idx = pc.type_of().toU3();
 
@@ -265,7 +265,7 @@ pub const Evaluation = struct {
         }     
     }
 
-    pub  fn move_piece_quiet(self: *Evaluation, pc: Piece, from: u6, to: u6) void {
+    pub inline fn move_piece_quiet(self: *Evaluation, pc: Piece, from: u6, to: u6) void {
         const pc_type_idx = pc.type_of().toU3();
 
         if (pc != Piece.NO_PIECE) {
@@ -286,14 +286,14 @@ pub const Evaluation = struct {
 
     }
 
-    pub  fn move_piece(self: *Evaluation, from_pc: Piece, to_pc: Piece, from: u6, to: u6) void {
+    pub inline fn move_piece(self: *Evaluation, from_pc: Piece, to_pc: Piece, from: u6, to: u6) void {
 
         self.remove_piece(to_pc, to);
         self.move_piece_quiet(from_pc, from, to);
 
     }
 
-    pub  fn put_piece_update_phase(self: *Evaluation, pc: Piece) void {
+    pub inline fn put_piece_update_phase(self: *Evaluation, pc: Piece) void {
 
         const pc_type_idx = pc.type_of().toU3();
 
@@ -304,7 +304,7 @@ pub const Evaluation = struct {
         }
     }
 
-    pub  fn remove_piece_update_phase(self: *Evaluation, pc: Piece) void {
+    pub inline fn remove_piece_update_phase(self: *Evaluation, pc: Piece) void {
 
         const pc_type_idx = pc.type_of().toU3();
 
@@ -317,7 +317,7 @@ pub const Evaluation = struct {
         }     
     }
 
-    pub  fn move_piece_update_phase(self: *Evaluation, to_pc: Piece) void {
+    pub inline fn move_piece_update_phase(self: *Evaluation, to_pc: Piece) void {
         self.remove_piece_update_phase(to_pc);
     }    
 

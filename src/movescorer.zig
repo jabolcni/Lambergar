@@ -33,7 +33,7 @@ pub const Badpromotion = -QueenPromotionWithCapture;
 // pawns, knights, bishops, rooks, queens, kings
 pub const piece_val = [7]i32{ 100, 300, 300, 500, 900, 20000, 0 };
 
-pub fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_list: *ScoreList, hash_move: Move, comptime color: Color) void {
+pub inline fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_list: *ScoreList, hash_move: Move, comptime color: Color) void {
     for (0..move_list.count) |i| {
         const move = move_list.moves[i];
         var score: i32 = 0;
@@ -87,7 +87,7 @@ pub fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_l
     }
 }
 
-pub fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usize) Move {
+pub inline fn get_next_best(move_list: *MoveList, score_list: *ScoreList, i: usize) Move {
     // Use local variables for better register allocation
     var best_j = i;
     var max_score = score_list.scores[i];
@@ -243,9 +243,13 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
     // Initial gain
     gain[0] = captured_value;
 
-    // Initial occupied after making the move
-    // Start with current occupancy and remove the source square
-    var occupied: u64 = (pos.all_pieces(Color.White) | pos.all_pieces(Color.Black)) ^ from_bb;
+    // Snapshot current occupancy once and reuse across the function
+    const white_occ: u64 = pos.all_pieces(Color.White);
+    const black_occ: u64 = pos.all_pieces(Color.Black);
+    const occ_all: u64 = white_occ | black_occ;
+
+    // Initial occupied after making the move (remove source, remove captured if any, add destination)
+    var occupied: u64 = occ_all ^ from_bb;
 
     // Remove captured piece from occupancy (EP removes the pawn behind 'to')
     if (flags == MoveFlags.EN_PASSANT) {
@@ -269,9 +273,10 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
     var pt: u4 = @as(u4, @intCast(pt_u3));
     var cnt: u5 = 1;
 
-    const white_occ = pos.all_pieces(Color.White);
-    const black_occ = pos.all_pieces(Color.Black);
     const piece_bb = &pos.piece_bb;
+
+    // Destination rank is constant; avoid recomputing per iteration
+    const to_rank: u6 = to >> 3;
 
     //if (captured == Piece.NO_PIECE) return 0;
 
@@ -301,11 +306,10 @@ pub inline fn see_value(pos: *Position, move: Move, prune_positive: bool) i32 {
 
         occupied ^= bb.SQUARE_BB[bb.get_ls1b_index(pb)];
 
-        // Check for pawn promotion (8th rank for White, 1st rank for Black)
+        // Check for pawn promotion (8th rank for White, 1st rank for Black) — rank is constant for target square
         var is_promotion = false;
         if (pt == PieceType.Pawn.toU3()) {
-            const rank = to >> 3;
-            if ((side == Color.White and rank == 7) or (side == Color.Black and rank == 0)) {
+            if ((side == Color.White and to_rank == 7) or (side == Color.Black and to_rank == 0)) {
                 is_promotion = true;
                 pt = PieceType.Queen.toU3(); // Assume queen for recaptures
                 pqv = piece_val[PieceType.Queen.toU3()] - piece_val[PieceType.Pawn.toU3()];

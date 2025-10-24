@@ -53,7 +53,7 @@ var lmp = [2][11]i8{
 
 var lmr: [MAX_DEPTH][MAX_MOVES]i8 = undefined;
 
-fn depth_as_i32(depth: i8) i32 {
+inline fn depth_as_i32(depth: i8) i32 {
     return @as(i32, @intCast(depth));
 }
 
@@ -545,10 +545,6 @@ pub const Search = struct {
             return;
         };
 
-        const start = Instant.now() catch |err| {
-            std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
-            return;
-        };
         self.nodes = 0;
         self.non_terminal_nodes = 0;
 
@@ -638,15 +634,12 @@ pub const Search = struct {
                     nodes += uci.thinkers[i].nodes;
                     tbhits += uci.thinkers[i].tbhits;
                 }
-                const now = Instant.now() catch |err| {
-                    std.debug.print("Warning: Timer failed to start: {any}\n", .{err});
-                    return;
-                };
-                const time_elapsed = now.since(start);
-                const elapsed_nanos = @as(f64, @floatFromInt(time_elapsed));
-                const elapsed_seconds = elapsed_nanos / 1_000_000_000;
-                const elapsed_ms: u32 = @intFromFloat(elapsed_nanos / 1_000_000);
-                const nps: u46 = @intFromFloat(@as(f64, @floatFromInt(nodes)) / elapsed_seconds);
+                const elapsed_nanos_u64: u64 = self.timer.read();
+                const elapsed_ms: u32 = @intCast(@divTrunc(elapsed_nanos_u64, 1_000_000));
+                // Avoid division by zero; treat <1ms as 1ms
+                const safe_elapsed_ns: u64 = if (elapsed_nanos_u64 == 0) 1 else elapsed_nanos_u64;
+                // nps = nodes / seconds = nodes * 1e9 / ns
+                const nps: u64 = @intCast((@as(u128, nodes) * 1_000_000_000) / @as(u128, safe_elapsed_ns));
 
                 const ebf: f32 = if (it_depth > 1 and prev_non_terminal_nodes > 0)
                     @as(f32, @floatFromInt(self.non_terminal_nodes)) / @as(f32, @floatFromInt(prev_non_terminal_nodes))
