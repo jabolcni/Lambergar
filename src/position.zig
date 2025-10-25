@@ -3293,25 +3293,6 @@ pub const Position = struct {
         }
     }    
 
-    // TODO: think about using this function, which is more general
-    // pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList, comptime noisy: bool) void {
-
-    //     const ctx = self.computeMoveGenContext(Us);
-
-    //     if (ctx.check_count > 0) {
-    //         self.generate_evasions(Us, ctx, list);
-    //         return;
-    //     }
-
-    //     //generate_captures_list(self, Us, list);
-    //     //generate_quiets_list(self, Us, list);
-    //     self.generate_all_captures_no_evasion(Us, ctx, list);
-    //     if (noisy) {
-    //         return;
-    //     } 
-    //     self.generate_all_quiets_no_evasion(Us, ctx, list);
-    //     return;
-    // }    
 
     pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
 

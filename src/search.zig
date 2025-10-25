@@ -666,18 +666,26 @@ pub const Search = struct {
                 // Trim PV at first threefold repetition point to avoid GUI warnings.
                 var next_ply: usize = 0;
                 var pv_side = color;
-                var pv_pos = pos.copy();
+                //var pv_pos = pos.copy();
                 while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
-                    // If threefold is already claimable at current PV state, stop before printing the next move
-                    if (pv_pos.is_repetition()) break;
                     const pv_move = self.pv_table[0][next_ply];
+                    // // Look-ahead: if playing this move would make threefold claimable, stop before printing it
+                    // if (pv_side == Color.White) {
+                    //     pv_pos.play(pv_move, Color.White);
+                    // } else {
+                    //     pv_pos.play(pv_move, Color.Black);
+                    // }
+                    // if (pv_pos.is_repetition()) {
+                    //     // Undo and stop printing further PV moves
+                    //     if (pv_side == Color.White) {
+                    //         pv_pos.undo(pv_move, Color.White);
+                    //     } else {
+                    //         pv_pos.undo(pv_move, Color.Black);
+                    //     }
+                    //     break;
+                    // }
+                    // // Safe to print this move; keep it applied in pv_pos for the next iteration
                     self.print_uci_move(pos, pv_move, pv_side);
-                    // Play on a temp position to detect threefold along PV
-                    if (pv_side == Color.White) {
-                        pv_pos.play(pv_move, Color.White);
-                    } else {
-                        pv_pos.play(pv_move, Color.Black);
-                    }
                     pv_side = pv_side.change_side();
                 }
 
