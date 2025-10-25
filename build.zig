@@ -24,7 +24,6 @@ pub fn build(b: *std.Build) void {
     //const optimize = b.standardOptimizeOption(.{});
     const optimize = .ReleaseFast;
     //const optimize = .Debug;
-    const use_tb = true;
 
     const exe = b.addExecutable(.{
         .name = "lambergar",
@@ -34,20 +33,17 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
-    // Config options (runtime), currently only use_tb is exposed via "config"
-    const options = b.addOptions();
-    options.addOption(bool, "use_tb", use_tb);
-    exe.root_module.addOptions("config", options);
-
     // Build-time options to completely strip debug code in release builds
     const build_options = b.addOptions();
     const opt_castling_debug = b.option(bool, "castling_debug", "Enable verbose Chess960 castling debugging (slow)") orelse false;
     build_options.addOption(bool, "castling_debug", opt_castling_debug);
     const opt_chess960 = b.option(bool, "chess960", "Enable support for Chess960 (Fischer Random Chess)") orelse true;
     build_options.addOption(bool, "chess960", opt_chess960);
+    const opt_use_tb = b.option(bool, "use_tb", "Enable Syzygy tablebase support (adds C tbprobe)") orelse true;
+    build_options.addOption(bool, "use_tb", opt_use_tb);
     exe.root_module.addOptions("build_options", build_options);
 
-    if (use_tb) {
+    if (opt_use_tb) {
         exe.addCSourceFile(.{
             .file = b.path("src/fathom/tbprobe.c"),
             //.flags = &.{ "-std=c99", "-I{d}" }, // -I{d} includes the directory of tbprobe.c, which should contain tbconfig.h

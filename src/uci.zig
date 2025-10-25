@@ -13,7 +13,7 @@ const lists = @import("lists.zig");
 const fathom = @import("fathom.zig");
 const build_options = @import("build_options");
 
-pub const use_tb = @import("config").use_tb;
+pub const use_tb = @import("build_options").use_tb;
 
 const Position = position.Position;
 const Color = position.Color;

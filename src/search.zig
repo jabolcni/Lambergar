@@ -1,4 +1,4 @@
-const std = @import("std");
+﻿const std = @import("std");
 const position = @import("position.zig");
 const ms = @import("movescorer.zig");
 const tt = @import("tt.zig");
@@ -9,7 +9,7 @@ const lists = @import("lists.zig");
 const uci = @import("uci.zig");
 const fathom = @import("fathom.zig");
 
-pub const use_tb = @import("config").use_tb;
+pub const use_tb = @import("build_options").use_tb;
 
 const Instant = std.time.Instant;
 
