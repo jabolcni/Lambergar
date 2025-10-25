@@ -288,7 +288,8 @@ pub const Search = struct {
     fn print_uci_move(self: *Search, pos: *Position, mv: Move, side: Color) void {
         _ = self;
         // In Chess960, UCI requires castling as king-from + rook-from
-        if (pos.is_chess960 and (mv.flags == MoveFlags.OO or mv.flags == MoveFlags.OOO)) {
+        // Only use 960 formatting if GUI requested it via UCI_Chess960
+        if (uci.is_chess960() and (mv.flags == MoveFlags.OO or mv.flags == MoveFlags.OOO)) {
             const ci = side.toU4();
             const rook_sq = if (mv.flags == MoveFlags.OO)
                 pos.castle_rook_k_start[ci]
@@ -667,6 +668,8 @@ pub const Search = struct {
                 var pv_side = color;
                 var pv_pos = pos.copy();
                 while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
+                    // If threefold is already claimable at current PV state, stop before printing the next move
+                    if (pv_pos.is_repetition()) break;
                     const pv_move = self.pv_table[0][next_ply];
                     self.print_uci_move(pos, pv_move, pv_side);
                     // Play on a temp position to detect threefold along PV
@@ -675,8 +678,6 @@ pub const Search = struct {
                     } else {
                         pv_pos.play(pv_move, Color.Black);
                     }
-                    // If the side to move can now claim threefold, stop printing further moves
-                    if (pv_pos.is_repetition()) break;
                     pv_side = pv_side.change_side();
                 }
 
@@ -703,8 +704,8 @@ pub const Search = struct {
         }
 
         if (self.manager.printout) {
-            // Print bestmove with Chess960 UCI formatting if applicable
-            if (pos.is_chess960 and (self.best_move.flags == MoveFlags.OO or self.best_move.flags == MoveFlags.OOO)) {
+            // Print bestmove with Chess960 UCI formatting only if GUI requested 960
+            if (uci.is_chess960() and (self.best_move.flags == MoveFlags.OO or self.best_move.flags == MoveFlags.OOO)) {
                 const ci = color.toU4();
                 const rook_sq = if (self.best_move.flags == MoveFlags.OO)
                     pos.castle_rook_k_start[ci]

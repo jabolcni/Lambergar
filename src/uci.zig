@@ -37,6 +37,10 @@ pub var stdout: *std.Io.Writer = undefined;
 // UCI options
 var uci_chess960: bool = false; // Advertised to GUI; engine supports Chess960 from FEN
 
+pub inline fn is_chess960() bool {
+    return uci_chess960;
+}
+
 const HASH_SIZE_MIN = 1;
 const HASH_SIZE_DEFAULT = 128;
 const HASH_SIZE_MAX = 4096;
