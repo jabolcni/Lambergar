@@ -1,4 +1,4 @@
-const std = @import("std");
+﻿const std = @import("std");
 
 // zig build -Doptimize=ReleaseFast
 // zig build -Dtarget=x86_64-windows -Dcpu=haswell -Doptimize=ReleaseFast
@@ -43,6 +43,8 @@ pub fn build(b: *std.Build) void {
     const build_options = b.addOptions();
     const opt_castling_debug = b.option(bool, "castling_debug", "Enable verbose Chess960 castling debugging (slow)") orelse false;
     build_options.addOption(bool, "castling_debug", opt_castling_debug);
+    const opt_chess960 = b.option(bool, "chess960", "Enable support for Chess960 (Fischer Random Chess)") orelse true;
+    build_options.addOption(bool, "chess960", opt_chess960);
     exe.root_module.addOptions("build_options", build_options);
 
     if (use_tb) {

@@ -1,4 +1,4 @@
-const std = @import("std");
+﻿const std = @import("std");
 const perft = @import("perft.zig");
 const position = @import("position.zig");
 const evaluation = @import("evaluation.zig");
@@ -11,6 +11,7 @@ const nnue = @import("nnue.zig");
 const bb = @import("bitboard.zig");
 const lists = @import("lists.zig");
 const fathom = @import("fathom.zig");
+const build_options = @import("build_options");
 
 pub const use_tb = @import("config").use_tb;
 
@@ -38,7 +39,7 @@ pub var stdout: *std.Io.Writer = undefined;
 var uci_chess960: bool = false; // Advertised to GUI; engine supports Chess960 from FEN
 
 pub inline fn is_chess960() bool {
-    return uci_chess960;
+    return build_options.chess960 and uci_chess960;
 }
 
 const HASH_SIZE_MIN = 1;
@@ -240,7 +241,9 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             printout(stdout, "option name Hash type spin default {d} min {d} max {d}\n", .{ HASH_SIZE_DEFAULT, HASH_SIZE_MIN, HASH_SIZE_MAX });
             printout(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, MAX_THREADS });
             printout(stdout, "option name UseNNUE type check default {}\n", .{nnue.engine_using_nnue});
-            printout(stdout, "option name UCI_Chess960 type check default {}\n", .{uci_chess960});
+            if (build_options.chess960) {
+                printout(stdout, "option name UCI_Chess960 type check default {}\\n", .{uci_chess960});
+            }
             //printout(stdout,"option name EvalFile type string default \n", .{});
             printout(stdout, "option name Debug type check default {}\n", .{debug});
             if (use_tb) {
@@ -356,7 +359,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                             std.debug.print("UseNNue = {}\n", .{nnue.engine_using_nnue});
                         }
                     } else continue;
-                } else if (std.mem.eql(u8, arg, "UCI_Chess960")) {
+                } else if (build_options.chess960 and std.mem.eql(u8, arg, "UCI_Chess960")) {
                     arg = words.next().?;
                     if (std.mem.eql(u8, arg, "value")) {
                         arg = words.next().?;

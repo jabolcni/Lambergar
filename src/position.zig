@@ -1,4 +1,4 @@
-const std = @import("std");
+﻿const std = @import("std");
 const bb = @import("bitboard.zig");
 const zobrist = @import("zobrist.zig");
 const attacks = @import("attacks.zig");
@@ -233,8 +233,8 @@ pub const PieceType = enum(u3) {
 pub const PIECE_STR = "PNBRQK~>pnbrqk.";
 pub const unicodePIECE_STR = &[_][]const u8{
     // zig fmt: off
-    "♟︎", "♞", "♝", "♜", "♛", "♚", "~", ">",
-    "♙", "♘", "♗", "♖", "♕", "♔", ".",
+    "â™źď¸Ž", "â™ž", "â™ť", "â™ś", "â™›", "â™š", "~", ">",
+    "â™™", "â™", "â™—", "â™–", "â™•", "â™”", ".",
     // zig fmt: on
 };
 
@@ -2910,6 +2910,7 @@ pub const Position = struct {
             }
         };
         // Kingside (OO)
+        if (@import("build_options").chess960) {
         if (!classical_oo and (self.history[self.game_ply].castling & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0 and self.castle_rook_k_start[ci] != Square.NO_SQUARE) {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.g1.toU6() else Square.g8.toU6();
@@ -2975,7 +2976,9 @@ pub const Position = struct {
             //         .{ if (Us == .White) "W" else "B", sq_to_coord[rs] });
             }
         }
+        }
         // Queenside (OOO)
+        if (@import("build_options").chess960) {
         if (!classical_ooo and (self.history[self.game_ply].castling & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0 and self.castle_rook_q_start[ci] != Square.NO_SQUARE) {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
@@ -3037,6 +3040,7 @@ pub const Position = struct {
             //     std.debug.print("CASTLE DBG 960-OOO {s}: rs={s} rook_present=false\n",
             //         .{ if (Us == .White) "W" else "B", sq_to_coord[rs] });
             }
+        }
         }
     }
 
@@ -3604,7 +3608,7 @@ test "Test get_fen" {
         "r2qk2r/ppp1b1pp/2n1p3/3pP1n1/3P2b1/2PB1NN1/PP4PP/R1BQK2R w KQkq - 0 1",
         "r1b1kb1r/1p1n1ppp/p2ppn2/6BB/2qNP3/2N5/PPP2PPP/R2Q1RK1 w kq - 0 1",
         "r2qrb1k/1p1b2p1/p2ppn1p/8/3NP3/1BN5/PPP3QP/1K3RR1 w - - 0 1",
-        "rnbqk2r/1p3ppp/p7/1NpPp3/QPP1P1n1/P4N2/4KbPP/R1B2B1R b kq - 0 1", // Removed trailing ÔÉâ
+        "rnbqk2r/1p3ppp/p7/1NpPp3/QPP1P1n1/P4N2/4KbPP/R1B2B1R b kq - 0 1", // Removed trailing Ă”Ă‰Ă˘
         "1r1bk2r/2R2ppp/p3p3/1b2P2q/4QP2/4N3/1B4PP/3R2K1 w k - 0 1",
         "r3rbk1/ppq2ppp/2b1pB2/8/6Q1/1P1B3P/P1P2PP1/R2R2K1 w - - 0 1",
         "r4r1k/4bppb/2n1p2p/p1n1P3/1p1p1BNP/3P1NP1/qP2QPB1/2RR2K1 w - - 0 1",
@@ -4077,6 +4081,6 @@ test "test_movegen_speed" {
     std.debug.print("Total positions tested: {d}\n", .{num_positions});
     std.debug.print("Total time (all positions): {d} ns\n", .{total_time_ns});
     std.debug.print("Average time per position: {d} ns\n", .{avg_time_per_position});
-    //std.debug.print("Average time per position (µs): {d:.2} µs\n", .{@as(f64, @floatFromInt(avg_time_per_position)) / 1000.0});
+    //std.debug.print("Average time per position (Âµs): {d:.2} Âµs\n", .{@as(f64, @floatFromInt(avg_time_per_position)) / 1000.0});
 
 }
