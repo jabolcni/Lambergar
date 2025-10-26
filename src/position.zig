@@ -233,8 +233,8 @@ pub const PieceType = enum(u3) {
 pub const PIECE_STR = "PNBRQK~>pnbrqk.";
 pub const unicodePIECE_STR = &[_][]const u8{
     // zig fmt: off
-    "â™źď¸Ž", "â™ž", "â™ť", "â™ś", "â™›", "â™š", "~", ">",
-    "â™™", "â™", "â™—", "â™–", "â™•", "â™”", ".",
+    "♟︎", "♞", "♝", "♜", "♛", "♚", "~", ">",
+    "♙", "♘", "♗", "♖", "♕", "♔", ".",
     // zig fmt: on
 };
 

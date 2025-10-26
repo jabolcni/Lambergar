@@ -14,7 +14,7 @@ const MoveList = lists.MoveList;
 const PieceList = lists.PieceList;
 
 pub const max_histroy = 1300;
-const history_divider = 7000;
+const history_divider = 8000;
 
 pub const CORRHIST_SIZE = 16384;
 const MAX_CORRHIST = 16384;
