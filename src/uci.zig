@@ -75,8 +75,10 @@ fn warn_fen_castling_inconsistencies(_pos: *Position) void {
     const rights = _pos.history[_pos.game_ply].castling;
 
     // White
+
     if ((rights & Castling.WK.toU4()) != 0) {
         const ks = _pos.castle_king_start[Color.White.toU4()];
+
         const rs = _pos.castle_rook_k_start[Color.White.toU4()];
 
         if (ks == Square.NO_SQUARE or ks.rank_of() != Rank.RANK1 or rs == Square.NO_SQUARE) {
@@ -86,6 +88,7 @@ fn warn_fen_castling_inconsistencies(_pos: *Position) void {
 
     if ((rights & Castling.WQ.toU4()) != 0) {
         const ks = _pos.castle_king_start[Color.White.toU4()];
+
         const rs = _pos.castle_rook_q_start[Color.White.toU4()];
 
         if (ks == Square.NO_SQUARE or ks.rank_of() != Rank.RANK1 or rs == Square.NO_SQUARE) {
@@ -94,8 +97,10 @@ fn warn_fen_castling_inconsistencies(_pos: *Position) void {
     }
 
     // Black
+
     if ((rights & Castling.BK.toU4()) != 0) {
         const ks = _pos.castle_king_start[Color.Black.toU4()];
+
         const rs = _pos.castle_rook_k_start[Color.Black.toU4()];
 
         if (ks == Square.NO_SQUARE or ks.rank_of() != Rank.RANK8 or rs == Square.NO_SQUARE) {
@@ -105,6 +110,7 @@ fn warn_fen_castling_inconsistencies(_pos: *Position) void {
 
     if ((rights & Castling.BQ.toU4()) != 0) {
         const ks = _pos.castle_king_start[Color.Black.toU4()];
+
         const rs = _pos.castle_rook_q_start[Color.Black.toU4()];
 
         if (ks == Square.NO_SQUARE or ks.rank_of() != Rank.RANK8 or rs == Square.NO_SQUARE) {
@@ -141,32 +147,46 @@ fn parse_and_apply_moves(curr_pos: *Position, moves_str: []const u8) !void {
             printout(stdout, "info string Invalid move '{s}': {any}\n", .{ move_tok, err });
 
             if (debug) {
+
                 // Dump side to move and legal moves to pinpoint the failure context
+
                 const side = curr_pos.side_to_play;
+
                 printout(stdout, "info string side to move: {s}\n", .{if (side == Color.White) "white" else "black"});
+
                 var list_dbg: MoveList = .{};
 
                 if (side == Color.White) curr_pos.generate_legals(Color.White, &list_dbg) else curr_pos.generate_legals(Color.Black, &list_dbg);
+
                 printout(stdout, "info string token bytes (len {}): ", .{move_tok.len});
 
                 var i_b: usize = 0;
+
                 while (i_b < move_tok.len) : (i_b += 1) {
                     printout(stdout, "{X:0>2} ", .{move_tok[i_b]});
                 }
 
                 printout(stdout, "\n", .{});
+
                 curr_pos.print_unicode();
+
                 printout(stdout, "info string legal moves ({}):\n", .{list_dbg.count});
 
                 var i: usize = 0;
 
                 while (i < list_dbg.count) : (i += 1) {
                     const m = list_dbg.moves[i];
+
                     const repr = m.to_str();
+
                     const s = if (m.is_promotion()) repr[0..5] else repr[0..4];
+
                     const from_sq = position.Square.fromU6(m.from);
+
                     const to_sq = position.Square.fromU6(m.to);
+
                     const from_pc = curr_pos.board[m.from];
+
                     const to_pc = curr_pos.board[m.to];
 
                     printout(stdout, "info string  #{:>2} {s} flags={} from={s}({c}) to={s}({c})\n", .{ i, s, m.flags.toU4(), position.sq_to_coord[from_sq.toU()], if (from_pc == Piece.NO_PIECE) '.' else position.PIECE_STR[@intFromEnum(from_pc)], position.sq_to_coord[to_sq.toU()], if (to_pc == Piece.NO_PIECE) '.' else position.PIECE_STR[@intFromEnum(to_pc)] });
@@ -200,8 +220,11 @@ pub fn init_all(allocator: std.mem.Allocator) !void {
     }
 
     stdin_reader = std.fs.File.stdin().reader(&buffer);
+
     stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+
     stdin = &stdin_reader.interface;
+
     stdout = &stdout_writer.interface;
 }
 
@@ -209,19 +232,25 @@ pub fn init_all(allocator: std.mem.Allocator) !void {
 
 const windows = if (@import("builtin").os.tag == .windows) @cImport({
     @cDefine("WIN32_LEAN_AND_MEAN", "1");
+
     @cInclude("windows.h");
 }) else struct {};
 
 pub fn uci_loop(allocator: std.mem.Allocator) !void {
     try init_all(allocator);
+
     if (@import("builtin").os.tag == .windows) {
         _ = windows.SetConsoleCP(windows.CP_UTF8);
+
         _ = windows.SetConsoleOutputCP(windows.CP_UTF8);
     }
 
     if (nnue.engine_using_nnue) {
+
         //try nnue.init(allocator);
+
         try nnue.embed_and_init();
+
         nnue.engine_loaded_net = true;
 
         if (debug) {
@@ -230,12 +259,16 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
     }
 
     try tt.TT.init(128 + 1);
+
     defer tt.TT.deinit();
 
     for (0..MAX_THREADS) |i| {
         pos[i] = Position.new();
+
         try pos[i].set(start_position);
+
         thinkers[i] = Search.new();
+
         thinkers[i].clear_for_new_game();
     }
 
@@ -246,13 +279,19 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
     var main_search_thread: ?std.Thread = null;
 
     mainloop: while (true) {
+
         //std.time.sleep(20 * 1000 * 1000);
+
         //std.Thread.sleep(1000);
+
         //const input_full = (try stdin.readUntilDelimiter(&buffer, '\n'));
 
         const input_full = try stdin.takeDelimiterExclusive('\n');
+
         if (input_full.len == 0) continue :mainloop;
+
         const input = std.mem.trimRight(u8, input_full, "\r");
+
         if (input.len == 0) continue :mainloop;
 
         var words = std.mem.splitScalar(u8, input, ' ');
@@ -261,26 +300,40 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
         if (std.mem.eql(u8, command, "uci")) {
             std.debug.print("uci command\n", .{});
+
             printout(stdout, "id name Lambergar 1.4\n", .{});
+
             printout(stdout, "id author Janez Podobnik\n", .{});
+
             printout(stdout, "option name Hash type spin default {d} min {d} max {d}\n", .{ HASH_SIZE_DEFAULT, HASH_SIZE_MIN, HASH_SIZE_MAX });
+
             printout(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, MAX_THREADS });
+
             printout(stdout, "option name UseNNUE type check default {}\n", .{nnue.engine_using_nnue});
+
             if (build_options.chess960) {
-                printout(stdout, "option name UCI_Chess960 type check default {}\n", .{uci_chess960});
+                printout(stdout, "option name UCI_Chess960 type check default {}\\n", .{uci_chess960});
             }
+
             //printout(stdout,"option name EvalFile type string default \n", .{});
+
             printout(stdout, "option name Debug type check default {}\n", .{debug});
+
             if (use_tb) {
                 printout(stdout, "option name SyzygyPath type string default <empty>\n", .{});
+
                 printout(stdout, "option name SyzygyProbeDepth type spin default {d} min {d} max {d}\n", .{ fathom.tb_probe_depth, 0, 127 });
             }
+
             printout(stdout, "uciok\n", .{});
         } else if (std.mem.eql(u8, command, "go")) {
             if (main_search_thread) |thread| {
                 @atomicStore(bool, &thinkers[0].stop, true, .seq_cst);
+
                 thread.join();
+
                 main_search_thread = null;
+
                 @atomicStore(bool, &search_running, false, .seq_cst);
             }
 
@@ -323,8 +376,11 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
             for (1..num_threads) |i| {
                 thinkers[i].manager.termination = search.Termination.INFINITE;
+
                 pos[i] = pos[0].copy();
+
                 const delta: i32 = @as(i32, 5 + @divFloor(@as(i32, @intCast(i)), 2) * 2);
+
                 threads[i] = try std.Thread.spawn(.{}, search.start_search, .{ &thinkers[i], &pos[i], delta });
             }
 
@@ -343,9 +399,13 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
             @atomicStore(bool, &thinkers[0].stop, true, .seq_cst);
         } else if (std.mem.eql(u8, command, "isready")) {
+
             // Reply if engine is idle (no search running)
+
             // or if a stop was explicitly requested.
+
             const running = @atomicLoad(bool, &search_running, .seq_cst);
+
             const stopped = @atomicLoad(bool, &thinkers[0].stop, .seq_cst);
 
             if (!running or stopped or (main_search_thread == null)) {

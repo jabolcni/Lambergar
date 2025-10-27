@@ -836,8 +836,6 @@ pub const Position = struct {
     castle_king_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
     castle_rook_k_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
     castle_rook_q_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
-    // Bitboard of all castling start squares (both sides' king and rook starts)
-    castle_start_mask: u64 = 0,
 
     // Whether this position should export castling rights using Shredder-FEN letters (Chess960/DFRC mode)
     is_chess960: bool = false,
@@ -870,7 +868,6 @@ pub const Position = struct {
         pos.castle_king_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.castle_rook_k_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.castle_rook_q_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
-        pos.castle_start_mask = 0;
 
         pos.is_chess960 = false;
         pos.fullmove_number = 1;
@@ -897,7 +894,6 @@ pub const Position = struct {
             .castle_king_start = from.castle_king_start,
             .castle_rook_k_start = from.castle_rook_k_start,
             .castle_rook_q_start = from.castle_rook_q_start,
-            .castle_start_mask = from.castle_start_mask,
             .is_chess960 = from.is_chess960,
             .fullmove_number = from.fullmove_number,
         };
@@ -1578,7 +1574,7 @@ pub const Position = struct {
         self.history[self.game_ply].accumulator.computed_accumulation = false;
         self.history[self.game_ply].accumulator.computed_score = false;
 
-        if (self.history[self.game_ply].castling > 0 and (update_entry & self.castle_start_mask) != 0) {
+        if ((self.history[self.game_ply].castling > 0) ){
             var new_rights: u4 = self.history[self.game_ply].castling;
             // White: king moved from its original square disables both; rooks disable respective side
             if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()]) != 0) {
@@ -2243,18 +2239,6 @@ pub const Position = struct {
         if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE)
             dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()];
         self.history[self.game_ply].entry = dynamic_all_castle_mask;
-        // Save union of all castle start squares for fast rights updates during play
-        var csm: u64 = 0;
-        inline for (.{ Color.White, Color.Black }, 0..) |c, ci2| {
-            _ = c;
-            if (self.castle_king_start[ci2] != Square.NO_SQUARE)
-                csm |= SQUARE_BB[self.castle_king_start[ci2].toU6()];
-            if (self.castle_rook_k_start[ci2] != Square.NO_SQUARE)
-                csm |= SQUARE_BB[self.castle_rook_k_start[ci2].toU6()];
-            if (self.castle_rook_q_start[ci2] != Square.NO_SQUARE)
-                csm |= SQUARE_BB[self.castle_rook_q_start[ci2].toU6()];
-        }
-        self.castle_start_mask = csm;
 
         for (castling_fen) |cf| {
             switch (cf) {
@@ -2875,18 +2859,12 @@ pub const Position = struct {
 
     fn generate_castling_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void { // captures are quiet moves
         const ci: usize = Us.toU4();
-        const rights: u4 = self.history[self.game_ply].castling;
-        const need_k: u4 = if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4();
-        const need_q: u4 = if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4();
-        // Quick exit if this side has no castling rights
-        if ((rights & (need_k | need_q)) == 0) return;
-
         const std_ks = if (Us == .White) Square.e1.toU6() else Square.e8.toU6();
         const std_rk = if (Us == .White) Square.h1.toU6() else Square.h8.toU6();
         const std_rq = if (Us == .White) Square.a1.toU6() else Square.a8.toU6();
         // Classical when king/rook are on standard squares (use board presence to be robust)
-        const classical_oo = ((rights & need_k) != 0) and (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rk] == Piece.new(Us, PieceType.Rook));
-        const classical_ooo = ((rights & need_q) != 0) and (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rq] == Piece.new(Us, PieceType.Rook));
+        const classical_oo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rk] == Piece.new(Us, PieceType.Rook));
+        const classical_ooo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rq] == Piece.new(Us, PieceType.Rook));
 
         // Classical kingside
         if (classical_oo and ((self.history[self.game_ply].castling & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0)) {
@@ -2933,7 +2911,7 @@ pub const Position = struct {
         };
         // Kingside (OO)
         if (@import("build_options").chess960) {
-        if (!classical_oo and (rights & need_k) != 0 and self.castle_rook_k_start[ci] != Square.NO_SQUARE) {
+        if (!classical_oo and (self.history[self.game_ply].castling & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0 and self.castle_rook_k_start[ci] != Square.NO_SQUARE) {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.g1.toU6() else Square.g8.toU6();
             const rs = self.castle_rook_k_start[ci].toU6();
@@ -3001,7 +2979,7 @@ pub const Position = struct {
         }
         // Queenside (OOO)
         if (@import("build_options").chess960) {
-        if (!classical_ooo and (rights & need_q) != 0 and self.castle_rook_q_start[ci] != Square.NO_SQUARE) {
+        if (!classical_ooo and (self.history[self.game_ply].castling & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0 and self.castle_rook_q_start[ci] != Square.NO_SQUARE) {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
             const rs = self.castle_rook_q_start[ci].toU6();
