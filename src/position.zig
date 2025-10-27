@@ -1461,25 +1461,6 @@ pub const Position = struct {
         return bb.pop_count(pieces);
     }
 
-    // This is old version of is_insufficient_material:
-    // TODO: write zig test to test the new version of function
-    // pub inline fn is_insufficient_material(self: *Position) bool {
-    //     const remaining_pieces = self.all_pieces(Color.White) | self.all_pieces(Color.Black);
-    //     const white_bishop = self.piece_bb[Piece.WHITE_BISHOP.toU4()];
-    //     const black_bishop = self.piece_bb[Piece.BLACK_BISHOP.toU4()];
-    //     const white_knight = self.piece_bb[Piece.WHITE_KNIGHT.toU4()];
-    //     const black_knight = self.piece_bb[Piece.BLACK_KNIGHT.toU4()];
-
-    //     const piece_cnt = bb.pop_count(remaining_pieces);
-
-    //     if (piece_cnt == 2) {
-    //         return true;
-    //     }
-
-    //     return (piece_cnt == 3 and ((remaining_pieces & (white_bishop | black_bishop | white_knight | black_knight)) != 0));
-
-    // }
-
     pub inline fn is_insufficient_material(self: *Position) bool {
         const white_king_sq = self.bitboard_of_pt(Color.White, PieceType.King);
         const black_king_sq = self.bitboard_of_pt(Color.Black, PieceType.King);
