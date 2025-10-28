@@ -215,8 +215,8 @@ fn encode_move16(mv: Move) u16 {
 }
 
 pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: GenConfig) !void {
-    const now = std.time.nanoTimestamp();
-    const now_bits: u128 = @bitCast(now);
+    const start_ns: i128 = std.time.nanoTimestamp();
+    const now_bits: u128 = @bitCast(start_ns);
     const seed: u64 = @truncate(now_bits);
     var prng = std.Random.DefaultPrng.init(seed);
     const rng = prng.random();
@@ -311,7 +311,12 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
             try bw.write_packed(&e.sfen32, e.score_cp, e.move16, e.ply, gr);
             total_positions += 1;
             if (total_positions % 1000 == 0) {
-                uci.printout(uci.stdout, "info string datagen progress games={} positions={}\n", .{ games_count, total_positions });
+                const elapsed_ns = std.time.nanoTimestamp() - start_ns;
+                const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ns)) / 1_000_000_000.0;
+                const avg_per_k: f64 = if (total_positions > 0)
+                    elapsed_s / (@as(f64, @floatFromInt(total_positions)) / 1000.0)
+                else 0.0;
+                uci.printout(uci.stdout, "info string datagen progress games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s, avg_per_k });
             }
         }
 
@@ -319,7 +324,12 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
         games_count += 1;
     }
 
-    uci.printout(uci.stdout, "info string datagen summary games={} positions={}\n", .{ games_count, total_positions });
+    const elapsed_ns2 = std.time.nanoTimestamp() - start_ns;
+    const elapsed_s2: f64 = @as(f64, @floatFromInt(elapsed_ns2)) / 1_000_000_000.0;
+    const avg_per_k2: f64 = if (total_positions > 0)
+        elapsed_s2 / (@as(f64, @floatFromInt(total_positions)) / 1000.0)
+    else 0.0;
+    uci.printout(uci.stdout, "info string datagen summary games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s2, avg_per_k2 });
 }
 
 fn record_position(
@@ -421,6 +431,7 @@ pub fn generate_to_sfen_text(
     out_path: []const u8,
     cfg: GenConfig,
 ) !void {
+    const start_ns: i128 = std.time.nanoTimestamp();
     const now = std.time.nanoTimestamp();
     const now_bits: u128 = @bitCast(now);
     const seed: u64 = @truncate(now_bits);
@@ -575,6 +586,11 @@ pub fn generate_to_sfen_text(
         _ = gi; // unused id for now
     }
 
-    // Print summary
-    uci.printout(uci.stdout, "info string datagen summary games={} positions={}\n", .{ games_count, total_positions });
+    // Print summary with timing
+    const elapsed_ns = std.time.nanoTimestamp() - start_ns;
+    const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ns)) / 1_000_000_000.0;
+    const avg_per_k: f64 = if (total_positions > 0)
+        elapsed_s / (@as(f64, @floatFromInt(total_positions)) / 1000.0)
+    else 0.0;
+    uci.printout(uci.stdout, "info string datagen summary games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s, avg_per_k });
 }
