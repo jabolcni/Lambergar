@@ -7,6 +7,7 @@ const attacks = @import("attacks.zig");
 const zobrist = @import("zobrist.zig");
 const search = @import("search.zig");
 const ms = @import("movescorer.zig");
+const datagen = @import("datagen.zig");
 const nnue = @import("nnue.zig");
 const bb = @import("bitboard.zig");
 const lists = @import("lists.zig");
@@ -760,6 +761,69 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             const depth = try u32_from_str(words.next() orelse "1");
 
             perft.perft_test_with_stats(&pos[0], @as(u4, @intCast(depth)));
+        } else if (std.mem.eql(u8, command, "datagen")) {
+            // Usage: datagen games N out PATH [depth D] [plies P] [random FIRST NEXT] [debug] [strict] [bin BINPATH] [skipnoisy] [output_file_name NAME]
+            var cfg: datagen.GenConfig = .{};
+            var out_path: ?[]const u8 = null;
+
+            while (words.next()) |arg| {
+                if (std.mem.eql(u8, arg, "games")) {
+                    if (words.next()) |n_tok| cfg.games = usize_from_str(n_tok) catch cfg.games;
+                } else if (std.mem.eql(u8, arg, "out")) {
+                    out_path = words.next() orelse out_path;
+                } else if (std.mem.eql(u8, arg, "depth")) {
+                    if (words.next()) |d_tok| cfg.best_depth = @as(u32, @intCast(usize_from_str(d_tok) catch cfg.best_depth));
+                } else if (std.mem.eql(u8, arg, "plies")) {
+                    if (words.next()) |p_tok| cfg.max_plies = usize_from_str(p_tok) catch cfg.max_plies;
+                } else if (std.mem.eql(u8, arg, "random")) {
+                    // random FIRST NEXT
+                    if (words.next()) |f_tok| cfg.first_random = usize_from_str(f_tok) catch cfg.first_random;
+                    if (words.next()) |n_tok| cfg.next_mixed = usize_from_str(n_tok) catch cfg.next_mixed;
+                } else if (std.mem.eql(u8, arg, "debug")) {
+                    cfg.debug = true;
+                } else if (std.mem.eql(u8, arg, "strict")) {
+                    cfg.strict = true;
+                } else if (std.mem.eql(u8, arg, "bin")) {
+                    cfg.bin_path = words.next() orelse cfg.bin_path;
+                } else if (std.mem.eql(u8, arg, "skipnoisy")) {
+                    cfg.skip_noisy = true;
+                } else if (std.mem.eql(u8, arg, "output_file_name")) {
+                    if (words.next()) |nm| cfg.output_file_name = nm;
+                } else if (std.mem.eql(u8, arg, "random_min_ply")) {
+                    if (words.next()) |v| cfg.random_min_ply = usize_from_str(v) catch cfg.random_min_ply;
+                } else if (std.mem.eql(u8, arg, "random_50_ply")) {
+                    if (words.next()) |v| cfg.random_50_ply = usize_from_str(v) catch cfg.random_50_ply;
+                } else if (std.mem.eql(u8, arg, "random_10_ply")) {
+                    if (words.next()) |v| cfg.random_10_ply = usize_from_str(v) catch cfg.random_10_ply;
+                } else if (std.mem.eql(u8, arg, "random_move_count")) {
+                    if (words.next()) |v| cfg.random_move_count = usize_from_str(v) catch cfg.random_move_count;
+                } else if (std.mem.eql(u8, arg, "save_min_ply")) {
+                    if (words.next()) |v| cfg.save_min_ply = usize_from_str(v) catch cfg.save_min_ply;
+                } else if (std.mem.eql(u8, arg, "save_max_ply")) {
+                    if (words.next()) |v| cfg.save_max_ply = usize_from_str(v) catch cfg.save_max_ply;
+                } else if (std.mem.eql(u8, arg, "adjudicate_draws_by_score")) {
+                    cfg.adjudicate_draws_by_score = true;
+                } else if (std.mem.eql(u8, arg, "adjudicate_draws_by_insufficient_mating_material")) {
+                    cfg.adjudicate_draws_by_insufficient_mating_material = true;
+                }
+            }
+
+            // Derive outputs from output_file_name if not explicitly provided
+            if (out_path == null) {
+                // Default SFEN path
+                out_path = std.fmt.allocPrint(allocator, "{s}.sfen", .{cfg.output_file_name}) catch out_path;
+            }
+            if (cfg.bin_path == null and cfg.output_file_name.len > 0) {
+                // If user didn't pass bin path but wants bin later, they can set bin flag; we keep null here.
+                // No-op: leave cfg.bin_path as is unless already set.
+            }
+
+            printout(stdout, "info string datagen start games={} depth={} plies={} out={s} bin={s}\n", .{ cfg.games, cfg.best_depth, cfg.max_plies, out_path.?, if (cfg.bin_path) |bp| bp else "<none>" });
+            datagen.generate_to_sfen_text(std.heap.c_allocator, out_path.?, cfg) catch |err| {
+                printout(stdout, "info string datagen failed: {any}\n", .{err});
+                continue;
+            };
+            printout(stdout, "info string datagen done\n", .{});
         } else if (std.mem.eql(u8, command, "castledbg")) {
             if (pos[0].side_to_play == Color.White) {
                 pos[0].debug_castling(Color.White);
@@ -1415,6 +1479,25 @@ pub fn perft_test(allocator: std.mem.Allocator) !void {
             }
         }
     }
+}
+
+pub fn run_datagen(allocator: std.mem.Allocator, out_path: []const u8, cfg: datagen.GenConfig) !void {
+    // For datagen, enable NNUE if available and initialize it explicitly
+    // so that search/eval matches normal UCI runs.
+    nnue.engine_using_nnue = true;
+    try nnue.embed_and_init();
+    nnue.engine_loaded_net = true;
+
+    try init_all(allocator);
+
+    try tt.TT.init(128 + 1);
+    defer tt.TT.deinit();
+
+    // Prepare a base position to ensure tables, etc., are sane
+    var tmp = Position.new();
+    try tmp.set(start_position);
+
+    try datagen.generate_to_sfen_text(allocator, out_path, cfg);
 }
 
 test "perft for positions" {

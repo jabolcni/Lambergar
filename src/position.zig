@@ -3075,13 +3075,13 @@ pub const Position = struct {
         // Map k_idx to combination (i<j) over 5 elements in lexicographic order
         var first: usize = 0;
         while (true) {
-            const cnt = 4 - first; // choices for second
+            const cnt: u16 = @intCast(4 - first); // choices for second
             if (k_idx >= cnt) {
-                k_idx -= cnt;
+                k_idx -%= cnt;
                 first += 1;
             } else break;
         }
-        const second: usize = first + 1 + k_idx;
+        const second: usize = first + 1 + @as(usize, @intCast(k_idx));
         back[empty[first]] = 'N';
         back[empty[second]] = 'N';
 
