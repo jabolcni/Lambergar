@@ -65,11 +65,10 @@ pub const Bin40Writer = struct {
     }
 
     fn encode_move16(mv: Move) u16 {
-        // Stockfish move encoding expects: to in low 6, from in next 6, promo in high 4.
-        // promo: 0 none, 1=N, 2=B, 3=R, 4=Q
+        // from:6, to:6, promo:4 (0 none, 1=N,2=B,3=R,4=Q)
         var code: u16 = 0;
-        code |= @as(u16, mv.to & 0x3F);
-        code |= (@as(u16, mv.from & 0x3F)) << 6;
+        code |= @as(u16, mv.from & 0x3F);
+        code |= (@as(u16, mv.to & 0x3F)) << 6;
         var promo: u16 = 0;
         if (mv.is_promotion()) {
             const pt = mv.flags.promote_type();
@@ -127,7 +126,6 @@ pub const Bin40Writer = struct {
         }
         bs_write_n(data, &bit_cursor, @as(u32, @intCast(wk)), 6);
         bs_write_n(data, &bit_cursor, @as(u32, @intCast(bk)), 6);
-
 
         var r: i32 = 7;
         while (r >= 0) : (r -= 1) {
