@@ -82,6 +82,8 @@ pub fn main() !void {
                     dg_cfg.adjudicate_draws_by_score = true;
                 } else if (std.mem.eql(u8, a, "adjudicate_draws_by_insufficient_mating_material")) {
                     dg_cfg.adjudicate_draws_by_insufficient_mating_material = true;
+                } else if (std.mem.eql(u8, a, "bin_only")) {
+                    dg_cfg.bin_only = true;
                 } else {
                     // stop parsing at unknown token to allow other modes
                     break;

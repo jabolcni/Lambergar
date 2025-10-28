@@ -233,7 +233,7 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
         set_start_position(rng, &pos, variant);
 
         var entries = try std.ArrayList(BinEntry).initCapacity(allocator, 128);
-        defer entries.deinit();
+        defer entries.deinit(allocator);
 
         var ply: usize = 0;
         var random_used: usize = 0;
@@ -274,7 +274,7 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
             // Save only within save_min_ply..save_max_ply and optionally skip noisy bms
             if (pos.game_ply >= cfg.save_min_ply and pos.game_ply <= cfg.save_max_ply and !(cfg.skip_noisy and bm.is_tactical())) {
                 var s32: [32]u8 = undefined;
-                binw.Bin40Writer.pack_sfen32(&pos, &s32);
+                binw.pack_sfen32(&pos, &s32);
                 const be = BinEntry{
                     .sfen32 = s32,
                     .move16 = encode_move16(bm), // BIN stores best move
@@ -282,7 +282,7 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
                     .ply = @intCast(pos.game_ply),
                     .stm_white = (pos.side_to_play == Color.White),
                 };
-                try entries.append(be);
+                try entries.append(allocator, be);
             }
 
             if (pos.side_to_play == Color.White) pos.play(mv, Color.White) else pos.play(mv, Color.Black);
@@ -309,6 +309,10 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
             var gr: i8 = 0;
             if (result_white >= 0.75) gr = if (e.stm_white) 1 else -1 else if (result_white <= 0.25) gr = if (e.stm_white) -1 else 1 else gr = 0;
             try bw.write_packed(&e.sfen32, e.score_cp, e.move16, e.ply, gr);
+            total_positions += 1;
+            if (total_positions % 1000 == 0) {
+                uci.printout(uci.stdout, "info string datagen progress games={} positions={}\n", .{ games_count, total_positions });
+            }
         }
 
         total_positions += entries.items.len;
@@ -409,6 +413,7 @@ pub const GenConfig = struct {
     save_max_ply: usize = 400,
     adjudicate_draws_by_score: bool = true,
     adjudicate_draws_by_insufficient_mating_material: bool = true,
+    bin_only: bool = false,
 };
 
 pub fn generate_to_sfen_text(

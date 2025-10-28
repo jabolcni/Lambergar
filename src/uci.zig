@@ -762,7 +762,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
             perft.perft_test_with_stats(&pos[0], @as(u4, @intCast(depth)));
         } else if (std.mem.eql(u8, command, "datagen")) {
-            // Usage: datagen games N out PATH [depth D] [plies P] [random FIRST NEXT] [debug] [strict] [bin BINPATH] [skipnoisy] [output_file_name NAME]
+            // Usage: datagen games N out PATH [depth D] [plies P] [random FIRST NEXT] [debug] [strict] [bin BINPATH] [skipnoisy] [output_file_name NAME] [bin_only]
             var cfg: datagen.GenConfig = .{};
             var out_path: ?[]const u8 = null;
 
@@ -805,6 +805,8 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     cfg.adjudicate_draws_by_score = true;
                 } else if (std.mem.eql(u8, arg, "adjudicate_draws_by_insufficient_mating_material")) {
                     cfg.adjudicate_draws_by_insufficient_mating_material = true;
+                } else if (std.mem.eql(u8, arg, "bin_only")) {
+                    cfg.bin_only = true;
                 }
             }
 
@@ -818,11 +820,18 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                 // No-op: leave cfg.bin_path as is unless already set.
             }
 
-            printout(stdout, "info string datagen start games={} depth={} plies={} out={s} bin={s}\n", .{ cfg.games, cfg.best_depth, cfg.max_plies, out_path.?, if (cfg.bin_path) |bp| bp else "<none>" });
-            datagen.generate_to_sfen_text(std.heap.c_allocator, out_path.?, cfg) catch |err| {
-                printout(stdout, "info string datagen failed: {any}\n", .{err});
-                continue;
-            };
+            printout(stdout, "info string datagen start games={} depth={} plies={} out={s} bin={s} mode={s}\n", .{ cfg.games, cfg.best_depth, cfg.max_plies, out_path.?, if (cfg.bin_path) |bp| bp else "<none>", if (cfg.bin_only) "bin-only" else "sfen+bin" });
+            if (cfg.bin_only and cfg.bin_path != null) {
+                datagen.generate_binary(std.heap.c_allocator, cfg.bin_path.?, cfg) catch |err| {
+                    printout(stdout, "info string datagen failed: {any}\n", .{err});
+                    continue;
+                };
+            } else {
+                datagen.generate_to_sfen_text(std.heap.c_allocator, out_path.?, cfg) catch |err| {
+                    printout(stdout, "info string datagen failed: {any}\n", .{err});
+                    continue;
+                };
+            }
             printout(stdout, "info string datagen done\n", .{});
         } else if (std.mem.eql(u8, command, "castledbg")) {
             if (pos[0].side_to_play == Color.White) {

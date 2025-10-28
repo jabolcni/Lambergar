@@ -4,6 +4,58 @@ const position = @import("position.zig");
 const Position = position.Position;
 const Move = position.Move;
 const Piece = position.Piece;
+// Pack the current Position into a 32-byte PackedSfen buffer (NNUE format)
+pub fn pack_sfen32(pos: *Position, out: *[32]u8) void {
+    var data = out[0..];
+    var zi: usize = 0;
+    while (zi < data.len) : (zi += 1) data[zi] = 0;
+    var bit_cursor: usize = 0;
+    // Side to move: W=0, B=1
+    bs_write_one(data, &bit_cursor, pos.side_to_play == position.Color.Black);
+    // King squares (6 bits each)
+    var wk: i32 = -1;
+    var bk: i32 = -1;
+    var idx: usize = 0;
+    while (idx < 64) : (idx += 1) {
+        const pc = pos.board[idx];
+        if (pc == Piece.WHITE_KING) wk = @intCast(idx);
+        if (pc == Piece.BLACK_KING) bk = @intCast(idx);
+    }
+    bs_write_n(data, &bit_cursor, @as(u32, @intCast(wk)), 6);
+    bs_write_n(data, &bit_cursor, @as(u32, @intCast(bk)), 6);
+    // Pieces excluding kings: rank8..rank1, fileA..fileH
+    var r: i32 = 7;
+    while (r >= 0) : (r -= 1) {
+        var f: usize = 0;
+        while (f < 8) : (f += 1) {
+            const sq: usize = @as(usize, @intCast(r)) * 8 + f;
+            const pc = pos.board[sq];
+            if (pc == Piece.WHITE_KING or pc == Piece.BLACK_KING) continue;
+            huff_write_piece(data, &bit_cursor, pc);
+        }
+    }
+    // Castling: Wk, Wq, Bk, Bq (1 bit each)
+    const cr_mask: u8 = pos.history[pos.game_ply].castling;
+    bs_write_one(data, &bit_cursor, (cr_mask & position.Castling.WK.toU4()) != 0);
+    bs_write_one(data, &bit_cursor, (cr_mask & position.Castling.WQ.toU4()) != 0);
+    bs_write_one(data, &bit_cursor, (cr_mask & position.Castling.BK.toU4()) != 0);
+    bs_write_one(data, &bit_cursor, (cr_mask & position.Castling.BQ.toU4()) != 0);
+    // EP presence + 6 bits
+    const epsq = pos.history[pos.game_ply].epsq;
+    if (epsq == position.Square.NO_SQUARE) {
+        bs_write_one(data, &bit_cursor, false);
+    } else {
+        bs_write_one(data, &bit_cursor, true);
+        bs_write_n(data, &bit_cursor, @as(u32, epsq.toU6()), 6);
+    }
+    // rule50 low6, fullmove low8, fullmove high8, rule50 high1
+    const rule50: u16 = pos.history[pos.game_ply].fifty;
+    const fm: u16 = @intCast(pos.fullmove_number);
+    bs_write_n(data, &bit_cursor, @as(u32, rule50 & 0x3F), 6);
+    bs_write_n(data, &bit_cursor, @as(u32, fm & 0xFF), 8);
+    bs_write_n(data, &bit_cursor, @as(u32, (fm >> 8) & 0xFF), 8);
+    bs_write_n(data, &bit_cursor, @as(u32, (rule50 >> 6) & 0x1), 1);
+}
 
 inline fn bs_write_one(data: []u8, bit_cursor_ptr: *usize, b: bool) void {
     const byte_index: usize = bit_cursor_ptr.* / 8;
@@ -52,6 +104,22 @@ pub const Bin40Writer = struct {
     pub fn open(path: []const u8) !Bin40Writer {
         const f = try std.fs.cwd().createFile(path, .{ .read = false, .truncate = true });
         return .{ .file = f };
+    }
+
+    pub fn write_packed(self: *Bin40Writer, sfen32: *const [32]u8, score_cp: i32, move16: u16, game_ply: u16, game_result: i8) !void {
+        var buf: [40]u8 = [_]u8{0} ** 40;
+        @memcpy(buf[0..32], sfen32);
+        const cp = clamp_cp(score_cp);
+        const cp_u16: u16 = @bitCast(cp);
+        buf[32] = @as(u8, @truncate(cp_u16));
+        buf[33] = @as(u8, @truncate(cp_u16 >> 8));
+        buf[34] = @as(u8, @truncate(move16));
+        buf[35] = @as(u8, @truncate(move16 >> 8));
+        buf[36] = @as(u8, @truncate(game_ply));
+        buf[37] = @as(u8, @truncate(game_ply >> 8));
+        buf[38] = @bitCast(game_result);
+        buf[39] = 0;
+        try self.file.writeAll(&buf);
     }
 
     pub fn close(self: *Bin40Writer) void {
@@ -195,3 +263,4 @@ pub const Bin40Writer = struct {
         try self.file.writeAll(&buf);
     }
 };
+
