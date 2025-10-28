@@ -271,8 +271,8 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
             }
             const mv = chosen orelse break;
 
-            // Save only within save_min_ply..save_max_ply and optionally skip noisy bms
-            if (pos.game_ply >= cfg.save_min_ply and pos.game_ply <= cfg.save_max_ply and !(cfg.skip_noisy and bm.is_tactical())) {
+            // Save only within window; skip noisy, in-check, or mate-in-N positions
+            if (pos.game_ply >= cfg.save_min_ply and pos.game_ply <= cfg.save_max_ply and !(cfg.skip_noisy and bm.is_tactical()) and !is_any_check(&pos) and best.dm == 0) {
                 var s32: [32]u8 = undefined;
                 binw.pack_sfen32(&pos, &s32);
                 const be = BinEntry{
@@ -371,6 +371,11 @@ fn is_terminal(pos: *Position) bool {
     if (list.count == 0) return true; // checkmate/stalemate
     if (pos.is_draw()) return true; // repetition/50-move
     return false;
+}
+
+fn is_any_check(pos: *Position) bool {
+    // Skip saving positions when any king is currently in check
+    return pos.in_check(Color.White) or pos.in_check(Color.Black);
 }
 
 fn set_start_position(rng: anytype, pos: *Position, variant: StartVariant) void {
@@ -499,8 +504,8 @@ pub fn generate_to_sfen_text(
             }
 
             const mv = chosen orelse break;
-            // Conditionally save by ply window and skip noisy
-            if (pos.game_ply >= cfg.save_min_ply and pos.game_ply <= cfg.save_max_ply and !(cfg.skip_noisy and bm.is_tactical())) {
+            // Conditionally save by ply window; skip noisy, in-check, or mate-in-N
+            if (pos.game_ply >= cfg.save_min_ply and pos.game_ply <= cfg.save_max_ply and !(cfg.skip_noisy and bm.is_tactical()) and !is_any_check(&pos) and bm_dm == 0) {
                 // record current position, bm and actual
                 try record_position(allocator, &game, &pos, bm, bm_nodes, bm_score, bm_dm, mv, cfg.best_depth);
                 total_positions += 1;
@@ -594,3 +599,4 @@ pub fn generate_to_sfen_text(
     else 0.0;
     uci.printout(uci.stdout, "info string datagen summary games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s, avg_per_k });
 }
+
