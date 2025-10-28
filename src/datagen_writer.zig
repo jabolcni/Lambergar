@@ -65,10 +65,10 @@ pub const Bin40Writer = struct {
     }
 
     fn encode_move16(mv: Move) u16 {
-        // from:6, to:6, promo:4 (0 none, 1=N,2=B,3=R,4=Q)
+        // Stockfish packed move used by many tooling: to in low 6, from in next 6, promo in high 4
         var code: u16 = 0;
-        code |= @as(u16, mv.from & 0x3F);
-        code |= (@as(u16, mv.to & 0x3F)) << 6;
+        code |= @as(u16, mv.to & 0x3F);
+        code |= (@as(u16, mv.from & 0x3F)) << 6;
         var promo: u16 = 0;
         if (mv.is_promotion()) {
             const pt = mv.flags.promote_type();
