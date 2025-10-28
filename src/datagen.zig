@@ -488,10 +488,14 @@ pub fn generate_to_sfen_text(
             }
 
             const mv = chosen orelse break;
-            // Conditionally skip saving if best move is noisy (capture/promotion)
-            if (!(cfg.skip_noisy and bm.is_tactical())) {
+            // Conditionally save by ply window and skip noisy
+            if (pos.game_ply >= cfg.save_min_ply and pos.game_ply <= cfg.save_max_ply and !(cfg.skip_noisy and bm.is_tactical())) {
                 // record current position, bm and actual
                 try record_position(allocator, &game, &pos, bm, bm_nodes, bm_score, bm_dm, mv, cfg.best_depth);
+                total_positions += 1;
+                if (total_positions % 1000 == 0) {
+                    uci.printout(uci.stdout, "info string datagen progress games={} positions={}\n", .{ games_count, total_positions });
+                }
             }
             if (cfg.debug) {
                 var mbuf: [5]u8 = undefined;
