@@ -155,23 +155,52 @@ pub const Bin40Writer = struct {
         return @as(u4, pc.toU4());
     }
 
-    fn encode_move16(mv: Move) u16 {
-        // Stockfish packed move used by many tooling: to in low 6, from in next 6, promo in high 4
+    // fn encode_move16(mv: Move) u16 {
+    //     // Stockfish packed move used by many tooling: to in low 6, from in next 6, promo in high 4
+    //     var code: u16 = 0;
+    //     code |= @as(u16, mv.to & 0x3F);
+    //     code |= (@as(u16, mv.from & 0x3F)) << 6;
+    //     var promo: u16 = 0;
+    //     if (mv.is_promotion()) {
+    //         const pt = mv.flags.promote_type();
+    //         promo = switch (pt) {
+    //             .Knight => 1,
+    //             .Bishop => 2,
+    //             .Rook => 3,
+    //             .Queen => 4,
+    //             else => 0,
+    //         };
+    //     }
+    //     code |= (promo & 0xF) << 12;
+    //     return code;
+    // }
+    pub fn encode_move16(mv: Move) u16 {
+        // Stockfish packed move: to in low 6, from in next 6, promo in bits 12-13, flags in bits 14-15
         var code: u16 = 0;
         code |= @as(u16, mv.to & 0x3F);
         code |= (@as(u16, mv.from & 0x3F)) << 6;
+
         var promo: u16 = 0;
+        var flags: u16 = 0;
+
         if (mv.is_promotion()) {
             const pt = mv.flags.promote_type();
             promo = switch (pt) {
-                .Knight => 1,
-                .Bishop => 2,
-                .Rook => 3,
-                .Queen => 4,
+                .Knight => 0,
+                .Bishop => 1,
+                .Rook => 2,
+                .Queen => 3,
                 else => 0,
             };
+            flags = 1; // promotion flag
+        } else if (mv.flags == position.MoveFlags.EN_PASSANT) {
+            flags = 2; // en passant flag
+        } else if (mv.flags == position.MoveFlags.OO or mv.flags == position.MoveFlags.OOO) {
+            flags = 3; // castling flag
         }
-        code |= (promo & 0xF) << 12;
+
+        code |= (promo & 0x3) << 12;
+        code |= (flags & 0x3) << 14;
         return code;
     }
 

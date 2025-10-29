@@ -149,25 +149,7 @@ fn repetition_count(pos: *Position) u16 {
     return if (count == 0) 0 else count - 1;
 }
 
-fn encode_move16(mv: Move) u16 {
-    // Stockfish move: to in low 6, from in next 6, promo high 4 bits
-    var code: u16 = 0;
-    code |= @as(u16, mv.to & 0x3F);
-    code |= (@as(u16, mv.from & 0x3F)) << 6;
-    var promo: u16 = 0;
-    if (mv.is_promotion()) {
-        const pt = mv.flags.promote_type();
-        promo = switch (pt) {
-            .Knight => 1,
-            .Bishop => 2,
-            .Rook => 3,
-            .Queen => 4,
-            else => 0,
-        };
-    }
-    code |= (promo & 0xF) << 12;
-    return code;
-}
+// move16 encoding centralized in datagen_writer.encode_move16
 
 pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: GenConfig) !void {
     const start_ns: i128 = std.time.nanoTimestamp();
@@ -250,7 +232,7 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
                 binw.pack_sfen32(&pos, &s32);
                 const be = BinEntry{
                     .sfen32 = s32,
-                    .move16 = encode_move16(bm), // BIN stores best move
+                    .move16 = binw.Bin40Writer.encode_move16(bm), // BIN stores best move
                     .score_cp = best.score,
                     .ply = @intCast(pos.game_ply),
                     .stm_white = (pos.side_to_play == Color.White),
