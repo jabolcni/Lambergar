@@ -7,8 +7,7 @@ const Piece = position.Piece;
 // Pack the current Position into a 32-byte PackedSfen buffer (NNUE format)
 pub fn pack_sfen32(pos: *Position, out: *[32]u8) void {
     var data = out[0..];
-    var zi: usize = 0;
-    while (zi < data.len) : (zi += 1) data[zi] = 0;
+    @memset(data, 0);
     var bit_cursor: usize = 0;
     // Side to move: W=0, B=1
     bs_write_one(data, &bit_cursor, pos.side_to_play == position.Color.Black);
@@ -100,10 +99,13 @@ inline fn huff_write_piece(data: []u8, bit_cursor_ptr: *usize, pc: Piece) void {
 
 pub const Bin40Writer = struct {
     file: std.fs.File,
+    bufw: std.io.BufferedWriter(4096, std.fs.File.Writer),
+    w: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer,
 
     pub fn open(path: []const u8) !Bin40Writer {
         const f = try std.fs.cwd().createFile(path, .{ .read = false, .truncate = true });
-        return .{ .file = f };
+        var bufw = std.io.bufferedWriter(f.writer());
+        return .{ .file = f, .bufw = bufw, .w = bufw.writer() };
     }
 
     pub fn write_packed(self: *Bin40Writer, sfen32: *const [32]u8, score_cp: i32, move16: u16, game_ply: u16, game_result: i8) !void {
@@ -119,10 +121,12 @@ pub const Bin40Writer = struct {
         buf[37] = @as(u8, @truncate(game_ply >> 8));
         buf[38] = @bitCast(game_result);
         buf[39] = 0;
-        try self.file.writeAll(&buf);
+        try self.w.writeAll(&buf);
     }
 
     pub fn close(self: *Bin40Writer) void {
+        // Flush the buffered writer before closing the file
+        self.bufw.flush() catch {};
         self.file.close();
     }
 

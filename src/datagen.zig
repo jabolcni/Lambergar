@@ -181,13 +181,16 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
 
     var total_positions: usize = 0;
     var games_count: usize = 0;
+    var save_ns: i128 = 0;
+    var play_ns: i128 = 0;
 
     for (0..cfg.games) |_| {
         var pos = Position.new();
         const variant = sample_variant(rng, cfg.dist);
         set_start_position(rng, &pos, variant);
 
-        var entries = try std.ArrayList(BinEntry).initCapacity(allocator, 128);
+        // Preallocate a larger buffer to reduce reallocations when saving positions.
+        var entries = try std.ArrayList(BinEntry).initCapacity(allocator, 512);
         defer entries.deinit(allocator);
 
         var ply: usize = 0;
@@ -195,6 +198,8 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
         var low_score_streak: usize = 0;
         var force_draw: bool = false;
         while (ply < cfg.max_plies and !is_terminal(&pos)) : (ply += 1) {
+            const ply_start = std.time.nanoTimestamp();
+            var this_save_ns: i128 = 0;
             const best = if (cfg.strict)
                 pick_best_move_strict(&pos, cfg.best_depth, false)
             else
@@ -240,6 +245,7 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
 
             // Save only within window; skip noisy, in-check, or mate-in-N positions
             if (pos.game_ply >= cfg.save_min_ply and pos.game_ply <= cfg.save_max_ply and !(cfg.skip_noisy and bm.is_tactical()) and !is_any_check(&pos) and best.dm == 0) {
+                const ts0 = std.time.nanoTimestamp();
                 var s32: [32]u8 = undefined;
                 binw.pack_sfen32(&pos, &s32);
                 const be = BinEntry{
@@ -250,9 +256,14 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
                     .stm_white = (pos.side_to_play == Color.White),
                 };
                 try entries.append(allocator, be);
+                const ts1 = std.time.nanoTimestamp();
+                this_save_ns += ts1 - ts0;
             }
 
             if (pos.side_to_play == Color.White) pos.play(mv, Color.White) else pos.play(mv, Color.Black);
+            const ply_end = std.time.nanoTimestamp();
+            save_ns += this_save_ns;
+            play_ns += (ply_end - ply_start) - this_save_ns;
         }
 
         var list_end: MoveList = .{};
@@ -271,6 +282,7 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
         }
 
         var i: usize = 0;
+        const ws0 = std.time.nanoTimestamp();
         while (i < entries.items.len) : (i += 1) {
             const e = entries.items[i];
             var gr: i8 = 0;
@@ -287,6 +299,8 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
                 uci.printout(uci.stdout, "info string datagen progress games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s, avg_per_k });
             }
         }
+        const ws1 = std.time.nanoTimestamp();
+        save_ns += ws1 - ws0;
 
         games_count += 1;
     }
@@ -298,6 +312,15 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
     else
         0.0;
     uci.printout(uci.stdout, "info string datagen summary games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s2, avg_per_k2 });
+    const total_ns: i128 = elapsed_ns2;
+    const other_ns: i128 = total_ns - (play_ns + save_ns);
+    const play_pct: f64 = if (total_ns > 0) (@as(f64, @floatFromInt(play_ns)) * 100.0) / @as(f64, @floatFromInt(total_ns)) else 0.0;
+    const save_pct: f64 = if (total_ns > 0) (@as(f64, @floatFromInt(save_ns)) * 100.0) / @as(f64, @floatFromInt(total_ns)) else 0.0;
+    const other_pct: f64 = if (total_ns > 0) (@as(f64, @floatFromInt(other_ns)) * 100.0) / @as(f64, @floatFromInt(total_ns)) else 0.0;
+    const play_s: f64 = @as(f64, @floatFromInt(play_ns)) / 1_000_000_000.0;
+    const save_s: f64 = @as(f64, @floatFromInt(save_ns)) / 1_000_000_000.0;
+    const other_s: f64 = @as(f64, @floatFromInt(other_ns)) / 1_000_000_000.0;
+    uci.printout(uci.stdout, "info string datagen time_split play={d:.2}% ({d:.3}s) save={d:.2}% ({d:.3}s) other={d:.2}% ({d:.3}s)\n", .{ play_pct, play_s, save_pct, save_s, other_pct, other_s });
 }
 
 // SFEN recording removed for performance; we only pack directly to BIN now.
