@@ -172,22 +172,6 @@ fn pick_best_move_strict(pos: *Position, depth: u32, debug: bool) BestInfo {
     return .{ .mv = mv, .nodes = s.nodes, .score = sc, .dm = dm };
 }
 
-fn eval_cp(pos: *Position, side: Color) i32 {
-    // Prefer NNUE evaluation when a net is loaded; otherwise fallback to HCE
-    if (nnue.engine_loaded_net) {
-        const acc = nnue.refresh_accumulator(pos.*);
-        return if (side == Color.White)
-            nnue.evaluate(acc, Color.White)
-        else
-            nnue.evaluate(acc, Color.Black);
-    } else {
-        return if (side == Color.White)
-            pos.eval.evalHCE(pos, Color.White)
-        else
-            pos.eval.evalHCE(pos, Color.Black);
-    }
-}
-
 fn repetition_count(pos: *Position) u16 {
     const fifty = pos.history[pos.game_ply].fifty;
     const min_index: isize = @as(isize, pos.game_ply) - @as(isize, fifty);
