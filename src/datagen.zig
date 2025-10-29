@@ -186,7 +186,7 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
 
     for (0..cfg.games) |_| {
         var pos = Position.new();
-        const variant: StartVariant = .Standard; //sample_variant(rng, cfg.dist);
+        const variant: StartVariant = sample_variant(rng, cfg.dist); //.Standard; //
         set_start_position(rng, &pos, variant);
 
         // Preallocate a larger buffer to reduce reallocations when saving positions.
