@@ -13,47 +13,12 @@ const Color = position.Color;
 
 pub const StartVariant = enum { Standard, Chess960, DFRC };
 
-pub const PositionRecord = struct {
-    fen: []u8,
-    bm_uci: []u8, // best move from search
-    acm_uci: []u8, // actual move played
-    score_cp: i32, // eval from side to move
-    acd: u32, // analysis depth used for bm
-    acn: u64, // nodes at bm search
-    dm: i32, // mate in fullmoves if known else 0
-    hmvc: u16, // game ply at this record
-    rc: u16, // repetition count for this position
-};
-
 const BinEntry = struct {
     sfen32: [32]u8,
     move16: u16,
     score_cp: i32,
     ply: u16,
     stm_white: bool,
-};
-
-pub const Game = struct {
-    variant: StartVariant,
-    start_desc: [16]u8 = [_]u8{0} ** 16, // e.g. "std", "960:idx", "dfrc:w-b"
-    records: std.ArrayList(PositionRecord),
-
-    pub fn init(allocator: std.mem.Allocator) !Game {
-        return Game{
-            .variant = .Standard,
-            .records = try std.ArrayList(PositionRecord).initCapacity(allocator, 0),
-        };
-    }
-
-    pub fn deinit(self: *Game, allocator: std.mem.Allocator) void {
-        for (self.records.items) |rec| {
-            allocator.free(rec.fen);
-            allocator.free(rec.bm_uci);
-            allocator.free(rec.acm_uci);
-        }
-        self.records.deinit(allocator);
-        // allocator used above
-    }
 };
 
 fn to_uci_str(m: Move, buf: *[5]u8) []const u8 {
@@ -335,38 +300,7 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
     uci.printout(uci.stdout, "info string datagen summary games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s2, avg_per_k2 });
 }
 
-fn record_position(
-    allocator: std.mem.Allocator,
-    game: *Game,
-    pos: *Position,
-    bm: Move,
-    bm_nodes: u64,
-    bm_score: i32,
-    bm_dm: i32,
-    actual: Move,
-    acd_depth: u32,
-) !void {
-    const fen = try pos.get_fen(allocator);
-    var mbuf: [5]u8 = undefined;
-    const bm_str = to_uci_str(bm, &mbuf);
-    const bm_copy = try allocator.dupe(u8, bm_str);
-    const acm_str = to_uci_str(actual, &mbuf);
-    const acm_copy = try allocator.dupe(u8, acm_str);
-    const sc = if (search._is_mate_score(bm_score)) 0 else bm_score;
-    const repc = repetition_count(pos);
-    const hmvc_now: u16 = @intCast(pos.game_ply);
-    try game.records.append(allocator, PositionRecord{
-        .fen = fen,
-        .bm_uci = bm_copy,
-        .acm_uci = acm_copy,
-        .score_cp = sc,
-        .acd = acd_depth,
-        .acn = bm_nodes,
-        .dm = bm_dm,
-        .hmvc = hmvc_now,
-        .rc = repc,
-    });
-}
+// SFEN recording removed for performance; we only pack directly to BIN now.
 
 fn is_terminal(pos: *Position) bool {
     var list: MoveList = .{};
@@ -419,10 +353,9 @@ pub const GenConfig = struct {
     dist: Dist = .{},
     debug: bool = false,
     strict: bool = false,
-    bin_path: ?[]const u8 = null,
     skip_noisy: bool = false, // skip saving positions where best move is capture or promotion
-    // New policy and IO options
-    output_file_name: []const u8 = "dataset",
+    // Output filename (BIN). If no extension, .bin is appended.
+    filename: []const u8 = "dataset.bin",
     random_min_ply: usize = 2,
     random_50_ply: usize = 6,
     random_10_ply: usize = 16,
@@ -431,183 +364,4 @@ pub const GenConfig = struct {
     save_max_ply: usize = 400,
     adjudicate_draws_by_score: bool = true,
     adjudicate_draws_by_insufficient_mating_material: bool = true,
-    bin_only: bool = false,
 };
-
-pub fn generate_to_sfen_text(
-    allocator: std.mem.Allocator,
-    out_path: []const u8,
-    cfg: GenConfig,
-) !void {
-    const start_ns: i128 = std.time.nanoTimestamp();
-    const now = std.time.nanoTimestamp();
-    const now_bits: u128 = @bitCast(now);
-    const seed: u64 = @truncate(now_bits);
-    var prng = std.Random.DefaultPrng.init(seed);
-    const rng = prng.random();
-
-    var file = try std.fs.cwd().createFile(out_path, .{ .read = false, .truncate = true, .mode = 0o666 });
-    defer file.close();
-    // We'll format each line into a small stack buffer and writeAll to the file.
-
-    var total_positions: usize = 0;
-    var games_count: usize = 0;
-
-    var bin_writer: ?binw.Bin40Writer = null;
-    if (cfg.bin_path) |bp| {
-        bin_writer = try binw.Bin40Writer.open(bp);
-    }
-    defer if (bin_writer) |*bw| bw.close();
-
-    for (0..cfg.games) |gi| {
-        var pos = Position.new();
-        const variant = sample_variant(rng, cfg.dist);
-        set_start_position(rng, &pos, variant);
-
-        var game = try Game.init(allocator);
-        game.variant = variant;
-
-        var ply: usize = 0;
-        // play until terminal or max plies
-        while (ply < cfg.max_plies and !is_terminal(&pos)) : (ply += 1) {
-            // Always compute bestmove and nodes for bm/acn/acd
-            if (cfg.debug) {
-                const fen_dbg = try pos.get_fen(allocator);
-                defer allocator.free(fen_dbg);
-                var lm_dbg: MoveList = .{};
-                if (pos.side_to_play == Color.White) pos.generate_legals(Color.White, &lm_dbg) else pos.generate_legals(Color.Black, &lm_dbg);
-                uci.printout(uci.stdout, "info string datagen start depth {} side {s} ply {} legals {} fen {s}\n", .{ cfg.best_depth, if (pos.side_to_play == Color.White) "W" else "B", pos.game_ply, lm_dbg.count, fen_dbg });
-            }
-            const best = if (cfg.strict)
-                pick_best_move_strict(&pos, cfg.best_depth, cfg.debug)
-            else
-                pick_best_move(&pos, cfg.best_depth, cfg.debug);
-            const bm = best.mv;
-            const bm_nodes = best.nodes;
-            const bm_score = best.score;
-            const bm_dm = best.dm;
-
-            var chosen: ?Move = null;
-            var chosen_src: []const u8 = "best";
-            if (ply < cfg.first_random) {
-                chosen = pick_random_legal(rng, &pos);
-                chosen_src = "random";
-            } else if (ply < cfg.first_random + cfg.next_mixed) {
-                const coin = rng.intRangeAtMost(u8, 0, 1);
-                if (coin == 0) {
-                    chosen = pick_random_legal(rng, &pos);
-                    chosen_src = "mixed-rand";
-                } else {
-                    chosen = bm;
-                    chosen_src = "mixed-best";
-                }
-            } else {
-                chosen = bm;
-                chosen_src = "best";
-            }
-
-            const mv = chosen orelse break;
-            // Conditionally save by ply window; skip noisy, in-check, or mate-in-N
-            if (pos.game_ply >= cfg.save_min_ply and pos.game_ply <= cfg.save_max_ply and !(cfg.skip_noisy and bm.is_tactical()) and !is_any_check(&pos) and bm_dm == 0) {
-                // record current position, bm and actual
-                try record_position(allocator, &game, &pos, bm, bm_nodes, bm_score, bm_dm, mv, cfg.best_depth);
-                total_positions += 1;
-                if (total_positions % 1000 == 0) {
-
-                    // Print summary with timing
-                    const elapsed_ns = std.time.nanoTimestamp() - start_ns;
-                    const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ns)) / 1_000_000_000.0;
-                    const avg_per_k: f64 = if (total_positions > 0)
-                        elapsed_s / (@as(f64, @floatFromInt(total_positions)) / 1000.0)
-                    else
-                        0.0;
-
-                    uci.printout(uci.stdout, "info string datagen progress games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s, avg_per_k });
-                }
-            }
-            if (cfg.debug) {
-                var mbuf: [5]u8 = undefined;
-                const bm_str = to_uci_str(bm, &mbuf);
-                const acm_str = to_uci_str(mv, &mbuf);
-                const repc = repetition_count(&pos);
-                uci.printout(uci.stdout, "info string datagen choose {s} bm {s} acm {s} ce {} dm {} acn {} hmvc {} rc {}\n", .{ chosen_src, bm_str, acm_str, if (search._is_mate_score(bm_score)) 0 else bm_score, bm_dm, bm_nodes, pos.game_ply, repc });
-            }
-            // play move
-            if (pos.side_to_play == Color.White) pos.play(mv, Color.White) else pos.play(mv, Color.Black);
-        }
-
-        // Determine game result (from White's perspective)
-        var list_end: MoveList = .{};
-        if (pos.side_to_play == Color.White) pos.generate_legals(Color.White, &list_end) else pos.generate_legals(Color.Black, &list_end);
-        var result: f32 = 0.5;
-        if (list_end.count == 0) {
-            const stm = pos.side_to_play;
-            const in_chk = if (stm == Color.White) pos.in_check(Color.White) else pos.in_check(Color.Black);
-            if (in_chk) {
-                // Side to move is checkmated
-                result = if (stm == Color.White) 0.0 else 1.0;
-            } else {
-                result = 0.5; // stalemate
-            }
-        } else if (pos.is_draw()) {
-            result = 0.5;
-        } else {
-            // Non-terminal due to plies cap: treat as draw for training purposes
-            result = 0.5;
-        }
-
-        // write one line per position in requested SFEN-like format:
-        // FEN; bm <move played>; ce <cp (side-to-move)>; acd <depth>; acn <nodes>; dm <mate fullmoves>; hmvc <halfmove clock>; rc <repetition count>; result <game result (side-to-move: 1/-1/0)>
-        for (game.records.items) |rec| {
-            var line_buf: [512]u8 = undefined;
-            // Determine side-to-move from FEN for correct perspective result
-            var stm_white: bool = true;
-            {
-                // FEN format has active color as the token after board: " w " or " b "
-                // Simple scan for " w " vs " b " in the small header part
-                const fen_slice = rec.fen;
-                const wpos = std.mem.indexOf(u8, fen_slice, " w ");
-                const bpos = std.mem.indexOf(u8, fen_slice, " b ");
-                if (bpos != null and (wpos == null or bpos.? < wpos.?)) stm_white = false;
-            }
-            var gr: i8 = 0;
-            if (result >= 0.75) gr = if (stm_white) 1 else -1 else if (result <= 0.25) gr = if (stm_white) -1 else 1 else gr = 0;
-
-            const line = try std.fmt.bufPrint(
-                &line_buf,
-                // bm = best move from search; acm = actual move played
-                "{s}; bm {s}; acm {s}; ce {d}; acd {d}; acn {d}; dm {d}; hmvc {d}; rc {d}; result {d}\n",
-                .{ rec.fen, rec.bm_uci, rec.acm_uci, rec.score_cp, rec.acd, rec.acn, rec.dm, rec.hmvc, rec.rc, gr },
-            );
-            try file.writeAll(line);
-
-            if (bin_writer) |*bw| {
-                // Parse bm from rec.bm_uci back to Move for encoding
-                // We have original position 'pos' after playing all moves; to encode from the stored position,
-                // re-build a temp Position from rec.fen to avoid drift.
-                var temp = Position.new();
-                // rec.fen is owned by game and freed later; make a copy to pass into set()
-                const fen_copy = try allocator.dupe(u8, rec.fen);
-                defer allocator.free(fen_copy);
-                temp.set(fen_copy) catch continue;
-                const move = Move.parse_move(rec.bm_uci, &temp) catch Move.empty();
-                try bw.write_position(&temp, move, rec.score_cp, result, rec.hmvc);
-            }
-        }
-
-        // Update summary counters
-        games_count += 1;
-
-        game.deinit(allocator);
-        _ = gi; // unused id for now
-    }
-
-    // Print summary with timing
-    const elapsed_ns = std.time.nanoTimestamp() - start_ns;
-    const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ns)) / 1_000_000_000.0;
-    const avg_per_k: f64 = if (total_positions > 0)
-        elapsed_s / (@as(f64, @floatFromInt(total_positions)) / 1000.0)
-    else
-        0.0;
-    uci.printout(uci.stdout, "info string datagen summary games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s, avg_per_k });
-}

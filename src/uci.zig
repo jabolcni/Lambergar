@@ -762,15 +762,12 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
             perft.perft_test_with_stats(&pos[0], @as(u4, @intCast(depth)));
         } else if (std.mem.eql(u8, command, "datagen")) {
-            // Usage: datagen games N out PATH [depth D] [plies P] [random FIRST NEXT] [debug] [strict] [bin BINPATH] [skipnoisy] [output_file_name NAME] [bin_only]
+            // Usage: datagen games N [depth D] [plies P] [random FIRST NEXT] [debug] [strict] [skipnoisy] [filename NAME.bin]
             var cfg: datagen.GenConfig = .{};
-            var out_path: ?[]const u8 = null;
 
             while (words.next()) |arg| {
                 if (std.mem.eql(u8, arg, "games")) {
                     if (words.next()) |n_tok| cfg.games = usize_from_str(n_tok) catch cfg.games;
-                } else if (std.mem.eql(u8, arg, "out")) {
-                    out_path = words.next() orelse out_path;
                 } else if (std.mem.eql(u8, arg, "depth")) {
                     if (words.next()) |d_tok| cfg.best_depth = @as(u32, @intCast(usize_from_str(d_tok) catch cfg.best_depth));
                 } else if (std.mem.eql(u8, arg, "plies")) {
@@ -783,12 +780,10 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     cfg.debug = true;
                 } else if (std.mem.eql(u8, arg, "strict")) {
                     cfg.strict = true;
-                } else if (std.mem.eql(u8, arg, "bin")) {
-                    cfg.bin_path = words.next() orelse cfg.bin_path;
                 } else if (std.mem.eql(u8, arg, "skipnoisy")) {
                     cfg.skip_noisy = true;
-                } else if (std.mem.eql(u8, arg, "output_file_name")) {
-                    if (words.next()) |nm| cfg.output_file_name = nm;
+                } else if (std.mem.eql(u8, arg, "filename")) {
+                    if (words.next()) |nm| cfg.filename = nm;
                 } else if (std.mem.eql(u8, arg, "random_min_ply")) {
                     if (words.next()) |v| cfg.random_min_ply = usize_from_str(v) catch cfg.random_min_ply;
                 } else if (std.mem.eql(u8, arg, "random_50_ply")) {
@@ -805,33 +800,19 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     cfg.adjudicate_draws_by_score = true;
                 } else if (std.mem.eql(u8, arg, "adjudicate_draws_by_insufficient_mating_material")) {
                     cfg.adjudicate_draws_by_insufficient_mating_material = true;
-                } else if (std.mem.eql(u8, arg, "bin_only")) {
-                    cfg.bin_only = true;
                 }
             }
 
-            // Derive outputs from output_file_name if not explicitly provided
-            if (out_path == null) {
-                // Default SFEN path
-                out_path = std.fmt.allocPrint(allocator, "{s}.sfen", .{cfg.output_file_name}) catch out_path;
+            // Normalize filename: ensure it ends with .bin
+            var final_name = cfg.filename;
+            if (!std.mem.endsWith(u8, final_name, ".bin")) {
+                final_name = std.fmt.allocPrint(allocator, "{s}.bin", .{cfg.filename}) catch cfg.filename;
             }
-            if (cfg.bin_path == null and cfg.output_file_name.len > 0) {
-                // If user didn't pass bin path but wants bin later, they can set bin flag; we keep null here.
-                // No-op: leave cfg.bin_path as is unless already set.
-            }
-
-            printout(stdout, "info string datagen start games={} depth={} plies={} out={s} bin={s} mode={s}\n", .{ cfg.games, cfg.best_depth, cfg.max_plies, out_path.?, if (cfg.bin_path) |bp| bp else "<none>", if (cfg.bin_only) "bin-only" else "sfen+bin" });
-            if (cfg.bin_only and cfg.bin_path != null) {
-                datagen.generate_binary(std.heap.c_allocator, cfg.bin_path.?, cfg) catch |err| {
-                    printout(stdout, "info string datagen failed: {any}\n", .{err});
-                    continue;
-                };
-            } else {
-                datagen.generate_to_sfen_text(std.heap.c_allocator, out_path.?, cfg) catch |err| {
-                    printout(stdout, "info string datagen failed: {any}\n", .{err});
-                    continue;
-                };
-            }
+            printout(stdout, "info string datagen start games={} depth={} plies={} bin={s}\n", .{ cfg.games, cfg.best_depth, cfg.max_plies, final_name });
+            datagen.generate_binary(std.heap.c_allocator, final_name, cfg) catch |err| {
+                printout(stdout, "info string datagen failed: {any}\n", .{err});
+                continue;
+            };
             printout(stdout, "info string datagen done\n", .{});
         } else if (std.mem.eql(u8, command, "castledbg")) {
             if (pos[0].side_to_play == Color.White) {
@@ -1490,7 +1471,7 @@ pub fn perft_test(allocator: std.mem.Allocator) !void {
     }
 }
 
-pub fn run_datagen(allocator: std.mem.Allocator, out_path: []const u8, cfg: datagen.GenConfig) !void {
+pub fn run_datagen(allocator: std.mem.Allocator, cfg: datagen.GenConfig) !void {
     // For datagen, enable NNUE if available and initialize it explicitly
     // so that search/eval matches normal UCI runs.
     nnue.engine_using_nnue = true;
@@ -1506,7 +1487,12 @@ pub fn run_datagen(allocator: std.mem.Allocator, out_path: []const u8, cfg: data
     var tmp = Position.new();
     try tmp.set(start_position);
 
-    try datagen.generate_to_sfen_text(allocator, out_path, cfg);
+    // Normalize filename and run binary generation
+    var final_name = cfg.filename;
+    if (!std.mem.endsWith(u8, final_name, ".bin")) {
+        final_name = std.fmt.allocPrint(allocator, "{s}.bin", .{cfg.filename}) catch cfg.filename;
+    }
+    try datagen.generate_binary(allocator, final_name, cfg);
 }
 
 test "perft for positions" {

@@ -12,7 +12,6 @@ pub fn main() !void {
     var bench_depth: u32 = 12;
     var do_datagen: bool = false;
     var dg_cfg: datagen.GenConfig = .{};
-    var dg_out: []const u8 = "datagen.sfen";
 
     // Parse command line arguments
     const args = try std.process.argsAlloc(allocator);
@@ -44,8 +43,8 @@ pub fn main() !void {
                 const a = args[j];
                 if (std.mem.eql(u8, a, "games") and j + 1 < args.len) {
                     dg_cfg.games = std.fmt.parseInt(usize, args[j + 1], 10) catch dg_cfg.games; j += 1;
-                } else if (std.mem.eql(u8, a, "out") and j + 1 < args.len) {
-                    dg_out = args[j + 1]; j += 1;
+                } else if (std.mem.eql(u8, a, "filename") and j + 1 < args.len) {
+                    dg_cfg.filename = args[j + 1]; j += 1;
                 } else if (std.mem.eql(u8, a, "depth") and j + 1 < args.len) {
                     dg_cfg.best_depth = std.fmt.parseInt(u32, args[j + 1], 10) catch dg_cfg.best_depth; j += 1;
                 } else if (std.mem.eql(u8, a, "plies") and j + 1 < args.len) {
@@ -58,14 +57,8 @@ pub fn main() !void {
                     dg_cfg.debug = true;
                 } else if (std.mem.eql(u8, a, "strict")) {
                     dg_cfg.strict = true;
-                } else if (std.mem.eql(u8, a, "bin") and j + 1 < args.len) {
-                    dg_cfg.bin_path = args[j + 1];
-                    j += 1;
                 } else if (std.mem.eql(u8, a, "skipnoisy")) {
                     dg_cfg.skip_noisy = true;
-                } else if (std.mem.eql(u8, a, "output_file_name") and j + 1 < args.len) {
-                    dg_cfg.output_file_name = args[j + 1];
-                    j += 1;
                 } else if (std.mem.eql(u8, a, "random_min_ply") and j + 1 < args.len) {
                     dg_cfg.random_min_ply = std.fmt.parseInt(usize, args[j + 1], 10) catch dg_cfg.random_min_ply; j += 1;
                 } else if (std.mem.eql(u8, a, "random_50_ply") and j + 1 < args.len) {
@@ -82,8 +75,6 @@ pub fn main() !void {
                     dg_cfg.adjudicate_draws_by_score = true;
                 } else if (std.mem.eql(u8, a, "adjudicate_draws_by_insufficient_mating_material")) {
                     dg_cfg.adjudicate_draws_by_insufficient_mating_material = true;
-                } else if (std.mem.eql(u8, a, "bin_only")) {
-                    dg_cfg.bin_only = true;
                 } else {
                     // stop parsing at unknown token to allow other modes
                     break;
@@ -103,7 +94,7 @@ pub fn main() !void {
     } else if (perft_test) {
         try uci.perft_test(allocator);
     } else if (do_datagen) {
-        try uci.run_datagen(allocator, dg_out, dg_cfg);
+        try uci.run_datagen(allocator, dg_cfg);
     } else {
         try uci.uci_loop(allocator);
     }
