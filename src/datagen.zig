@@ -15,14 +15,14 @@ pub const StartVariant = enum { Standard, Chess960, DFRC };
 
 pub const PositionRecord = struct {
     fen: []u8,
-    bm_uci: []u8,   // best move from search
-    acm_uci: []u8,  // actual move played
-    score_cp: i32,  // eval from side to move
-    acd: u32,       // analysis depth used for bm
-    acn: u64,       // nodes at bm search
-    dm: i32,        // mate in fullmoves if known else 0
-    hmvc: u16,      // game ply at this record
-    rc: u16,        // repetition count for this position
+    bm_uci: []u8, // best move from search
+    acm_uci: []u8, // actual move played
+    score_cp: i32, // eval from side to move
+    acd: u32, // analysis depth used for bm
+    acn: u64, // nodes at bm search
+    dm: i32, // mate in fullmoves if known else 0
+    hmvc: u16, // game ply at this record
+    rc: u16, // repetition count for this position
 };
 
 const BinEntry = struct {
@@ -208,7 +208,13 @@ fn encode_move16(mv: Move) u16 {
     var promo: u16 = 0;
     if (mv.is_promotion()) {
         const pt = mv.flags.promote_type();
-        promo = switch (pt) { .Knight => 1, .Bishop => 2, .Rook => 3, .Queen => 4, else => 0 };
+        promo = switch (pt) {
+            .Knight => 1,
+            .Bishop => 2,
+            .Rook => 3,
+            .Queen => 4,
+            else => 0,
+        };
     }
     code |= (promo & 0xF) << 12;
     return code;
@@ -249,23 +255,35 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
             // Adjudications
             if (cfg.adjudicate_draws_by_score and pos.game_ply >= 80) {
                 if (@abs(best.score) < 50) low_score_streak += 1 else low_score_streak = 0;
-                if (low_score_streak >= 8) { force_draw = true; break; }
+                if (low_score_streak >= 8) {
+                    force_draw = true;
+                    break;
+                }
             }
-            if (cfg.adjudicate_draws_by_insufficient_mating_material and pos.is_insufficient_material()) { force_draw = true; break; }
-            if (pos.game_ply > cfg.save_max_ply) { force_draw = true; break; }
+            if (cfg.adjudicate_draws_by_insufficient_mating_material and pos.is_insufficient_material()) {
+                force_draw = true;
+                break;
+            }
+            if (pos.game_ply > cfg.save_max_ply) {
+                force_draw = true;
+                break;
+            }
 
             // Random policy with caps
             var chosen: ?Move = null;
             const curr_ply: usize = pos.game_ply;
             var rand_prob: u8 = 0; // percentage
             if (curr_ply >= cfg.random_min_ply and random_used < cfg.random_move_count) {
-                if (curr_ply < cfg.random_50_ply) rand_prob = 100
-                else if (curr_ply < cfg.random_10_ply) rand_prob = 50
-                else rand_prob = 10;
+                if (curr_ply < cfg.random_50_ply) rand_prob = 100 else if (curr_ply < cfg.random_10_ply) rand_prob = 50 else rand_prob = 10;
             }
             if (rand_prob > 0 and rng.intRangeAtMost(u8, 0, 99) < rand_prob) {
                 const rnd = pick_random_legal(rng, &pos);
-                if (rnd) |rv| { chosen = rv; random_used += 1; } else { chosen = bm; }
+                if (rnd) |rv| {
+                    chosen = rv;
+                    random_used += 1;
+                } else {
+                    chosen = bm;
+                }
             } else {
                 chosen = bm;
             }
@@ -315,12 +333,12 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
                 const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ns)) / 1_000_000_000.0;
                 const avg_per_k: f64 = if (total_positions > 0)
                     elapsed_s / (@as(f64, @floatFromInt(total_positions)) / 1000.0)
-                else 0.0;
+                else
+                    0.0;
                 uci.printout(uci.stdout, "info string datagen progress games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s, avg_per_k });
             }
         }
 
-        total_positions += entries.items.len;
         games_count += 1;
     }
 
@@ -328,7 +346,8 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
     const elapsed_s2: f64 = @as(f64, @floatFromInt(elapsed_ns2)) / 1_000_000_000.0;
     const avg_per_k2: f64 = if (total_positions > 0)
         elapsed_s2 / (@as(f64, @floatFromInt(total_positions)) / 1000.0)
-    else 0.0;
+    else
+        0.0;
     uci.printout(uci.stdout, "info string datagen summary games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s2, avg_per_k2 });
 }
 
@@ -412,7 +431,7 @@ pub const GenConfig = struct {
     best_depth: u32 = 8,
     // randomization windows
     first_random: usize = 3, // legacy (unused by new policy)
-    next_mixed: usize = 3,   // legacy (unused by new policy)
+    next_mixed: usize = 3, // legacy (unused by new policy)
     dist: Dist = .{},
     debug: bool = false,
     strict: bool = false,
@@ -510,7 +529,16 @@ pub fn generate_to_sfen_text(
                 try record_position(allocator, &game, &pos, bm, bm_nodes, bm_score, bm_dm, mv, cfg.best_depth);
                 total_positions += 1;
                 if (total_positions % 1000 == 0) {
-                    uci.printout(uci.stdout, "info string datagen progress games={} positions={}\n", .{ games_count, total_positions });
+
+                    // Print summary with timing
+                    const elapsed_ns = std.time.nanoTimestamp() - start_ns;
+                    const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ns)) / 1_000_000_000.0;
+                    const avg_per_k: f64 = if (total_positions > 0)
+                        elapsed_s / (@as(f64, @floatFromInt(total_positions)) / 1000.0)
+                    else
+                        0.0;
+
+                    uci.printout(uci.stdout, "info string datagen progress games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s, avg_per_k });
                 }
             }
             if (cfg.debug) {
@@ -584,7 +612,6 @@ pub fn generate_to_sfen_text(
         }
 
         // Update summary counters
-        total_positions += game.records.items.len;
         games_count += 1;
 
         game.deinit(allocator);
@@ -596,7 +623,7 @@ pub fn generate_to_sfen_text(
     const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ns)) / 1_000_000_000.0;
     const avg_per_k: f64 = if (total_positions > 0)
         elapsed_s / (@as(f64, @floatFromInt(total_positions)) / 1000.0)
-    else 0.0;
+    else
+        0.0;
     uci.printout(uci.stdout, "info string datagen summary games={} positions={} time {d:.3}s avg_per_1k {d:.3}s\n", .{ games_count, total_positions, elapsed_s, avg_per_k });
 }
-
