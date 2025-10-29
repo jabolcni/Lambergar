@@ -1225,6 +1225,7 @@ pub fn bench(allocator: std.mem.Allocator, depth: u32) !void {
 
 pub fn perft_test(allocator: std.mem.Allocator) !void {
     const test_cases = [_][]const u8{
+        "nnbqrkr1/pp1pp2p/2p2b2/5pp1/1P5P/4P1P1/P1PP1P2/NNBQRKRB w GEge - 1 9,32,1046,33721,1111186,36218182,1202830851",
         "b1q1rrkb/pppppppp/3nn3/8/P7/1PPP4/4PPPP/BQNNRKRB w GE - 1 9,20,479,10471,273318,6417013,177654692",
         "bnnqrbkr/pp1p2p1/2p1p2p/5p2/1P5P/1R6/P1PPPPP1/BNNQRBK1 w Ehe - 0 9,33,1022,32724,1024721,32898113,1047360456",
         "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9,21,528,12189,326672,8146062,227689589",
@@ -1308,7 +1309,6 @@ pub fn perft_test(allocator: std.mem.Allocator) !void {
         "n1bnqrkr/3ppppp/1p6/pNp1b3/2P3P1/8/PP1PPP1P/NBB1QRKR w HFhf - 1 9,29,728,20768,532084,15621236,415766465",
         "n2bqrkr/p1p1pppp/1pn5/3p1b2/P6P/1NP5/1P1PPPP1/1NBBQRKR w HFhf - 3 9,20,533,12152,325059,8088751,223068417",
         "nnbqrbkr/1pp1p1p1/p2p4/5p1p/2P1P3/N7/PPQP1PPP/N1B1RBKR w HEhe - 0 9,27,619,18098,444421,13755384,357222394",
-        "nnbqrkr1/pp1pp2p/2p2b2/5pp1/1P5P/4P1P1/P1PP1P2/NNBQRKRB w GEge - 1 9,32,1046,33721,1111186,36218182,1202830851",
         "nb1qbrkr/p1pppp2/1p1n2pp/8/1P6/2PN3P/P2PPPP1/NB1QBRKR w HFhf - 0 9,25,521,14021,306427,8697700,201455191",
         "nnq1brkr/pp1pppp1/8/2p4P/8/5K2/PPPbPP1P/NNQBBR1R w hf - 0 9,23,724,18263,571072,15338230,484638597",
         "nnqrbb1r/pppppk2/5pp1/7p/1P6/3P2PP/P1P1PP2/NNQRBBKR w HD - 0 9,30,717,21945,547145,17166700,450069742",

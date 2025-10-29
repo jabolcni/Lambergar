@@ -2292,12 +2292,15 @@ pub const Position = struct {
             }
         }
 
-        // Possible bug in surge cpp source code? The original cpp code does not set en passant square from fen.
-        const en_passant_fen = parts.next().?;
-
-        if (!std.mem.eql(u8, en_passant_fen, "-")) {
-            self.history[self.game_ply].epsq = Square.from_str(en_passant_fen);
-            self.hash ^= zobrist.enpassant_keys[self.history[self.game_ply].epsq.file_of().toU3()];
+        // En passant: optional in many FEN strings used by UCI "position fen".
+        // Accept missing field and default to no en passant square.
+        if (parts.next()) |en_passant_fen| {
+            if (!std.mem.eql(u8, en_passant_fen, "-")) {
+                self.history[self.game_ply].epsq = Square.from_str(en_passant_fen);
+                self.hash ^= zobrist.enpassant_keys[self.history[self.game_ply].epsq.file_of().toU3()];
+            }
+        } else {
+            // No en passant field provided; leave default (no EP)
         }
 
         self.hash ^= zobrist.castling_keys[self.history[self.game_ply].castling];

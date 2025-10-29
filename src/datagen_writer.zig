@@ -6,7 +6,7 @@ const Move = position.Move;
 const Piece = position.Piece;
 // Pack the current Position into a 32-byte PackedSfen buffer (NNUE format)
 pub fn pack_sfen32(pos: *Position, out: *[32]u8) void {
-    var data = out[0..];
+    const data = out[0..];
     @memset(data, 0);
     var bit_cursor: usize = 0;
     // Side to move: W=0, B=1
@@ -99,13 +99,32 @@ inline fn huff_write_piece(data: []u8, bit_cursor_ptr: *usize, pc: Piece) void {
 
 pub const Bin40Writer = struct {
     file: std.fs.File,
-    bufw: std.io.BufferedWriter(4096, std.fs.File.Writer),
-    w: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer,
+    buf: [4096]u8,
+    buf_len: usize,
 
     pub fn open(path: []const u8) !Bin40Writer {
         const f = try std.fs.cwd().createFile(path, .{ .read = false, .truncate = true });
-        var bufw = std.io.bufferedWriter(f.writer());
-        return .{ .file = f, .bufw = bufw, .w = bufw.writer() };
+        return .{ .file = f, .buf = [_]u8{0} ** 4096, .buf_len = 0 };
+    }
+
+    fn flush(self: *Bin40Writer) !void {
+        if (self.buf_len == 0) return;
+        try self.file.writeAll(self.buf[0..self.buf_len]);
+        self.buf_len = 0;
+    }
+
+    fn write_bytes(self: *Bin40Writer, bytes: []const u8) !void {
+        if (bytes.len > self.buf.len) {
+            // large write: flush and write directly
+            try self.flush();
+            try self.file.writeAll(bytes);
+            return;
+        }
+        if (self.buf_len + bytes.len > self.buf.len) {
+            try self.flush();
+        }
+        @memcpy(self.buf[self.buf_len .. self.buf_len + bytes.len], bytes);
+        self.buf_len += bytes.len;
     }
 
     pub fn write_packed(self: *Bin40Writer, sfen32: *const [32]u8, score_cp: i32, move16: u16, game_ply: u16, game_result: i8) !void {
@@ -121,12 +140,12 @@ pub const Bin40Writer = struct {
         buf[37] = @as(u8, @truncate(game_ply >> 8));
         buf[38] = @bitCast(game_result);
         buf[39] = 0;
-        try self.w.writeAll(&buf);
+        try self.write_bytes(&buf);
     }
 
     pub fn close(self: *Bin40Writer) void {
-        // Flush the buffered writer before closing the file
-        self.bufw.flush() catch {};
+        // Flush manual buffer before closing
+        self.flush() catch {};
         self.file.close();
     }
 
@@ -267,4 +286,3 @@ pub const Bin40Writer = struct {
         try self.file.writeAll(&buf);
     }
 };
-

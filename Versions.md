@@ -4,7 +4,7 @@ This file comments about various versions.
 
 ## dev_251029_1
 
-
+Ta verzija vsebuje shrajevanje samo v bin format. Ni hitrejša, ker shranjevanje zavzame manj kot 0.5% časa.
 
 ## dev_251027_5
 
