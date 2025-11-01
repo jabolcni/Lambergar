@@ -288,20 +288,14 @@ pub const Search = struct {
 
     fn print_uci_move(self: *Search, pos: *Position, mv: Move, side: Color) void {
         _ = self;
-        // In Chess960, UCI requires castling as king-from + rook-from
-        // Only use 960 formatting if GUI requested it via UCI_Chess960
-        if (uci.is_chess960() and pos.is_chess960 and (mv.flags == MoveFlags.OO or mv.flags == MoveFlags.OOO)) {
+        // Fast-path: check castling flag first; only then consider 960 formatting
+        if ((mv.flags == MoveFlags.OO or mv.flags == MoveFlags.OOO) and uci.is_chess960() and pos.is_chess960) {
             const ci = side.toU4();
             const rook_sq = if (mv.flags == MoveFlags.OO)
                 pos.castle_rook_k_start[ci]
             else
                 pos.castle_rook_q_start[ci];
             if (rook_sq != Square.NO_SQUARE) {
-                if (uci.debug) {
-                    const k_from_dbg = position.sq_to_coord[mv.from];
-                    const r_from_dbg = position.sq_to_coord[rook_sq.toU()];
-                    printout(uci.stdout, "info string 960-castle format from={s} rook_from={s}\n", .{ k_from_dbg, r_from_dbg });
-                }
                 const k_from = position.sq_to_coord[mv.from];
                 const r_from = position.sq_to_coord[rook_sq.toU()];
                 printout(uci.stdout, "{s}{s} ", .{ k_from, r_from });
@@ -714,8 +708,8 @@ pub const Search = struct {
         }
 
         if (self.manager.printout) {
-            // Print bestmove with Chess960 UCI formatting only if GUI requested 960 and position is Chess960/DFRC
-            if (uci.is_chess960() and pos.is_chess960 and (self.best_move.flags == MoveFlags.OO or self.best_move.flags == MoveFlags.OOO)) {
+            // Print bestmove: check castling flag first, then 960 formatting
+            if ((self.best_move.flags == MoveFlags.OO or self.best_move.flags == MoveFlags.OOO) and uci.is_chess960() and pos.is_chess960) {
                 const ci = color.toU4();
                 const rook_sq = if (self.best_move.flags == MoveFlags.OO)
                     pos.castle_rook_k_start[ci]

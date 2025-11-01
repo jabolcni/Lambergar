@@ -590,9 +590,8 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
                 printout(stdout, "\n{}. ", .{i});
 
-                // Print moves in UCI; if Chess960 is enabled and this is a castling move,
-                // output king-from + rook-from per UCI Chess960 requirement.
-                if (is_chess960() and pos[0].is_chess960 and (move.flags == position.MoveFlags.OO or move.flags == position.MoveFlags.OOO)) {
+                // Print moves in UCI; for castling, check castling flag first then Chess960 formatting.
+                if ((move.flags == position.MoveFlags.OO or move.flags == position.MoveFlags.OOO) and is_chess960() and pos[0].is_chess960) {
                     const ci = pos[0].side_to_play.toU4();
                     const rook_sq = if (move.flags == position.MoveFlags.OO)
                         pos[0].castle_rook_k_start[ci]

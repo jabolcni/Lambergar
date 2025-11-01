@@ -485,52 +485,36 @@ pub const Move = packed struct {
             pos.generate_legals(Color.Black, &list2);
         }
 
-        // Chess960 UCI castling: king-from + rook-from
-        // If the position is 960 and the input encodes castling this way, map it to the legal O-O/OOO move.
+        // Chess960 UCI castling fast-path: if input encodes castling as king-from + rook-from,
+        // map the destination to the king's target square and require the matching castle flag.
+        var adj_from: u6 = from;
+        var adj_to: u6 = to;
+        var require_flag: ?MoveFlags = null;
         if (pos.is_chess960) {
-            // Current king square
             const side = pos.side_to_play;
             const king_bb = pos.bitboard_of_pc(Piece.make_piece(side, PieceType.King));
             if (king_bb != 0) {
                 const ks: u6 = bb.get_ls1b_index(king_bb);
-                // Rook start squares for this side
-                const ci: usize = side.toU4();
-                const rk: Square = pos.castle_rook_k_start[ci];
-                const rq: Square = pos.castle_rook_q_start[ci];
-                const to_sq = Square.fromU6(to);
-                if (from == ks and to_sq != Square.NO_SQUARE) {
-                    const rights = pos.history[pos.game_ply].castling;
-                    if (rk != Square.NO_SQUARE and to_sq == rk) {
-                        const need = if (side == Color.White) Castling.WK.toU4() else Castling.BK.toU4();
-                        if ((rights & need) != 0) {
-                            // Find the legal O-O
-                            for (0..list2.count) |i| {
-                                const m = list2.moves[i];
-                                if (m.flags == MoveFlags.OO) return m;
-                            }
-                            return MoveParseError.IllegalMove;
-                        }
-                        // Else: fall through and treat as a normal king move
-                    } else if (rq != Square.NO_SQUARE and to_sq == rq) {
-                        const need = if (side == Color.White) Castling.WQ.toU4() else Castling.BQ.toU4();
-                        if ((rights & need) != 0) {
-                            // Find the legal O-O-O
-                            for (0..list2.count) |i| {
-                                const m = list2.moves[i];
-                                if (m.flags == MoveFlags.OOO) return m;
-                            }
-                            return MoveParseError.IllegalMove;
-                        }
-                        // Else: fall through and treat as a normal king move
+                if (from == ks) {
+                    const ci: usize = side.toU4();
+                    const rk = pos.castle_rook_k_start[ci];
+                    const rq = pos.castle_rook_q_start[ci];
+                    if (rk != Square.NO_SQUARE and to == rk.toU6()) {
+                        // King target file is g-file in 960 UCI
+                        adj_to = (if (side == Color.White) Square.g1 else Square.g8).toU6();
+                        require_flag = MoveFlags.OO;
+                    } else if (rq != Square.NO_SQUARE and to == rq.toU6()) {
+                        // King target file is c-file in 960 UCI
+                        adj_to = (if (side == Color.White) Square.c1 else Square.c8).toU6();
+                        require_flag = MoveFlags.OOO;
                     }
-                    // Do not map king-from -> king-destination in 960; a normal king step (e.g., b1->c1) must be parsed as a standard move.
                 }
             }
         }
 
         for (0..list2.count) |i| {
             const move = list2.moves[i];
-            if (move.from == from and move.to == to) {
+            if (move.from == adj_from and move.to == adj_to and (require_flag == null or move.flags == require_flag.?)) {
                 if (move.is_promotion()) {
                     if (PROM_TYPESTR[move.flags.toU4()][0] != move_str[4])
                         continue;
