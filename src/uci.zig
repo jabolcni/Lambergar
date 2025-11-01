@@ -276,7 +276,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             printout(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, MAX_THREADS });
             printout(stdout, "option name UseNNUE type check default {}\n", .{nnue.engine_using_nnue});
             if (build_options.chess960) {
-                printout(stdout, "option name UCI_Chess960 type check default {}\\n", .{uci_chess960});
+                printout(stdout, "option name UCI_Chess960 type check default {}\n", .{uci_chess960});
             }
             //printout(stdout,"option name EvalFile type string default \n", .{});
             printout(stdout, "option name Debug type check default {}\n", .{debug});
@@ -582,7 +582,25 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
                 printout(stdout, "\n{}. ", .{i});
 
-                move.print();
+                // Print moves in UCI; if Chess960 is enabled and this is a castling move,
+                // output king-from + rook-from per UCI Chess960 requirement.
+                if (is_chess960() and pos[0].is_chess960 and (move.flags == position.MoveFlags.OO or move.flags == position.MoveFlags.OOO)) {
+                    const ci = pos[0].side_to_play.toU4();
+                    const rook_sq = if (move.flags == position.MoveFlags.OO)
+                        pos[0].castle_rook_k_start[ci]
+                    else
+                        pos[0].castle_rook_q_start[ci];
+                    if (rook_sq != position.Square.NO_SQUARE) {
+                        const k_from = position.sq_to_coord[move.from];
+                        const r_from = position.sq_to_coord[rook_sq.toU()];
+                        printout(stdout, "{s}{s}{s}", .{ k_from, r_from, position.MOVE_TYPESTR[move.flags.toU4()] });
+                        continue;
+                    }
+                }
+
+                const repr = move.to_str();
+                const s = if (move.is_promotion()) repr[0..5] else repr[0..4];
+                printout(stdout, "{s}{s}", .{ s, position.MOVE_TYPESTR[move.flags.toU4()] });
             }
 
             printout(stdout, "\n", .{});

@@ -290,7 +290,7 @@ pub const Search = struct {
         _ = self;
         // In Chess960, UCI requires castling as king-from + rook-from
         // Only use 960 formatting if GUI requested it via UCI_Chess960
-        if (uci.is_chess960() and (mv.flags == MoveFlags.OO or mv.flags == MoveFlags.OOO)) {
+        if (uci.is_chess960() and pos.is_chess960 and (mv.flags == MoveFlags.OO or mv.flags == MoveFlags.OOO)) {
             const ci = side.toU4();
             const rook_sq = if (mv.flags == MoveFlags.OO)
                 pos.castle_rook_k_start[ci]
@@ -714,8 +714,8 @@ pub const Search = struct {
         }
 
         if (self.manager.printout) {
-            // Print bestmove with Chess960 UCI formatting only if GUI requested 960
-            if (uci.is_chess960() and (self.best_move.flags == MoveFlags.OO or self.best_move.flags == MoveFlags.OOO)) {
+            // Print bestmove with Chess960 UCI formatting only if GUI requested 960 and position is Chess960/DFRC
+            if (uci.is_chess960() and pos.is_chess960 and (self.best_move.flags == MoveFlags.OO or self.best_move.flags == MoveFlags.OOO)) {
                 const ci = color.toU4();
                 const rook_sq = if (self.best_move.flags == MoveFlags.OO)
                     pos.castle_rook_k_start[ci]
