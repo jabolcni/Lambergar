@@ -41,6 +41,14 @@ pub inline fn is_chess960() bool {
     return build_options.chess960 and uci_chess960;
 }
 
+// Allow internal users (e.g., datagen) to toggle Chess960 formatting
+// without requiring an external UCI setoption roundtrip.
+pub fn set_chess960_enabled(val: bool) void {
+    if (build_options.chess960) {
+        uci_chess960 = val;
+    }
+}
+
 const HASH_SIZE_MIN = 1;
 const HASH_SIZE_DEFAULT = 128;
 const HASH_SIZE_MAX = 4096;

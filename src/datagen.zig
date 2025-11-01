@@ -325,16 +325,22 @@ fn set_start_position(rng: anytype, pos: *Position, variant: StartVariant) void 
         .Standard => {
             pos.set(uci.start_position) catch {};
             // is_chess960 flag remains false on classic start
+            // Ensure UCI formatting stays classic
+            uci.set_chess960_enabled(false);
         },
         .Chess960 => {
             // Random index 0..959
             const idx = rng.intRangeAtMost(u16, 0, 959);
             pos.set_chess960_start(idx) catch {};
+            // Enable UCI Chess960 formatting for castling
+            uci.set_chess960_enabled(true);
         },
         .DFRC => {
             const w = rng.intRangeAtMost(u16, 0, 959);
             const b = rng.intRangeAtMost(u16, 0, 959);
             pos.set_dfrc_start(w, b) catch {};
+            // Enable UCI Chess960 formatting for castling
+            uci.set_chess960_enabled(true);
         },
     }
 }
