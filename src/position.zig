@@ -487,7 +487,7 @@ pub const Move = packed struct {
 
         // Chess960 UCI castling fast-path: if input encodes castling as king-from + rook-from,
         // map the destination to the king's target square and require the matching castle flag.
-        var adj_from: u6 = from;
+        const adj_from: u6 = from;
         var adj_to: u6 = to;
         var require_flag: ?MoveFlags = null;
         if (pos.is_chess960) {
@@ -820,6 +820,9 @@ pub const Position = struct {
     castle_king_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
     castle_rook_k_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
     castle_rook_q_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
+    // Precomputed per-square table: which castling rights to clear if a move
+    // involves this square (either as from or to). Built after FEN initialization.
+    castle_rights_clear_by_sq: [64]u4 = .{0} ** 64,
 
     // Whether this position should export castling rights using Shredder-FEN letters (Chess960/DFRC mode)
     is_chess960: bool = false,
@@ -852,6 +855,7 @@ pub const Position = struct {
         pos.castle_king_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.castle_rook_k_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.castle_rook_q_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
+        pos.castle_rights_clear_by_sq = .{0} ** 64;
 
         pos.is_chess960 = false;
         pos.fullmove_number = 1;
@@ -878,6 +882,7 @@ pub const Position = struct {
             .castle_king_start = from.castle_king_start,
             .castle_rook_k_start = from.castle_rook_k_start,
             .castle_rook_q_start = from.castle_rook_q_start,
+            .castle_rights_clear_by_sq = from.castle_rights_clear_by_sq,
             .is_chess960 = from.is_chess960,
             .fullmove_number = from.fullmove_number,
         };
@@ -1541,29 +1546,13 @@ pub const Position = struct {
 
         if ((self.history[self.game_ply].castling > 0) ){
             var new_rights: u4 = self.history[self.game_ply].castling;
-            // White: king moved from its original square disables both; rooks disable respective side
-            if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()]) != 0) {
-                new_rights &= ~Castling.WK.toU4() & ~Castling.WQ.toU4();
-            }
-            if (self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()]) != 0) {
-                new_rights &= ~Castling.WK.toU4();
-            }
-            if (self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_rook_q_start[Color.White.toU4()].toU6()]) != 0) {
-                new_rights &= ~Castling.WQ.toU4();
-            }
-            // Black
-            if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()]) != 0) {
-                new_rights &= ~Castling.BK.toU4() & ~Castling.BQ.toU4();
-            }
-            if (self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_rook_k_start[Color.Black.toU4()].toU6()]) != 0) {
-                new_rights &= ~Castling.BK.toU4();
-            }
-            if (self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE and (update_entry & SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()]) != 0) {
-                new_rights &= ~Castling.BQ.toU4();
-            }
-            if (new_rights != self.history[self.game_ply].castling) {
-                self.history[self.game_ply].castling = new_rights;
-                self.hash ^= zobrist.castling_keys[self.history[self.game_ply-1].castling] ^ zobrist.castling_keys[self.history[self.game_ply].castling];
+            const to_clear: u4 = self.castle_rights_clear_by_sq[m.from] | self.castle_rights_clear_by_sq[m.to];
+            if (to_clear != 0) {
+                new_rights &= ~to_clear;
+                if (new_rights != self.history[self.game_ply].castling) {
+                    self.history[self.game_ply].castling = new_rights;
+                    self.hash ^= zobrist.castling_keys[self.history[self.game_ply-1].castling] ^ zobrist.castling_keys[self.history[self.game_ply].castling];
+                }
             }
         }
 
@@ -2288,6 +2277,8 @@ pub const Position = struct {
         }
 
         self.hash ^= zobrist.castling_keys[self.history[self.game_ply].castling];
+        // Build per-square castling-rights clear table based on detected starts
+        self.rebuild_castle_rights_clear_table();
         self.history[self.game_ply].hash_key = self.hash;
 
         // Parse optional halfmove and fullmove numbers
@@ -2305,6 +2296,37 @@ pub const Position = struct {
         self.history[0].accumulator.computed_score = false;   
         // Tole je novo     
 
+    }
+
+    fn rebuild_castle_rights_clear_table(self: *Position) void {
+        // Reset
+        self.castle_rights_clear_by_sq = .{0} ** 64;
+        // White
+        if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE) {
+            const ks = self.castle_king_start[Color.White.toU4()].toU6();
+            self.castle_rights_clear_by_sq[ks] |= (Castling.WK.toU4() | Castling.WQ.toU4());
+        }
+        if (self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE) {
+            const rs = self.castle_rook_k_start[Color.White.toU4()].toU6();
+            self.castle_rights_clear_by_sq[rs] |= Castling.WK.toU4();
+        }
+        if (self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE) {
+            const rs = self.castle_rook_q_start[Color.White.toU4()].toU6();
+            self.castle_rights_clear_by_sq[rs] |= Castling.WQ.toU4();
+        }
+        // Black
+        if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+            const ks = self.castle_king_start[Color.Black.toU4()].toU6();
+            self.castle_rights_clear_by_sq[ks] |= (Castling.BK.toU4() | Castling.BQ.toU4());
+        }
+        if (self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+            const rs = self.castle_rook_k_start[Color.Black.toU4()].toU6();
+            self.castle_rights_clear_by_sq[rs] |= Castling.BK.toU4();
+        }
+        if (self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+            const rs = self.castle_rook_q_start[Color.Black.toU4()].toU6();
+            self.castle_rights_clear_by_sq[rs] |= Castling.BQ.toU4();
+        }
     }
 
     /// Converts the current state of a `Position` struct into a FEN string.
