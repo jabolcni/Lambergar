@@ -2863,12 +2863,13 @@ pub const Position = struct {
         const std_ks = if (Us == .White) Square.e1.toU6() else Square.e8.toU6();
         const std_rk = if (Us == .White) Square.h1.toU6() else Square.h8.toU6();
         const std_rq = if (Us == .White) Square.a1.toU6() else Square.a8.toU6();
-        // Classical when king/rook are on standard squares (use board presence to be robust)
-        const classical_oo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rk] == Piece.new(Us, PieceType.Rook));
-        const classical_ooo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rq] == Piece.new(Us, PieceType.Rook));
-        const side_classic = self.classical_variant[ci];
         const have_oo = (rights & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0;
         const have_ooo = (rights & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0;
+        var classical_oo = false;
+        var classical_ooo = false;
+        if (have_oo) classical_oo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rk] == Piece.new(Us, PieceType.Rook));
+        if (have_ooo) classical_ooo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rq] == Piece.new(Us, PieceType.Rook));
+        const side_classic = self.classical_variant[ci];
 
         // Classical kingside
         if (side_classic and have_oo and classical_oo) {
@@ -2921,6 +2922,7 @@ pub const Position = struct {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.g1.toU6() else Square.g8.toU6();
             const rs = self.castle_rook_k_start[ci].toU6();
+            const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
             // Faster single-square presence check via board array
             const rook_present = (self.board[rs] == Piece.new(Us, PieceType.Rook));
             if (rook_present) {
@@ -2947,7 +2949,6 @@ pub const Position = struct {
                             // kd occupied by non-participating piece -> cannot castle
                             // skip
                         } else {
-                            const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
                             const rook_path = rank_between.mask(rs, rd);
                             const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
                             // if (castling_debug) {
@@ -2965,7 +2966,6 @@ pub const Position = struct {
                             }
                         }
                     } else {
-                        const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
                         const rook_path = rank_between.mask(rs, rd);
                         const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
                         // if (castling_debug) {
@@ -2991,6 +2991,7 @@ pub const Position = struct {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
             const rs = self.castle_rook_q_start[ci].toU6();
+            const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
             // Faster single-square presence check via board array
             const rook_present = (self.board[rs] == Piece.new(Us, PieceType.Rook));
             if (rook_present) {
@@ -3013,7 +3014,6 @@ pub const Position = struct {
                         if (kd_occ and kd != rs) {
                             // kd occupied by non-participating piece -> cannot castle
                         } else {
-                            const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
                             const rook_path = rank_between.mask(rs, rd);
                             const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
                             // if (castling_debug) {
@@ -3031,7 +3031,6 @@ pub const Position = struct {
                             }
                         }
                     } else {
-                        const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
                         const rook_path = rank_between.mask(rs, rd);
                         const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
                         // if (castling_debug) {
