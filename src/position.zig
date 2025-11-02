@@ -2865,10 +2865,12 @@ pub const Position = struct {
         const std_rq = if (Us == .White) Square.a1.toU6() else Square.a8.toU6();
         const have_oo = (rights & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0;
         const have_ooo = (rights & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0;
+        const king_piece = Piece.new(Us, PieceType.King);
+        const rook_piece = Piece.new(Us, PieceType.Rook);
         var classical_oo = false;
         var classical_ooo = false;
-        if (have_oo) classical_oo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rk] == Piece.new(Us, PieceType.Rook));
-        if (have_ooo) classical_ooo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rq] == Piece.new(Us, PieceType.Rook));
+        if (have_oo) classical_oo = (self.board[std_ks] == king_piece) and (self.board[std_rk] == rook_piece);
+        if (have_ooo) classical_ooo = (self.board[std_ks] == king_piece) and (self.board[std_rq] == rook_piece);
         const side_classic = self.classical_variant[ci];
 
         // Classical kingside
@@ -2924,14 +2926,17 @@ pub const Position = struct {
             const rs = self.castle_rook_k_start[ci].toU6();
             const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
             // Faster single-square presence check via board array
-            const rook_present = (self.board[rs] == Piece.new(Us, PieceType.Rook));
+            const rook_present = (self.board[rs] == rook_piece);
             if (rook_present) {
                 const occ_after_k = ctx.all_bb ^ SQUARE_BB[ks];
                 // Squares strictly between king source and destination (same rank)
                 const k_path = rank_between.mask(ks, kd);
-                const danger_mask = k_path | SQUARE_BB[kd];
                 const k_blockers_ok = (occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0;
-                const danger_ok = (ctx.danger & danger_mask) == 0;
+                var danger_ok = false;
+                if (k_blockers_ok) {
+                    const danger_mask = k_path | SQUARE_BB[kd];
+                    danger_ok = (ctx.danger & danger_mask) == 0;
+                }
                 // King path (excluding rook square) must be empty and not attacked
                 // if (castling_debug) {
                 //     std.debug.print("CASTLE DBG 960-OO {s}: ks={s} kd={s} rs={s} k_blockers_ok={} danger_ok={}\n",
@@ -2949,8 +2954,10 @@ pub const Position = struct {
                             // kd occupied by non-participating piece -> cannot castle
                             // skip
                         } else {
-                            const rook_path = rank_between.mask(rs, rd);
-                            const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
+                            const rook_path_clear = if (rs == rd) true else blk: {
+                                const rook_path = rank_between.mask(rs, rd);
+                                break :blk ((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0);
+                            };
                             // if (castling_debug) {
                             //     std.debug.print("CASTLE DBG 960-OO {s}: kd_occ={} rd={s} rook_path_clear={} -> {s}\n",
                             //         .{
@@ -2966,8 +2973,10 @@ pub const Position = struct {
                             }
                         }
                     } else {
-                        const rook_path = rank_between.mask(rs, rd);
-                        const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
+                        const rook_path_clear = if (rs == rd) true else blk2: {
+                            const rook_path = rank_between.mask(rs, rd);
+                            break :blk2 ((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0);
+                        };
                         // if (castling_debug) {
                         //     std.debug.print("CASTLE DBG 960-OO {s}: ks==kd rd={s} rook_path_clear={} -> {s}\n",
                         //         .{ if (Us == .White) "W" else "B", sq_to_coord[rd], rook_path_clear, if (rook_path_clear) "ADD" else "NOADD" }
@@ -2984,22 +2993,23 @@ pub const Position = struct {
             //         .{ if (Us == .White) "W" else "B", sq_to_coord[rs] });
             }
         }
-        }
         // Queenside (OOO)
-        if (@import("build_options").chess960) {
         if (have_ooo and (!side_classic or !classical_ooo) and self.castle_rook_q_start[ci] != Square.NO_SQUARE) {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
             const rs = self.castle_rook_q_start[ci].toU6();
             const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
             // Faster single-square presence check via board array
-            const rook_present = (self.board[rs] == Piece.new(Us, PieceType.Rook));
+            const rook_present = (self.board[rs] == rook_piece);
             if (rook_present) {
                 const occ_after_k = ctx.all_bb ^ SQUARE_BB[ks];
                 const k_path = rank_between.mask(ks, kd);
-                const danger_mask = k_path | SQUARE_BB[kd];
                 const k_blockers_ok = (occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0;
-                const danger_ok = (ctx.danger & danger_mask) == 0;
+                var danger_ok = false;
+                if (k_blockers_ok) {
+                    const danger_mask = k_path | SQUARE_BB[kd];
+                    danger_ok = (ctx.danger & danger_mask) == 0;
+                }
                 // if (castling_debug) {
                 //     std.debug.print("CASTLE DBG 960-OOO {s}: ks={s} kd={s} rs={s} k_blockers_ok={} danger_ok={}\n",
                 //         .{
@@ -3014,8 +3024,10 @@ pub const Position = struct {
                         if (kd_occ and kd != rs) {
                             // kd occupied by non-participating piece -> cannot castle
                         } else {
-                            const rook_path = rank_between.mask(rs, rd);
-                            const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
+                            const rook_path_clear = if (rs == rd) true else blk3: {
+                                const rook_path = rank_between.mask(rs, rd);
+                                break :blk3 ((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0);
+                            };
                             // if (castling_debug) {
                             //     std.debug.print("CASTLE DBG 960-OOO {s}: kd_occ={} rd={s} rook_path_clear={} -> {s}\n",
                             //         .{
@@ -3031,8 +3043,10 @@ pub const Position = struct {
                             }
                         }
                     } else {
-                        const rook_path = rank_between.mask(rs, rd);
-                        const rook_path_clear = (rs == rd) or (((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0));
+                        const rook_path_clear = if (rs == rd) true else blk4: {
+                            const rook_path = rank_between.mask(rs, rd);
+                            break :blk4 ((occ_after_k & rook_path) == 0) and ((occ_after_k & SQUARE_BB[rd]) == 0);
+                        };
                         // if (castling_debug) {
                         //     std.debug.print("CASTLE DBG 960-OOO {s}: ks==kd rd={s} rook_path_clear={} -> {s}\n",
                         //         .{ if (Us == .White) "W" else "B", sq_to_coord[rd], rook_path_clear, if (rook_path_clear) "ADD" else "NOADD" }
