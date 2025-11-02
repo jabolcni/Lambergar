@@ -820,6 +820,8 @@ pub const Position = struct {
     castle_king_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
     castle_rook_k_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
     castle_rook_q_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
+    // Whether this side started from a classical layout (king on e-file, rooks on a/h)
+    classical_variant: [2]bool = .{ false, false },
     // Precomputed per-square table: which castling rights to clear if a move
     // involves this square (either as from or to). Built after FEN initialization.
     castle_rights_clear_by_sq: [64]u4 = .{0} ** 64,
@@ -855,6 +857,7 @@ pub const Position = struct {
         pos.castle_king_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.castle_rook_k_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.castle_rook_q_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
+        pos.classical_variant = .{ false, false };
         pos.castle_rights_clear_by_sq = .{0} ** 64;
 
         pos.is_chess960 = false;
@@ -882,6 +885,7 @@ pub const Position = struct {
             .castle_king_start = from.castle_king_start,
             .castle_rook_k_start = from.castle_rook_k_start,
             .castle_rook_q_start = from.castle_rook_q_start,
+            .classical_variant = from.classical_variant,
             .castle_rights_clear_by_sq = from.castle_rights_clear_by_sq,
             .is_chess960 = from.is_chess960,
             .fullmove_number = from.fullmove_number,
@@ -2166,6 +2170,11 @@ pub const Position = struct {
                 self.castle_rook_k_start[ci] = Square.NO_SQUARE;
                 self.castle_rook_q_start[ci] = Square.NO_SQUARE;
             }
+            // Cache whether this side starts from the classical arrangement
+            self.classical_variant[ci] = if (c == .White)
+                (self.castle_king_start[ci] == Square.e1 and self.castle_rook_k_start[ci] == Square.h1 and self.castle_rook_q_start[ci] == Square.a1)
+            else
+                (self.castle_king_start[ci] == Square.e8 and self.castle_rook_k_start[ci] == Square.h8 and self.castle_rook_q_start[ci] == Square.a8);
         }
 
         // Debug: dump initial 960 king/rook start squares
@@ -2849,15 +2858,20 @@ pub const Position = struct {
 
     fn generate_castling_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void { // captures are quiet moves
         const ci: usize = Us.toU4();
+        const rights = self.history[self.game_ply].castling;
+        if (rights == 0) return; // no castling available
         const std_ks = if (Us == .White) Square.e1.toU6() else Square.e8.toU6();
         const std_rk = if (Us == .White) Square.h1.toU6() else Square.h8.toU6();
         const std_rq = if (Us == .White) Square.a1.toU6() else Square.a8.toU6();
         // Classical when king/rook are on standard squares (use board presence to be robust)
         const classical_oo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rk] == Piece.new(Us, PieceType.Rook));
         const classical_ooo = (self.board[std_ks] == Piece.new(Us, PieceType.King)) and (self.board[std_rq] == Piece.new(Us, PieceType.Rook));
+        const side_classic = self.classical_variant[ci];
+        const have_oo = (rights & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0;
+        const have_ooo = (rights & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0;
 
         // Classical kingside
-        if (classical_oo and ((self.history[self.game_ply].castling & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0)) {
+        if (side_classic and have_oo and classical_oo) {
             // Classical: rely on rights + empty/unattacked path; entry gate not needed
             if ((((ctx.all_bb | ctx.danger) & oo_blockers_mask(Us))) == 0) {
                 if (Us == Color.White) {
@@ -2868,7 +2882,7 @@ pub const Position = struct {
             }
         }
         // Classical queenside
-        if (classical_ooo and ((self.history[self.game_ply].castling & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0)) {
+        if (side_classic and have_ooo and classical_ooo) {
             if ((((ctx.all_bb | (ctx.danger & ~ignore_ooo_danger(Us))) & ooo_blockers_mask(Us))) == 0) {
                 if (Us == Color.White) {
                     list.append(Move.new(Square.e1, Square.c1, MoveFlags.OOO));
@@ -2901,7 +2915,7 @@ pub const Position = struct {
         };
         // Kingside (OO)
         if (@import("build_options").chess960) {
-        if (!classical_oo and (self.history[self.game_ply].castling & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0 and self.castle_rook_k_start[ci] != Square.NO_SQUARE) {
+        if (have_oo and (!side_classic or !classical_oo) and self.castle_rook_k_start[ci] != Square.NO_SQUARE) {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.g1.toU6() else Square.g8.toU6();
             const rs = self.castle_rook_k_start[ci].toU6();
@@ -2969,7 +2983,7 @@ pub const Position = struct {
         }
         // Queenside (OOO)
         if (@import("build_options").chess960) {
-        if (!classical_ooo and (self.history[self.game_ply].castling & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0 and self.castle_rook_q_start[ci] != Square.NO_SQUARE) {
+        if (have_ooo and (!side_classic or !classical_ooo) and self.castle_rook_q_start[ci] != Square.NO_SQUARE) {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
             const rs = self.castle_rook_q_start[ci].toU6();
