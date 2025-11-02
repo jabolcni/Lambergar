@@ -2902,7 +2902,9 @@ pub const Position = struct {
                 var fa: i32 = @intCast(file_of_u6(a));
                 var fb: i32 = @intCast(file_of_u6(b));
                 if (fa > fb) {
-                    const tmp = fa; fa = fb; fb = tmp;
+                    const tmp = fa;
+                    fa = fb;
+                    fb = tmp;
                 }
                 var m: u64 = 0;
                 var f: i32 = fa + 1;
@@ -2919,9 +2921,11 @@ pub const Position = struct {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.g1.toU6() else Square.g8.toU6();
             const rs = self.castle_rook_k_start[ci].toU6();
-            const rook_present = (self.bitboard_of_pt(Us, PieceType.Rook) & SQUARE_BB[rs]) != 0;
+            // Faster single-square presence check via board array
+            const rook_present = (self.board[rs] == Piece.new(Us, PieceType.Rook));
             if (rook_present) {
                 const occ_after_k = ctx.all_bb ^ SQUARE_BB[ks];
+                // Squares strictly between king source and destination (same rank)
                 const k_path = rank_between.mask(ks, kd);
                 const danger_mask = k_path | SQUARE_BB[kd];
                 const k_blockers_ok = (occ_after_k & (k_path & ~SQUARE_BB[rs])) == 0;
@@ -2987,7 +2991,8 @@ pub const Position = struct {
             const ks = ctx.our_king;
             const kd: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
             const rs = self.castle_rook_q_start[ci].toU6();
-            const rook_present = (self.bitboard_of_pt(Us, PieceType.Rook) & SQUARE_BB[rs]) != 0;
+            // Faster single-square presence check via board array
+            const rook_present = (self.board[rs] == Piece.new(Us, PieceType.Rook));
             if (rook_present) {
                 const occ_after_k = ctx.all_bb ^ SQUARE_BB[ks];
                 const k_path = rank_between.mask(ks, kd);
