@@ -2948,11 +2948,8 @@ pub const Position = struct {
                 if (k_blockers_ok and danger_ok) {
                     // Destination square may be occupied by the participating rook in Chess960
                     if (ks != kd) {
-<<<<<<< ours
                         const kd_occ = (occ_after_k & SQUARE_BB[kd]) != 0;
-=======
-                        const kd_occ = (occ_after_k & kd_bb) != 0;
->>>>>>> theirs
+
                         if (kd_occ and kd != rs) {
                             // kd occupied by non-participating piece -> cannot castle
                             // skip
@@ -3023,11 +3020,9 @@ pub const Position = struct {
                 // }
                 if (k_blockers_ok and danger_ok) {
                     if (ks != kd) {
-<<<<<<< ours
+
                         const kd_occ = (occ_after_k & SQUARE_BB[kd]) != 0;
-=======
-                        const kd_occ = (occ_after_k & kd_bb) != 0;
->>>>>>> theirs
+
                         if (kd_occ and kd != rs) {
                             // kd occupied by non-participating piece -> cannot castle
                         } else {
