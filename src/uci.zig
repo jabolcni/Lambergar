@@ -1459,7 +1459,7 @@ pub fn perft_test(allocator: std.mem.Allocator) !void {
         var expected_nodes: [7]?u64 = .{null} ** 7;
 
         // Parse node counts for depths 1 to 7
-        inline for (0..4) |i| {
+        inline for (0..5) |i| {
             if (parts.next()) |node_str| {
                 if (node_str.len > 0) {
                     expected_nodes[i] = try std.fmt.parseInt(u64, node_str, 10);
