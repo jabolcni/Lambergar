@@ -480,9 +480,36 @@ pub const Move = packed struct {
             pos.generate_legals(Color.Black, &list2);
         }
 
+        // Chess960 UCI castling fast-path: if input encodes castling as king-from + rook-from,
+        // map the destination to the king's target square and require the matching castle flag.
+        const adj_from: u6 = from;
+        var adj_to: u6 = to;
+        var require_flag: ?MoveFlags = null;
+        if (pos.is_chess960) {
+            const side = pos.side_to_play;
+            const king_bb = pos.bitboard_of_pc(Piece.make_piece(side, PieceType.King));
+            if (king_bb != 0) {
+                const ks: u6 = bb.get_ls1b_index(king_bb);
+                if (from == ks) {
+                    const ci: usize = side.toU4();
+                    const rk = pos.castle_rook_k_start[ci];
+                    const rq = pos.castle_rook_q_start[ci];
+                    if (rk != Square.NO_SQUARE and to == rk.toU6()) {
+                        // King target file is g-file in 960 UCI
+                        adj_to = (if (side == Color.White) Square.g1 else Square.g8).toU6();
+                        require_flag = MoveFlags.OO;
+                    } else if (rq != Square.NO_SQUARE and to == rq.toU6()) {
+                        // King target file is c-file in 960 UCI
+                        adj_to = (if (side == Color.White) Square.c1 else Square.c8).toU6();
+                        require_flag = MoveFlags.OOO;
+                    }
+                }
+            }
+        }
+
         for (0..list2.count) |i| {
             const move = list2.moves[i];
-            if (move.from == from and move.to == to) {
+            if (move.from == adj_from and move.to == adj_to and (require_flag == null or move.flags == require_flag.?)) {
                 if (move.is_promotion()) {
                     if (PROM_TYPESTR[move.flags.toU4()][0] != move_str[4])
                         continue;
@@ -505,11 +532,24 @@ pub const Move = packed struct {
         var uci_buf: [5]u8 = undefined;
         var uci_len: usize = 0;
 
-        // Handle castling
+        // Handle castling (Chess960-aware: king from current square to g/c file)
         if (std.mem.eql(u8, move_str, "O-O")) {
-            return try std.testing.allocator.dupe(u8, if (curr_pos.side_to_play == .White) "e1g1" else "e8g8");
+            // side_to_play is runtime; use bitboard_of_pc, not comptime-only bitboard_of_pt
+            const king_bb = curr_pos.bitboard_of_pc(Piece.make_piece(curr_pos.side_to_play, PieceType.King));
+            const ks = bb.get_ls1b_index(king_bb);
+            const kd = if (curr_pos.side_to_play == .White) Square.g1.toU6() else Square.g8.toU6();
+            @memcpy(uci_buf[0..2], sq_to_coord[ks]);
+            @memcpy(uci_buf[2..4], sq_to_coord[kd]);
+            uci_len = 4;
+            return try std.testing.allocator.dupe(u8, uci_buf[0..uci_len]);
         } else if (std.mem.eql(u8, move_str, "O-O-O")) {
-            return try std.testing.allocator.dupe(u8, if (curr_pos.side_to_play == .White) "e1c1" else "e8c8");
+            const king_bb = curr_pos.bitboard_of_pc(Piece.make_piece(curr_pos.side_to_play, PieceType.King));
+            const ks = bb.get_ls1b_index(king_bb);
+            const kd = if (curr_pos.side_to_play == .White) Square.c1.toU6() else Square.c8.toU6();
+            @memcpy(uci_buf[0..2], sq_to_coord[ks]);
+            @memcpy(uci_buf[2..4], sq_to_coord[kd]);
+            uci_len = 4;
+            return try std.testing.allocator.dupe(u8, uci_buf[0..uci_len]);
         }
 
         // Parse algebraic move
@@ -761,6 +801,27 @@ pub const Position = struct {
     eval: Evaluation = undefined,
     delta: nnue.DeltaPieces = nnue.DeltaPieces{},
 
+    // Chess960/FRC castling: track starting squares for king and rooks per color
+    // Initialized from FEN and constant during the game
+    castle_king_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
+    castle_rook_k_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
+    castle_rook_q_start: [2]Square = .{ Square.NO_SQUARE, Square.NO_SQUARE },
+    // Whether this side started from a classical layout (king on e-file, rooks on a/h)
+    classical_variant: [2]bool = .{ false, false },
+    // Precomputed per-square table: which castling rights to clear if a move
+    // involves this square (either as from or to). Built after FEN initialization.
+    castle_rights_clear_by_sq: [64]u4 = .{0} ** 64,
+
+    // Whether this position should export castling rights using Shredder-FEN letters (Chess960/DFRC mode)
+    is_chess960: bool = false,
+
+    // Last FEN parse diagnostic message (if any)
+    fen_error: [128]u8 = undefined,
+    fen_error_len: usize = 0,
+
+    // Fullmove number from input FEN (defaults to 1)
+    fullmove_number: u32 = 1,
+
     pub fn new() Position {
         var pos = Position{};
 
@@ -779,6 +840,17 @@ pub const Position = struct {
         pos.eval.phase = [1]u8{0} ** 2;
         pos.delta = nnue.DeltaPieces{};
 
+        pos.castle_king_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
+        pos.castle_rook_k_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
+        pos.castle_rook_q_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
+        pos.classical_variant = .{ false, false };
+        pos.castle_rights_clear_by_sq = .{0} ** 64;
+
+        pos.is_chess960 = false;
+        pos.fullmove_number = 1;
+
+        pos.fen_error_len = 0;
+
         return pos;
     }
 
@@ -796,6 +868,13 @@ pub const Position = struct {
             .history = from.history,
             .eval = from.eval,
             .delta = nnue.DeltaPieces{},
+            .castle_king_start = from.castle_king_start,
+            .castle_rook_k_start = from.castle_rook_k_start,
+            .castle_rook_q_start = from.castle_rook_q_start,
+            .classical_variant = from.classical_variant,
+            .castle_rights_clear_by_sq = from.castle_rights_clear_by_sq,
+            .is_chess960 = from.is_chess960,
+            .fullmove_number = from.fullmove_number,
         };
     }
 
@@ -1338,27 +1417,15 @@ pub const Position = struct {
         self.history[self.game_ply].accumulator.computed_score = false;
 
         if ((self.history[self.game_ply].castling > 0) ){
-            if (update_entry & 0x10 != 0) { // King move
-                self.history[self.game_ply].castling &= ~Castling.WK.toU4() & ~Castling.WQ.toU4();
-            }
-            else if (update_entry & 0x1 != 0) { // White queen side rook
-                self.history[self.game_ply].castling &= ~Castling.WQ.toU4();
-            }
-            else if (update_entry & 0x80 != 0) { // White king side rook
-                self.history[self.game_ply].castling &= ~Castling.WK.toU4();
-            }
-            else if (update_entry & 0x1000000000000000 != 0) {
-                self.history[self.game_ply].castling &= ~Castling.BK.toU4() & ~Castling.BQ.toU4();
-            }
-            else if (update_entry & 0x100000000000000 != 0) {
-                self.history[self.game_ply].castling &= ~Castling.BQ.toU4();
-            }
-            else if (update_entry & 0x8000000000000000 != 0) {
-                self.history[self.game_ply].castling &= ~Castling.BK.toU4();
-            }
-
+            var new_rights: u4 = self.history[self.game_ply].castling;
+            const to_clear: u4 = self.castle_rights_clear_by_sq[m.from] | self.castle_rights_clear_by_sq[m.to];
+            if (to_clear != 0) {
+                new_rights &= ~to_clear;
+                if (new_rights != self.history[self.game_ply].castling) {
+                    self.history[self.game_ply].castling = new_rights;
             self.hash ^= zobrist.castling_keys[self.history[self.game_ply-1].castling] ^ zobrist.castling_keys[self.history[self.game_ply].castling];
-            //}
+                }
+            }
         }
 
         var epsq = self.history[self.game_ply - 1].epsq;
@@ -1391,40 +1458,71 @@ pub const Position = struct {
                 self.hash ^= zobrist.enpassant_keys[self.history[self.game_ply].epsq.file_of().toU3()];
             },
             MoveFlags.OO => {
-                if (C == Color.White) {
-                    self.move_piece_quiet(Square.e1.toU6(), Square.g1.toU6());
-                    self.move_piece_quiet(Square.h1.toU6(), Square.f1.toU6());
-
+                const ci: usize = C.toU4();
+                const kd: u6 = if (C == .White) Square.g1.toU6() else Square.g8.toU6();
+                const rs: u6 = self.castle_rook_k_start[ci].toU6();
+                const rd: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
+                if (rs == kd) {
+                    // Rook occupies king destination: remove rook, move king, then place rook at rd
+                    const rook_pc = self.board[rs];
+                    self.remove_piece(rs);
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    self.put_piece(rook_pc, rd);
                     if (nnue.engine_using_nnue) {
-                        self.delta.move_piece_quiet(Piece.WHITE_KING, Square.e1.toU6(), Square.g1.toU6());
-                        self.delta.move_piece_quiet(Piece.WHITE_ROOK, Square.h1.toU6(), Square.f1.toU6());
+                        self.delta.remove_piece(rook_pc, rs);
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        self.delta.move_piece_quiet(kpc, m.from, kd);
+                        self.delta.put_piece(rook_pc, rd);
+                    }
+                } else if (rs == rd) {
+                    // Rook already on its destination square; only move the king
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    if (nnue.engine_using_nnue) {
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
                     }
                 } else {
-                    self.move_piece_quiet(Square.e8.toU6(), Square.g8.toU6());
-                    self.move_piece_quiet(Square.h8.toU6(), Square.f8.toU6());
-
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    self.move_piece_quiet(rs, rd);
                     if (nnue.engine_using_nnue) {
-                        self.delta.move_piece_quiet(Piece.BLACK_KING, Square.e8.toU6(), Square.g8.toU6());
-                        self.delta.move_piece_quiet(Piece.BLACK_ROOK, Square.h8.toU6(), Square.f8.toU6());
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        const rpc = if (C == .White) Piece.WHITE_ROOK else Piece.BLACK_ROOK;
+                        if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
+                        self.delta.move_piece_quiet(rpc, rs, rd);
                     }                    
                  }
             },
             MoveFlags.OOO => {
-                if (C == Color.White) {
-                    self.move_piece_quiet(Square.e1.toU6(), Square.c1.toU6());
-                    self.move_piece_quiet(Square.a1.toU6(), Square.d1.toU6());
-
+                const ci: usize = C.toU4();
+                const kd: u6 = if (C == .White) Square.c1.toU6() else Square.c8.toU6();
+                const rs: u6 = self.castle_rook_q_start[ci].toU6();
+                const rd: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
+                if (rs == kd) {
+                    const rook_pc = self.board[rs];
+                    self.remove_piece(rs);
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    self.put_piece(rook_pc, rd);
                     if (nnue.engine_using_nnue) {
-                        self.delta.move_piece_quiet(Piece.WHITE_KING, Square.e1.toU6(), Square.c1.toU6());
-                        self.delta.move_piece_quiet(Piece.WHITE_ROOK, Square.a1.toU6(), Square.d1.toU6());
+                        self.delta.remove_piece(rook_pc, rs);
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        self.delta.move_piece_quiet(kpc, m.from, kd);
+                        self.delta.put_piece(rook_pc, rd);
+                    }
+                } else if (rs == rd) {
+                    // Rook already on its destination square; only move the king
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    if (nnue.engine_using_nnue) {
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
                     }                    
                  } else {
-                    self.move_piece_quiet(Square.e8.toU6(), Square.c8.toU6());
-                    self.move_piece_quiet(Square.a8.toU6(), Square.d8.toU6());
-
+                    if (m.from != kd) self.move_piece_quiet(m.from, kd);
+                    self.move_piece_quiet(rs, rd);
                     if (nnue.engine_using_nnue) {
-                        self.delta.move_piece_quiet(Piece.BLACK_KING, Square.e8.toU6(), Square.c8.toU6());
-                        self.delta.move_piece_quiet(Piece.BLACK_ROOK, Square.a8.toU6(), Square.d8.toU6());
+                        const kpc = if (C == .White) Piece.WHITE_KING else Piece.BLACK_KING;
+                        const rpc = if (C == .White) Piece.WHITE_ROOK else Piece.BLACK_ROOK;
+                        if (m.from != kd) self.delta.move_piece_quiet(kpc, m.from, kd);
+                        self.delta.move_piece_quiet(rpc, rs, rd);
                     }                     
                 }                
             },
@@ -1549,22 +1647,35 @@ pub const Position = struct {
                 self.hash ^= zobrist.enpassant_keys[self.history[self.game_ply].epsq.file_of().toU3()];
             },    
             MoveFlags.OO => {
-                if (C == Color.White) {
-                    self.move_piece_quiet(Square.g1.toU6(), Square.e1.toU6());
-                    self.move_piece_quiet(Square.f1.toU6(), Square.h1.toU6());
-                } else {
-                    self.move_piece_quiet(Square.g8.toU6(), Square.e8.toU6());
-                    self.move_piece_quiet(Square.f8.toU6(), Square.h8.toU6());
+                const ci: usize = C.toU4();
+                const kd: u6 = if (C == .White) Square.g1.toU6() else Square.g8.toU6();
+                const rs: u6 = self.castle_rook_k_start[ci].toU6();
+                const rd: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
+                // Overlap-safe undo: remove rook from its castled square (if it moved),
+                // move king back, then restore rook to its starting square.
+                const rook_moved: bool = (rs != rd);
+                var rook_pc: Piece = Piece.NO_PIECE;
+                if (rook_moved) {
+                    rook_pc = self.board[rd];
+                    if (rook_pc != Piece.NO_PIECE) self.remove_piece(rd);
                 }
+                if (m.from != kd) self.move_piece_quiet(kd, m.from);
+                if (rook_moved) self.put_piece(rook_pc, rs);
             },     
             MoveFlags.OOO => {
-                if (C == Color.White) {
-                    self.move_piece_quiet(Square.c1.toU6(), Square.e1.toU6());
-                    self.move_piece_quiet(Square.d1.toU6(), Square.a1.toU6());
-                } else {
-                    self.move_piece_quiet(Square.c8.toU6(), Square.e8.toU6());
-                    self.move_piece_quiet(Square.d8.toU6(), Square.a8.toU6());
-                 }                
+                const ci: usize = C.toU4();
+                const kd: u6 = if (C == .White) Square.c1.toU6() else Square.c8.toU6();
+                const rs: u6 = self.castle_rook_q_start[ci].toU6();
+                const rd: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
+                // Overlap-safe undo: same sequence as OO
+                const rook_moved_q: bool = (rs != rd);
+                var rook_pc_q: Piece = Piece.NO_PIECE;
+                if (rook_moved_q) {
+                    rook_pc_q = self.board[rd];
+                    if (rook_pc_q != Piece.NO_PIECE) self.remove_piece(rd);
+                }
+                if (m.from != kd) self.move_piece_quiet(kd, m.from);
+                if (rook_moved_q) self.put_piece(rook_pc_q, rs);
             },          
             MoveFlags.EN_PASSANT => {
                 self.move_piece_quiet(m.to, m.from);
@@ -1721,6 +1832,7 @@ pub const Position = struct {
     pub fn set(self: *Position, fen: []const u8) !void {
 
         self.* = Position.new();
+        self.fen_error_len = 0;
         var parts = std.mem.splitScalar(u8, fen, ' ');
         const fen_position = parts.next().?;
 
@@ -1729,7 +1841,8 @@ pub const Position = struct {
         while (ranks.next()) |entry| {
             var file: u6 = 0;
             for (entry) |c| {
-                const square = Square.fromU6((7 - rank) * 8 + file);
+                const sq_u6: u6 = (7 - rank) * 8 + file;
+                const square = Square.fromU6(sq_u6);
                 const piece = switch (c) {
                     'P' => Piece.WHITE_PAWN,
                     'N' => Piece.WHITE_KNIGHT,
@@ -1754,10 +1867,25 @@ pub const Position = struct {
                 self.add_piece_to_board(piece, square.toU6());
                 file += 1;
             }
-            if (file != 8) return FenParseError.InvalidPosition;
+            if (file != 8) {
+                // Record rank width issue
+                var buf: [128]u8 = undefined;
+                const msg = std.fmt.bufPrint(&buf, "Invalid rank width at rank {} (saw {} files)", .{ 8 - rank, file }) catch "";
+                const mlen = @min(msg.len, self.fen_error.len);
+                @memcpy(self.fen_error[0..mlen], msg[0..mlen]);
+                self.fen_error_len = mlen;
+                return FenParseError.InvalidPosition;
+            }
             rank += 1;
         }
-        if (rank != 8) return FenParseError.InvalidPosition;
+        if (rank != 8) {
+            var buf: [128]u8 = undefined;
+            const msg = std.fmt.bufPrint(&buf, "Invalid position: expected 8 ranks, got {}", .{ rank }) catch "";
+            const mlen = @min(msg.len, self.fen_error.len);
+            @memcpy(self.fen_error[0..mlen], msg[0..mlen]);
+            self.fen_error_len = mlen;
+            return FenParseError.InvalidPosition;
+        }
 
         const active_color_fen = parts.next().?;
         if (std.mem.eql(u8, active_color_fen, "w")) {
@@ -1770,41 +1898,156 @@ pub const Position = struct {
         }
 
         const castling_fen = parts.next() orelse return FenParseError.MissingCastlingRights;
-        self.history[self.game_ply].entry = ALL_CASTLING_MASK;
 
-        for (castling_fen) |c| {
-            switch (c) {
+        // Initialize Chess960 castling starts from current board
+        inline for (.{ Color.White, Color.Black }, 0..) |c, ci| {
+            const king_bb = self.bitboard_of_pt(c, PieceType.King);
+            if (king_bb == 0) {
+                self.castle_king_start[ci] = Square.NO_SQUARE;
+            } else {
+                self.castle_king_start[ci] = Square.fromU6(bb.get_ls1b_index(king_bb));
+            }
+            const rook_bb_rank = self.bitboard_of_pt(c, PieceType.Rook) & bb.MASK_RANK[if (c == .White) Rank.RANK1.toU3() else Rank.RANK8.toU3()];
+            if (rook_bb_rank != 0 and king_bb != 0) {
+                const ks = self.castle_king_start[ci].toU6();
+                const kfile: u3 = @truncate(ks & 7);
+                // kingside rook: closest rook with file > king
+                var found_k: bool = false;
+                // Ensure addition happens in a wider type than u3
+                var f: u6 = @as(u6, @intCast(kfile)) + 1;
+                const rrank: u6 = @truncate(ks >> 3);
+                while (f < 8) : (f += 1) {
+                    const sq: u6 = (rrank * 8) + f;
+                    if ((rook_bb_rank & SQUARE_BB[sq]) != 0) { self.castle_rook_k_start[ci] = Square.fromU6(sq); found_k = true; break; }
+                }
+                if (!found_k) self.castle_rook_k_start[ci] = Square.NO_SQUARE;
+                // queenside rook: closest rook with file < king
+                var found_q: bool = false;
+                var f2i: i32 = @as(i32, kfile) - 1;
+                const rrank2: u6 = @truncate(ks >> 3);
+                while (f2i >= 0) : (f2i -= 1) {
+                    const f2: u6 = @truncate(@as(u6, @intCast(f2i)));
+                    const sq2: u6 = (rrank2 * 8) + f2;
+                    if ((rook_bb_rank & SQUARE_BB[sq2]) != 0) { self.castle_rook_q_start[ci] = Square.fromU6(sq2); found_q = true; break; }
+                }
+                if (!found_q) self.castle_rook_q_start[ci] = Square.NO_SQUARE;
+            } else {
+                self.castle_rook_k_start[ci] = Square.NO_SQUARE;
+                self.castle_rook_q_start[ci] = Square.NO_SQUARE;
+            }
+            // Cache whether this side starts from the classical arrangement
+            self.classical_variant[ci] = if (c == .White)
+                (self.castle_king_start[ci] == Square.e1 and self.castle_rook_k_start[ci] == Square.h1 and self.castle_rook_q_start[ci] == Square.a1)
+            else
+                (self.castle_king_start[ci] == Square.e8 and self.castle_rook_k_start[ci] == Square.h8 and self.castle_rook_q_start[ci] == Square.a8);
+        }
+
+        // Build dynamic entry mask from tracked squares; then clear bits for allowed rights
+        var dynamic_all_castle_mask: u64 = 0;
+        if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE)
+            dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()];
+        if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE)
+            dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.White.toU4()].toU6()];
+        if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE)
+            dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.Black.toU4()].toU6()];
+        if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE)
+            dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()];
+        self.history[self.game_ply].entry = dynamic_all_castle_mask;
+
+        for (castling_fen) |cf| {
+            switch (cf) {
                 'K' =>  {
-                    self.history[self.game_ply].entry &= ~WHITE_OO_MASK;
+                    if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE) {
+                        self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.WK.toU4();
+                    }
                 },
                 'Q' => {
-                    self.history[self.game_ply].entry &= ~WHITE_OOO_MASK;
+                    if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE) {
+                        self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.White.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.WQ.toU4();
+                    }
                 },
                 'k' => {
-                    self.history[self.game_ply].entry &= ~BLACK_OO_MASK;
+                    if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+                        self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.Black.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.BK.toU4();
+                    }
                 },
                 'q' => {
-                    self.history[self.game_ply].entry &= ~BLACK_OOO_MASK;
+                    if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+                        self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.BQ.toU4();
+                    }
+                },
+                // Shredder-FEN letters for rooks allowed to castle
+                'A'...'H' => {
+                    self.is_chess960 = true;
+                    // White rook file
+                    if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE) {
+                        const kf: u3 = self.castle_king_start[Color.White.toU4()].file_of().toU3();
+                        const rf: u3 = @truncate(@as(u8, cf - 'A'));
+                        if (rf > kf) {
+                            // kingside
+                            if (self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE) {
+                                self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()]);
+                                self.history[self.game_ply].castling |= Castling.WK.toU4();
+                            }
+                        } else if (rf < kf) {
+                            // queenside
+                            if (self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE) {
+                                self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.White.toU4()].toU6()]);
+                                self.history[self.game_ply].castling |= Castling.WQ.toU4();
+                            }
+                        }
+                    }
+                },
+                'a'...'h' => {
+                    self.is_chess960 = true;
+                    if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+                        const kf: u3 = self.castle_king_start[Color.Black.toU4()].file_of().toU3();
+                        const rf: u3 = @truncate(@as(u8, cf - 'a'));
+                        if (rf > kf) {
+                            if (self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+                                self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.Black.toU4()].toU6()]);
+                                self.history[self.game_ply].castling |= Castling.BK.toU4();
+                            }
+                        } else if (rf < kf) {
+                            if (self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+                                self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()]);
+                                self.history[self.game_ply].castling |= Castling.BQ.toU4();
+                            }
+                        }
+                    }
                 },
                 '-' => break,
                 else => return FenParseError.InvalidCastlingRights,
             }
         }
 
-        // Possible bug in surge cpp source code? The original cpp code does not set en passant square from fen.
-        const en_passant_fen = parts.next().?;
-
+        // En passant: optional in many FEN strings used by UCI "position fen".
+        // Accept missing field and default to no en passant square.
+        if (parts.next()) |en_passant_fen| {
         if (!std.mem.eql(u8, en_passant_fen, "-")) {
             self.history[self.game_ply].epsq = Square.from_str(en_passant_fen);
             self.hash ^= zobrist.enpassant_keys[self.history[self.game_ply].epsq.file_of().toU3()];
+            }
+        } else {
+            // No en passant field provided; leave default (no EP)
         }
 
         self.hash ^= zobrist.castling_keys[self.history[self.game_ply].castling];
+        // Build per-square castling-rights clear table based on detected starts
+        self.rebuild_castle_rights_clear_table();
         self.history[self.game_ply].hash_key = self.hash;
+
+        // Parse optional halfmove and fullmove numbers
+        if (parts.next()) |halfmove_fen| {
+            self.history[self.game_ply].fifty = std.fmt.parseInt(u16, halfmove_fen, 10) catch self.history[self.game_ply].fifty;
+        }
+        if (parts.next()) |fullmove_fen| {
+            self.fullmove_number = std.fmt.parseInt(u32, fullmove_fen, 10) catch self.fullmove_number;
+        }
   
         // Tole je novo
         self.delta.reset();
@@ -1813,6 +2056,37 @@ pub const Position = struct {
         self.history[0].accumulator.computed_score = false;   
         // Tole je novo     
 
+    }
+
+    fn rebuild_castle_rights_clear_table(self: *Position) void {
+        // Reset
+        self.castle_rights_clear_by_sq = .{0} ** 64;
+        // White
+        if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE) {
+            const ks = self.castle_king_start[Color.White.toU4()].toU6();
+            self.castle_rights_clear_by_sq[ks] |= (Castling.WK.toU4() | Castling.WQ.toU4());
+        }
+        if (self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE) {
+            const rs = self.castle_rook_k_start[Color.White.toU4()].toU6();
+            self.castle_rights_clear_by_sq[rs] |= Castling.WK.toU4();
+        }
+        if (self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE) {
+            const rs = self.castle_rook_q_start[Color.White.toU4()].toU6();
+            self.castle_rights_clear_by_sq[rs] |= Castling.WQ.toU4();
+        }
+        // Black
+        if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+            const ks = self.castle_king_start[Color.Black.toU4()].toU6();
+            self.castle_rights_clear_by_sq[ks] |= (Castling.BK.toU4() | Castling.BQ.toU4());
+        }
+        if (self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+            const rs = self.castle_rook_k_start[Color.Black.toU4()].toU6();
+            self.castle_rights_clear_by_sq[rs] |= Castling.BK.toU4();
+        }
+        if (self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE) {
+            const rs = self.castle_rook_q_start[Color.Black.toU4()].toU6();
+            self.castle_rights_clear_by_sq[rs] |= Castling.BQ.toU4();
+        }
     }
 
     /// Converts the current state of a `Position` struct into a FEN string.
@@ -1864,28 +2138,113 @@ pub const Position = struct {
             try fen_parts.append(allocator, 'b');
         }
 
-        // --- 3. Castling availability ---
+        // --- 3. Castling availability (Shredder-FEN aware) ---
         try fen_parts.append(allocator, ' ');
         var has_castling = false;
-        const castling_rights = self.history[self.game_ply].castling; // Assuming u4 field
+        const castling_rights = self.history[self.game_ply].castling;
 
-        // Check for White castling rights (assuming Castling enum values)
+        if (self.is_chess960) {
+            // Always output Shredder letters for 960/DFRC
         if ((castling_rights & Castling.WK.toU4()) != 0) {
             try fen_parts.append(allocator, 'K');
             has_castling = true;
+                const rs = self.castle_rook_k_start[Color.White.toU4()];
+                if (rs != Square.NO_SQUARE) {
+                    const base: u8 = 'A';
+                    const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
+                    try fen_parts.append(allocator, base + f);
+                }
         }
         if ((castling_rights & Castling.WQ.toU4()) != 0) {
             try fen_parts.append(allocator, 'Q');
             has_castling = true;
+                const rs = self.castle_rook_q_start[Color.White.toU4()];
+                if (rs != Square.NO_SQUARE) {
+                    const base: u8 = 'A';
+                    const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
+                    try fen_parts.append(allocator, base + f);
         }
-        // Check for Black castling rights
+            }
         if ((castling_rights & Castling.BK.toU4()) != 0) {
             try fen_parts.append(allocator, 'k');
             has_castling = true;
+                const rs = self.castle_rook_k_start[Color.Black.toU4()];
+                if (rs != Square.NO_SQUARE) {
+                    const base: u8 = 'a';
+                    const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
+                    try fen_parts.append(allocator, base + f);
+                }
         }
         if ((castling_rights & Castling.BQ.toU4()) != 0) {
-            try fen_parts.append(allocator, 'q');
             has_castling = true;
+                const rs = self.castle_rook_q_start[Color.Black.toU4()];
+                if (rs != Square.NO_SQUARE) {
+                    const base: u8 = 'a';
+                    const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
+                    try fen_parts.append(allocator, base + f);
+                }
+            }
+        } else {
+            // Determine classical layout per right (K on e-file, rook on h/a for that side)
+            const wK_classical = (self.castle_king_start[Color.White.toU4()] == Square.e1 and self.castle_rook_k_start[Color.White.toU4()] == Square.h1);
+            const wQ_classical = (self.castle_king_start[Color.White.toU4()] == Square.e1 and self.castle_rook_q_start[Color.White.toU4()] == Square.a1);
+            const bK_classical = (self.castle_king_start[Color.Black.toU4()] == Square.e8 and self.castle_rook_k_start[Color.Black.toU4()] == Square.h8);
+            const bQ_classical = (self.castle_king_start[Color.Black.toU4()] == Square.e8 and self.castle_rook_q_start[Color.Black.toU4()] == Square.a8);
+
+            // White rights
+            if ((castling_rights & Castling.WK.toU4()) != 0) {
+                has_castling = true;
+                if (wK_classical) {
+                    try fen_parts.append(allocator, 'K');
+                } else {
+                    const rs = self.castle_rook_k_start[Color.White.toU4()];
+                    if (rs != Square.NO_SQUARE) {
+                        const base: u8 = 'A';
+                        const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
+                        try fen_parts.append(allocator, base + f);
+                    }
+                }
+            }
+            if ((castling_rights & Castling.WQ.toU4()) != 0) {
+                has_castling = true;
+                if (wQ_classical) {
+                    try fen_parts.append(allocator, 'Q');
+                } else {
+                    const rs = self.castle_rook_q_start[Color.White.toU4()];
+                    if (rs != Square.NO_SQUARE) {
+                        const base: u8 = 'A';
+                        const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
+                        try fen_parts.append(allocator, base + f);
+                    }
+                }
+            }
+            // Black rights
+            if ((castling_rights & Castling.BK.toU4()) != 0) {
+                has_castling = true;
+                if (bK_classical) {
+                    try fen_parts.append(allocator, 'k');
+                } else {
+                    const rs = self.castle_rook_k_start[Color.Black.toU4()];
+                    if (rs != Square.NO_SQUARE) {
+                        const base: u8 = 'a';
+                        const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
+                        try fen_parts.append(allocator, base + f);
+                    }
+                }
+            }
+            if ((castling_rights & Castling.BQ.toU4()) != 0) {
+                has_castling = true;
+                if (bQ_classical) {
+                    try fen_parts.append(allocator, 'q');
+                } else {
+                    const rs = self.castle_rook_q_start[Color.Black.toU4()];
+                    if (rs != Square.NO_SQUARE) {
+                        const base: u8 = 'a';
+                        const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
+                        try fen_parts.append(allocator, base + f);
+                    }
+                }
+            }
         }
 
         if (!has_castling) {
@@ -1913,9 +2272,8 @@ pub const Position = struct {
 
         // --- 6. Fullmove number ---
         try fen_parts.append(allocator, ' ');
-        // Fullmove number is (game_ply / 2) + 1
-        // Ensure game_ply is at least 0, then perform calculation
-        const fullmove_number: u32 = @intCast((self.game_ply / 2) + 1);
+        // Output fullmove number parsed from FEN (tracked on Position)
+        const fullmove_number: u32 = self.fullmove_number;
         var fullmove_buf: [10]u8 = undefined;
         const fullmove_str = try std.fmt.bufPrint(&fullmove_buf, "{}", .{fullmove_number});
         try fen_parts.appendSlice(allocator, fullmove_str);
@@ -1971,7 +2329,11 @@ pub const Position = struct {
         self.generate_all_pinned_pawn_moves(Us, ctx, list, capture_mask);
         self.generate_noisy_moves(Us, ctx, list, capture_mask, quiet_mask);        
         self.generate_all_king_moves(ctx, list);
-        self.generate_castling_moves(Us, ctx, list);
+        if (self.is_chess960) {
+            self.generate_castling_moves_frc(Us, ctx, list);
+        } else {
+            self.generate_castling_moves_standard(Us, ctx, list);
+        }
         self.generate_quiet_moves(Us, ctx, list, quiet_mask);
 
         return;        
@@ -1994,7 +2356,11 @@ pub const Position = struct {
 
         const quiet_mask = ~ctx.all_bb;
 
-        self.generate_castling_moves(Us, ctx, list);
+        if (self.is_chess960) {
+            self.generate_castling_moves_frc(Us, ctx, list);
+        } else {
+            self.generate_castling_moves_standard(Us, ctx, list);
+        }
         self.generate_quiet_pinned_pawn_moves(Us, ctx, list);
         self.generate_pinned_slider_moves(Us, ctx, list, quiet_mask, 0, false);                
         self.generate_quiet_moves(Us, ctx, list, quiet_mask);
@@ -2173,22 +2539,278 @@ pub const Position = struct {
         }
     }
 
-    fn generate_castling_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void { // captures are quiet moves
-        if (((self.history[self.game_ply].entry & oo_mask(Us)) | ((ctx.all_bb | ctx.danger) & oo_blockers_mask(Us))) == 0) {
+    fn generate_castling_moves_standard(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void { // classical O-O and O-O-O only
+        const rights = self.history[self.game_ply].castling;
+        if (rights == 0) return; // no castling available
+
+        const std_ks = if (Us == .White) Square.e1.toU6() else Square.e8.toU6();
+        const std_rk = if (Us == .White) Square.h1.toU6() else Square.h8.toU6();
+        const std_rq = if (Us == .White) Square.a1.toU6() else Square.a8.toU6();
+        const have_oo = (rights & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0;
+        const have_ooo = (rights & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0;
+        const king_piece = Piece.new(Us, PieceType.King);
+        const rook_piece = Piece.new(Us, PieceType.Rook);
+
+        // Kingside O-O
+        if (have_oo and (self.board[std_ks] == king_piece) and (self.board[std_rk] == rook_piece)) {
+            if (((ctx.all_bb | ctx.danger) & oo_blockers_mask(Us)) == 0) {
             if (Us == Color.White) {
                 list.append(Move.new(Square.e1, Square.g1, MoveFlags.OO));
             } else {
                 list.append(Move.new(Square.e8, Square.g8, MoveFlags.OO));
+                }
             }
         }
 
-        if (((self.history[self.game_ply].entry & ooo_mask(Us)) | ((ctx.all_bb | (ctx.danger & ~ignore_ooo_danger(Us))) & ooo_blockers_mask(Us))) == 0) {
+        // Queenside O-O-O
+        if (have_ooo and (self.board[std_ks] == king_piece) and (self.board[std_rq] == rook_piece)) {
+            if (((ctx.all_bb | (ctx.danger & ~ignore_ooo_danger(Us))) & ooo_blockers_mask(Us)) == 0) {
             if (Us == Color.White) {
                 list.append(Move.new(Square.e1, Square.c1, MoveFlags.OOO));
             } else {
                 list.append(Move.new(Square.e8, Square.c8, MoveFlags.OOO));
             }
         }
+        }
+    }
+
+    fn generate_castling_moves_frc(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void { // FRC/Chess960 castling
+        const ci: usize = Us.toU4();
+        const rights = self.history[self.game_ply].castling;
+        if (rights == 0) return; // no castling available
+        const have_oo = (rights & (if (Us == .White) Castling.WK.toU4() else Castling.BK.toU4())) != 0;
+        const have_ooo = (rights & (if (Us == .White) Castling.WQ.toU4() else Castling.BQ.toU4())) != 0;
+        const rook_piece = Piece.new(Us, PieceType.Rook);
+
+        // Helper: compute rank-only between mask (exclusive) for squares on same rank
+        const rank_between = struct {
+            fn mask(a: u6, b: u6) u64 {
+                const ra = rank_of_u6(a);
+                const rb = rank_of_u6(b);
+                if (ra != rb) return 0;
+                var fa: i32 = @intCast(file_of_u6(a));
+                var fb: i32 = @intCast(file_of_u6(b));
+                if (fa > fb) {
+                    const tmp = fa;
+                    fa = fb;
+                    fb = tmp;
+                }
+                var m: u64 = 0;
+                var f: i32 = fa + 1;
+                while (f < fb) : (f += 1) {
+                    const sq: u6 = @intCast(@as(i32, @intCast(ra)) * 8 + f);
+                    m |= SQUARE_BB[sq];
+                }
+                return m;
+            }
+        };
+
+        // Kingside (O-O)
+        if (have_oo and self.castle_rook_k_start[ci] != Square.NO_SQUARE) {
+            const ks = ctx.our_king;
+            const kd: u6 = if (Us == .White) Square.g1.toU6() else Square.g8.toU6();
+            const rs = self.castle_rook_k_start[ci].toU6();
+            const rd: u6 = if (Us == .White) Square.f1.toU6() else Square.f8.toU6();
+            const rook_present = (self.board[rs] == rook_piece);
+            if (rook_present) {
+                const ks_bb = SQUARE_BB[ks];
+                const kd_bb = SQUARE_BB[kd];
+                const rd_bb = SQUARE_BB[rd];
+                const rs_bb = SQUARE_BB[rs];
+                const occ_after_k = ctx.all_bb ^ ks_bb;
+                const k_path = rank_between.mask(ks, kd);
+                const k_blockers_ok = (occ_after_k & (k_path & ~rs_bb)) == 0;
+                var danger_ok = false;
+                if (k_blockers_ok) {
+                    const danger_mask = k_path | kd_bb;
+                    danger_ok = (ctx.danger & danger_mask) == 0;
+                }
+                if (k_blockers_ok and danger_ok) {
+                    if (ks != kd) {
+                        const kd_occ = (occ_after_k & kd_bb) != 0;
+                        if (!(kd_occ and kd != rs)) {
+                            const rook_path_clear = if (rs == rd) true else blk: {
+                                const rook_path = rank_between.mask(rs, rd);
+                                break :blk ((occ_after_k & rook_path) == 0) and ((occ_after_k & rd_bb) == 0);
+                            };
+                            if (rook_path_clear) {
+                                const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
+                                list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OO));
+                            }
+                        }
+                    } else {
+                        const rook_path_clear = if (rs == rd) true else blk2: {
+                            const rook_path = rank_between.mask(rs, rd);
+                            break :blk2 ((occ_after_k & rook_path) == 0) and ((occ_after_k & rd_bb) == 0);
+                        };
+                        if (rook_path_clear) {
+                            const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
+                            list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OO));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Queenside (O-O-O)
+        if (have_ooo and self.castle_rook_q_start[ci] != Square.NO_SQUARE) {
+            const ks = ctx.our_king;
+            const kd: u6 = if (Us == .White) Square.c1.toU6() else Square.c8.toU6();
+            const rs = self.castle_rook_q_start[ci].toU6();
+            const rd: u6 = if (Us == .White) Square.d1.toU6() else Square.d8.toU6();
+            const rook_present = (self.board[rs] == rook_piece);
+            if (rook_present) {
+                const ks_bb = SQUARE_BB[ks];
+                const kd_bb = SQUARE_BB[kd];
+                const rd_bb = SQUARE_BB[rd];
+                const rs_bb = SQUARE_BB[rs];
+                const occ_after_k = ctx.all_bb ^ ks_bb;
+                const k_path = rank_between.mask(ks, kd);
+                const k_blockers_ok = (occ_after_k & (k_path & ~rs_bb)) == 0;
+                var danger_ok = false;
+                if (k_blockers_ok) {
+                    const danger_mask = k_path | kd_bb;
+                    danger_ok = (ctx.danger & danger_mask) == 0;
+                }
+                if (k_blockers_ok and danger_ok) {
+                    if (ks != kd) {
+                        const kd_occ = (occ_after_k & kd_bb) != 0;
+                        if (!(kd_occ and kd != rs)) {
+                            const rook_path_clear = if (rs == rd) true else blk3: {
+                                const rook_path = rank_between.mask(rs, rd);
+                                break :blk3 ((occ_after_k & rook_path) == 0) and ((occ_after_k & rd_bb) == 0);
+                            };
+                            if (rook_path_clear) {
+                                const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
+                                list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OOO));
+                            }
+                        }
+                    } else {
+                        const rook_path_clear = if (rs == rd) true else blk4: {
+                            const rook_path = rank_between.mask(rs, rd);
+                            break :blk4 ((occ_after_k & rook_path) == 0) and ((occ_after_k & rd_bb) == 0);
+                        };
+                        if (rook_path_clear) {
+                            const to_sq = if (ks == kd) Square.fromU6(rs) else Square.fromU6(kd);
+                            list.append(Move.new(Square.fromU6(ks), to_sq, MoveFlags.OOO));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Helper: fill the q-th empty (0-based) with given piece
+    fn place_qth_empty(back_rank: *[8]u8, q: u16, ch: u8) void {
+        var count: u16 = 0;
+        var i: usize = 0;
+        while (i < 8) : (i += 1) {
+            if (back_rank[i] == ' ') {
+                if (count == q) {
+                    back_rank[i] = ch;
+                    return;
+                }
+                count += 1;
+            }
+        }
+    }
+
+    /// Build a Chess960 back rank (array of 8 chars) for a given index (0..959).
+    fn build_chess960_backrank(index: u16) ![8]u8 {
+        if (index >= 960) return FenParseError.InvalidPosition;
+
+        var back: [8]u8 = [_]u8{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
+        var n: u16 = index;
+
+        // 1) Bishops on opposite colors
+        const dark_slot = n % 4; // 0..3 -> files 0,2,4,6
+        back[2 * dark_slot] = 'B';
+        n /= 4;
+
+        const light_slot = n % 4; // 0..3 -> files 1,3,5,7
+        back[2 * light_slot + 1] = 'B';
+        n /= 4;
+
+        // 2) Queen in one of the 6 remaining squares
+        const q_index = n % 6;
+        place_qth_empty(&back, q_index, 'Q');
+        n /= 6;
+
+        // 3) Two knights among the 5 remaining squares using combinadic index 0..9
+        var k_idx: u16 = n % 10;
+        n /= 10;
+
+        // Gather indices of empty squares
+        var empty: [5]u8 = undefined;
+        var ec: usize = 0;
+        for (0..8) |i| {
+            if (back[i] == ' ') { empty[ec] = @as(u8, @intCast(i)); ec += 1; }
+        }
+
+        // Map k_idx to combination (i<j) over 5 elements in lexicographic order
+        var first: usize = 0;
+        while (true) {
+            const cnt: u16 = @intCast(4 - first); // choices for second
+            if (k_idx >= cnt) {
+                k_idx -%= cnt;
+                first += 1;
+            } else break;
+        }
+        const second: usize = first + 1 + @as(usize, @intCast(k_idx));
+        back[empty[first]] = 'N';
+        back[empty[second]] = 'N';
+
+        // 4) Remaining 3 squares: R K R with king between rooks
+        var rem: [3]u8 = undefined;
+        var rc: usize = 0;
+        for (0..8) |i| {
+            if (back[i] == ' ') { rem[rc] = @as(u8, @intCast(i)); rc += 1; }
+        }
+        back[rem[0]] = 'R';
+        back[rem[1]] = 'K';
+        back[rem[2]] = 'R';
+
+        return back;
+    }
+
+    /// Set this position to the Chess960 start position corresponding to `index` (0..959).
+    /// Places pieces on rank 1 for White and the same files on rank 8 for Black, with pawns on rank 2/7.
+    /// Side to move is White and all castling rights are enabled (KQkq).
+    pub fn set_chess960_start(self: *Position, index: u16) !void {
+        const back = try build_chess960_backrank(index);
+        var back_black: [8]u8 = undefined;
+        for (0..8) |i| back_black[i] = std.ascii.toLower(back[i]);
+
+        var fen_buf: [80]u8 = undefined;
+        const fen = try std.fmt.bufPrint(
+            &fen_buf,
+            "{s}/pppppppp/8/8/8/8/PPPPPPPP/{s} w KQkq - 0 1",
+            .{ back_black[0..], back[0..] },
+        );
+
+        try self.set(fen);
+        self.is_chess960 = true;
+    }
+
+    /// Set this position to a Double Fischer Random (DFRC) start with independent indices.
+    /// White uses `white_index` (0..959) for rank 1; Black uses `black_index` (0..959) for rank 8.
+    pub fn set_dfrc_start(self: *Position, white_index: u16, black_index: u16) !void {
+        const back_w = try build_chess960_backrank(white_index);
+        const back_b_upper = try build_chess960_backrank(black_index);
+
+        // Convert black's back rank to lowercase
+        var back_b: [8]u8 = undefined;
+        for (0..8) |i| back_b[i] = std.ascii.toLower(back_b_upper[i]);
+
+        var fen_buf: [80]u8 = undefined;
+        const fen = try std.fmt.bufPrint(
+            &fen_buf,
+            "{s}/pppppppp/8/8/8/8/PPPPPPPP/{s} w KQkq - 0 1",
+            .{ back_b[0..], back_w[0..] },
+        );
+
+        try self.set(fen);
+        self.is_chess960 = true;
     }
 
     fn generate_en_passant_moves(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void { // en passant moves are noisy moves
@@ -2408,7 +3030,11 @@ pub const Position = struct {
             },
             else => {
                 quiet_mask = ~ctx.all_bb;
-                generate_castling_moves(self, Us, ctx, list);
+                if (self.is_chess960) {
+                    generate_castling_moves_frc(self, Us, ctx, list);
+                } else {
+                    generate_castling_moves_standard(self, Us, ctx, list);
+                }
                 generate_quiet_pinned_pawn_moves(self, Us, ctx, list);
                 generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, 0, false);                
             },
@@ -2682,6 +3308,248 @@ test "Test get_fen" {
         "2kr1bnr/pbpq4/2n1pp2/3p3p/3P1P1B/2N2N1Q/PPP3PP/2KR1B1R w - - 0 1",
         "3rr1k1/pp3pp1/1qn2np1/8/3p4/PP1R1P2/2P1NQPP/R1B3K1 b - - 0 1",
         "8/5Bp1/4P3/6pP/1b1k1P2/5K2/8/8 w - - 0 1",
+        "1qnrkbbr/1pppppp1/p1n4p/8/P7/1P1N1P2/2PPP1PP/QN1RKBBR w HDhd - 0 9",
+        "qn1rkrbb/pp1p1ppp/2p1p3/3n4/4P2P/2NP4/PPP2PP1/Q1NRKRBB w FDfd - 1 9",
+        "bb1qnrkr/pp1p1pp1/1np1p3/4N2p/8/1P4P1/P1PPPP1P/BBNQ1RKR w HFhf - 0 9",
+        "bnqbnr1r/p1p1ppkp/3p4/1p4p1/P7/3NP2P/1PPP1PP1/BNQB1RKR w HF - 0 9",
+        "bnqnrbkr/1pp2pp1/p7/3pP2p/4P1P1/8/PPPP3P/BNQNRBKR w HEhe d6 0 9",
+        "b1qnrrkb/ppp1pp1p/n2p1Pp1/8/8/P7/1PPPP1PP/BNQNRKRB w GE - 0 9",
+        "n1bqnrkr/pp1ppp1p/2p5/6p1/2P2b2/PN6/1PNPPPPP/1BBQ1RKR w HFhf - 2 9",
+        "n1bb1rkr/qpnppppp/2p5/p7/P1P5/5P2/1P1PPRPP/NQBBN1KR w Hhf - 1 9",
+        "nqb1rbkr/pppppp1p/4n3/6p1/4P3/1NP4P/PP1P1PP1/1QBNRBKR w HEhe - 1 9",
+        "n1bnrrkb/pp1pp2p/2p2p2/6p1/5B2/3P4/PPP1PPPP/NQ1NRKRB w GE - 2 9",
+        "nbqnbrkr/2ppp1p1/pp3p1p/8/4N2P/1N6/PPPPPPP1/1BQ1BRKR w HFhf - 0 9",
+        "nq1bbrkr/pp2nppp/2pp4/4p3/1PP1P3/1B6/P2P1PPP/NQN1BRKR w HFhf - 2 9",
+        "nqnrb1kr/2pp1ppp/1p1bp3/p1B5/5P2/3N4/PPPPP1PP/NQ1R1BKR w HDhd - 0 9",
+        "nqn2krb/p1prpppp/1pbp4/7P/5P2/8/PPPPPKP1/NQNRB1RB w g - 3 9",
+        "nb1n1kbr/ppp1rppp/3pq3/P3p3/8/4P3/1PPPRPPP/NBQN1KBR w Hh - 1 9",
+        "nqnbrkbr/1ppppp1p/p7/6p1/6P1/P6P/1PPPPP2/NQNBRKBR w HEhe - 1 9",
+        "nq1rkb1r/pp1pp1pp/1n2bp1B/2p5/8/5P1P/PPPPP1P1/NQNRKB1R w HDhd - 2 9",
+        "nqnrkrb1/pppppp2/7p/4b1p1/8/PN1NP3/1PPP1PPP/1Q1RKRBB w FDfd - 1 9",
+        "bb1nqrkr/1pp1ppp1/pn5p/3p4/8/P2NNP2/1PPPP1PP/BB2QRKR w HFhf - 0 9",
+        "bnn1qrkr/pp1ppp1p/2p5/b3Q1p1/8/5P1P/PPPPP1P1/BNNB1RKR w HFhf - 2 9",
+        "b1nqrkrb/2pppppp/p7/1P6/1n6/P4P2/1P1PP1PP/BNNQRKRB w GEge - 0 9",
+        "n1bnqrkr/3ppppp/1p6/pNp1b3/2P3P1/8/PP1PPP1P/NBB1QRKR w HFhf - 1 9",
+        "n2bqrkr/p1p1pppp/1pn5/3p1b2/P6P/1NP5/1P1PPPP1/1NBBQRKR w HFhf - 3 9",
+        "nnbqrbkr/1pp1p1p1/p2p4/5p1p/2P1P3/N7/PPQP1PPP/N1B1RBKR w HEhe - 0 9",
+        "nnbqrkr1/pp1pp2p/2p2b2/5pp1/1P5P/4P1P1/P1PP1P2/NNBQRKRB w GEge - 1 9",
+        "nb1qbrkr/p1pppp2/1p1n2pp/8/1P6/2PN3P/P2PPPP1/NB1QBRKR w HFhf - 0 9",
+        "nnq1brkr/pp1pppp1/8/2p4P/8/5K2/PPPbPP1P/NNQBBR1R w hf - 0 9",
+        "nnqrbb1r/pppppk2/5pp1/7p/1P6/3P2PP/P1P1PP2/NNQRBBKR w HD - 0 9",
+        "nnqr1krb/p1p1pppp/2bp4/8/1p1P4/4P3/PPP2PPP/NNQRBKRB w GDgd - 0 9",
+        "nbnqrkbr/p2ppp2/1p4p1/2p4p/3P3P/3N4/PPP1PPPR/NB1QRKB1 w Ehe - 0 9",
+        "n1qbrkbr/p1ppp2p/2n2pp1/1p6/1P6/2P3P1/P2PPP1P/NNQBRKBR w HEhe - 0 9",      
+        "rnbqkbnr/1ppppppp/8/p7/2P5/P7/1P1PPPPP/RNBQKBNR b KQkq - 0 1",
+        "2bqkbnr/rppppppp/n7/p7/2P5/PP6/3PPPPP/RNBQKBNR w KQk - 0 1",
+        "2bqkbnr/rpp1pppp/n2p4/p7/2P3P1/PP5P/3PPP2/RNBQKBNR b KQk - 0 1",
+        "r3k2r/1b4bq/8/8/8/8/7B/R3K2R w KQkq - 0 1",
+        "r3k2r/7b/8/8/8/8/1B4BQ/R3K2R b KQkq - 0 1",
+        "r3k2r/8/3Q4/8/8/5q2/8/R3K2R b KQkq - 0 1",
+        "r3k2r/8/5Q2/8/8/3q4/8/R3K2R w KQkq - 0 1",   
+        "rnbqkb1r/p3pppp/1p6/2ppP3/3N4/2P5/PPP1QPPP/R1B1KB1R w KQkq - 0 1",
+        "r1bqkb1r/4npp1/p1p4p/1p1pP1B1/8/1B6/PPPN1PPP/R2Q1RK1 w kq - 0 1",
+        "r1bqk2r/pp2bppp/2p5/3pP3/P2Q1P2/2N1B3/1PP3PP/R4RK1 b kq - 0 1",   
+        "rn1qkb1r/pp2pppp/5n2/3p1b2/3P4/2N1P3/PP3PPP/R1BQKBNR w KQkq - 0 1",
+        "rn1qkb1r/pp2pppp/5n2/3p1b2/3P4/1QN1P3/PP3PPP/R1B1KBNR b KQkq - 1 1",
+        "r1bqk2r/ppp2ppp/2n5/4P3/2Bp2n1/5N1P/PP1N1PP1/R2Q1RK1 b kq - 1 10",
+        "rnbqkb1r/ppp1pppp/5n2/8/3PP3/2N5/PP3PPP/R1BQKBNR b KQkq - 3 5",
+        "rnbq1rk1/pppp1ppp/4pn2/8/1bPP4/P1N5/1PQ1PPPP/R1B1KBNR b KQ - 1 5",
+        "rn1qkb1r/pb1p1ppp/1p2pn2/2p5/2PP4/5NP1/PP2PPBP/RNBQK2R w KQkq c6 1 6",
+        "r1bq1rk1/1pp2pbp/p1np1np1/3Pp3/2P1P3/2N1BP2/PP4PP/R1NQKB1R b KQ - 1 9",
+        "rnbqkb1r/pppp1ppp/5n2/4p3/4PP2/2N5/PPPP2PP/R1BQKBNR b KQkq f3 1 3",
+        "r1bqk1nr/pppnbppp/3p4/8/2BNP3/8/PPP2PPP/RNBQK2R w KQkq - 2 6",
+        "rnbq1b1r/ppp2kpp/3p1n2/8/3PP3/8/PPP2PPP/RNBQKB1R b KQ d3 1 5",
+        "rnbqkb1r/pppp1ppp/3n4/8/2BQ4/5N2/PPP2PPP/RNB2RK1 b kq - 1 6",
+        "r1bqkb1r/2pp1ppp/p1n5/1p2p3/3Pn3/1B3N2/PPP2PPP/RNBQ1RK1 b kq - 2 7",
+        "r2qkbnr/2p2pp1/p1pp4/4p2p/4P1b1/5N1P/PPPP1PP1/RNBQ1RK1 w kq - 1 8",
+        "r1bqkb1r/pp3ppp/2np1n2/4p1B1/3NP3/2N5/PPP2PPP/R2QKB1R w KQkq e6 1 7",
+        "rn1qk2r/1b2bppp/p2ppn2/1p6/3NP3/1BN5/PPP2PPP/R1BQR1K1 w kq - 5 10",
+        "r1b1kb1r/1pqpnppp/p1n1p3/8/3NP3/2N1B3/PPP1BPPP/R2QK2R w KQkq - 3 8",
+        "r1bqnr2/pp1ppkbp/4N1p1/n3P3/8/2N1B3/PPP2PPP/R2QK2R b KQ - 2 11",
+        "r3kb1r/pp1n1ppp/1q2p3/n2p4/3P1Bb1/2PB1N2/PPQ2PPP/RN2K2R w KQkq - 3 11",
+        "r1bq1rk1/pppnnppp/4p3/3pP3/1b1P4/2NB3N/PPP2PPP/R1BQK2R w KQ - 3 7",
+        "r2qkbnr/ppp1pp1p/3p2p1/3Pn3/4P1b1/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 2 6",
+        "rn2kb1r/pp2pppp/1qP2n2/8/6b1/1Q6/PP1PPPBP/RNB1K1NR b KQkq - 1 6", 
+        "r3kb1r/3n1pp1/p6p/2pPp2q/Pp2N3/3B2PP/1PQ2P2/R3K2R w KQkq - 0 1",
+        "1k1r3r/pp2qpp1/3b1n1p/3pNQ2/2pP1P2/2N1P3/PP4PP/1K1RR3 b - - 0 1",
+        "r6k/pp4p1/2p1b3/3pP3/7q/P2B3r/1PP2Q1P/2K1R1R1 w - - 0 1",
+        "1nr5/2rbkppp/p3p3/Np6/2PRPP2/8/PKP1B1PP/3R4 b - - 0 1",
+        "2r2rk1/1p1bq3/p3p2p/3pPpp1/1P1Q4/P7/2P2PPP/2R1RBK1 b - - 0 1",
+        "3r1bk1/p4ppp/Qp2p3/8/1P1B4/Pq2P1P1/2r2P1P/R3R1K1 b - - 0 1",
+        "r1b2r1k/pp2q1pp/2p2p2/2p1n2N/4P3/1PNP2QP/1PP2RP1/5RK1 w - - 0 1",
+        "r2qrnk1/pp3ppb/3b1n1p/1Pp1p3/2P1P2N/P5P1/1B1NQPBP/R4RK1 w - - 0 1",
+        "5nk1/Q4bpp/5p2/8/P1n1PN2/q4P2/6PP/1R4K1 w - - 0 1",
+        "r3k2r/3bbp1p/p1nppp2/5P2/1p1NP3/5NP1/PPPK3P/3R1B1R b kq - 0 1",
+        "bn6/1q4n1/1p1p1kp1/2pPp1pp/1PP1P1P1/3N1P1P/4B1K1/2Q2N2 w - - 0 1",
+        "3r2k1/pp2npp1/2rqp2p/8/3PQ3/1BR3P1/PP3P1P/3R2K1 b - - 0 1",
+        "1r2r1k1/4ppbp/B5p1/3P4/pp1qPB2/2n2Q1P/P4PP1/4RRK1 b - - 0 1",
+        "r2qkb1r/1b3ppp/p3pn2/1p6/1n1P4/1BN2N2/PP2QPPP/R1BR2K1 w kq - 0 1",
+        "1r4k1/1q2bp2/3p2p1/2pP4/p1N4R/2P2QP1/1P3PK1/8 w - - 0 1",
+        "rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1",
+        "4r1k1/3b1p2/5qp1/1BPpn2p/7n/r3P1N1/2Q1RPPP/1R3NK1 b - - 0 1",
+        "2k2b1r/1pq3p1/2p1pp2/p1n1PnNp/2P2B2/2N4P/PP2QPP1/3R2K1 w - - 0 1",
+        "2r2r2/3qbpkp/p3n1p1/2ppP3/6Q1/1P1B3R/PBP3PP/5R1K w - - 0 1",
+        "2rr2k1/1b3ppp/pb2p3/1p2P3/1P2BPnq/P1N3P1/1B2Q2P/R4R1K b - - 0 1",
+        "2b1r1k1/r4ppp/p7/2pNP3/4Q3/q6P/2P2PP1/3RR1K1 w - - 0 1",
+        "6k1/5p2/3P2p1/7n/3QPP2/7q/r2N3P/6RK b - - 0 1",
+        "rq2rbk1/6p1/p2p2Pp/1p1Rn3/4PB2/6Q1/PPP1B3/2K3R1 w - - 0 1",
+        "rnbq2k1/p1r2p1p/1p1p1Pp1/1BpPn1N1/P7/2P5/6PP/R1B1QRK1 w - - 0 1",
+        "r2qrb1k/1p1b2p1/p2ppn1p/8/3NP3/1BN5/PPP3QP/1K3RR1 w - - 0 1",
+        "8/1p3pp1/7p/5P1P/2k3P1/8/2K2P2/8 w - - 0 1",
+        "8/pp2r1k1/2p1p3/3pP2p/1P1P1P1P/P5KR/8/8 w - - 0 1",
+        "8/3p4/p1bk3p/Pp6/1Kp1PpPp/2P2P1P/2P5/5B2 b - - 0 1",
+        "5k2/7R/4P2p/5K2/p1r2P1p/8/8/8 b - - 0 1",
+        "6k1/6p1/7p/P1N5/1r3p2/7P/1b3PP1/3bR1K1 w - - 0 1",
+        "8/3b4/5k2/2pPnp2/1pP4N/pP1B2P1/P3K3/8 b - - 0 1",
+        "6k1/4pp1p/3p2p1/P1pPb3/R7/1r2P1PP/3B1P2/6K1 w - - 0 1",
+        "2k5/p7/Pp1p1b2/1P1P1p2/2P2P1p/3K3P/5B2/8 w - - 0 1",
+        "8/5Bp1/4P3/6pP/1b1k1P2/5K2/8/8 w - - 0 1", 
+        "r3qb1k/1b4p1/p2pr2p/3n4/Pnp1N1N1/6RP/1B3PP1/1B1QR1K1 w - - 0 1",
+        "r4rk1/pp1n1p1p/1nqP2p1/2b1P1B1/4NQ2/1B3P2/PP2K2P/2R5 w - - 0 1",
+        "r2qk2r/ppp1b1pp/2n1p3/3pP1n1/3P2b1/2PB1NN1/PP4PP/R1BQK2R w KQkq - 0 1",
+        "r1b1kb1r/1p1n1ppp/p2ppn2/6BB/2qNP3/2N5/PPP2PPP/R2Q1RK1 w kq - 0 1",
+        "r2qrb1k/1p1b2p1/p2ppn1p/8/3NP3/1BN5/PPP3QP/1K3RR1 w - - 0 1",
+        "rnbqk2r/1p3ppp/p7/1NpPp3/QPP1P1n1/P4N2/4KbPP/R1B2B1R b kq - 0 1",
+        "1r1bk2r/2R2ppp/p3p3/1b2P2q/4QP2/4N3/1B4PP/3R2K1 w k - 0 1",
+        "r3rbk1/ppq2ppp/2b1pB2/8/6Q1/1P1B3P/P1P2PP1/R2R2K1 w - - 0 1",
+        "r4r1k/4bppb/2n1p2p/p1n1P3/1p1p1BNP/3P1NP1/qP2QPB1/2RR2K1 w - - 0 1",
+        "r1b2rk1/1p1nbppp/pq1p4/3B4/P2NP3/2N1p3/1PP3PP/R2Q1R1K w - - 0 1",
+        "r1b3k1/p2p1nP1/2pqr1Rp/1p2p2P/2B1PnQ1/1P6/P1PP4/1K4R1 w - - 0 1",  
+        "8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1",
+        "1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1",
+        "7k/5K2/5P1p/3p4/6P1/3p4/8/8 w - - 0 1",
+        "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32",
+        "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1",     
+        "1kr5/3n4/q3p2p/p2n2p1/PppB1P2/5BP1/1P2Q2P/3R2K1 w - - 0 1",
+        "1n5k/3q3p/pp1p2pB/5r2/1PP1Qp2/P6P/6P1/2R3K1 w - - 0 1",
+        "1n6/4bk1r/1p2rp2/pP2pN1p/K1P1N2P/8/P5R1/3R4 w - - 0 1",
+        "1nr5/1k5r/p3pqp1/3p4/1P1P1PP1/R4N2/3Q1PK1/R7 w - - 0 1",
+        "1q2r1k1/1b2bpp1/p2ppn1p/2p5/P3PP1B/2PB1RP1/2P1Q2P/2KR4 b - - 0 1",
+        "1q4k1/5p1p/p1rprnp1/3R4/N1P1P3/1P6/P5PP/3Q1R1K w - - 0 1",
+        "1qr1k2r/1p2bp2/pBn1p3/P2pPbpp/5P2/2P1QBPP/1P1N3R/R4K2 b k - 0 1",
+        "1r1b2k1/2r2ppp/p1qp4/3R1NPP/1pn1PQB1/8/PPP3R1/1K6 w - - 0 1",
+        "1r1qk1nr/p3ppbp/3p2p1/1pp5/2bPP3/4B1P1/2PQNPBP/R2R2K1 w k - 0 1",
+        "1r1r2k1/p3n2p/b1nqpbp1/2pp4/1p3PP1/2PP1N2/PPN3BP/R1BRQ2K w - - 0 1",
+        "1r2n1rk/pP2q2p/P2p4/4pQ2/2P2p2/5B1P/3R1P1K/3R4 w - - 0 1",
+        "1r3bk1/7p/pp1q2p1/P1pPp3/2P3b1/4B3/1P1Q2BP/R6K w - - 0 1",
+        "1r3rk1/3n1pbp/1q1pp1p1/p1p5/2PnPP2/PPB1N1PP/6B1/1R1Q1RK1 b - - 0 1",
+        "1r3rk1/p5bp/6p1/q1pPppn1/7P/1B1PQ1P1/PB3P2/R4RK1 b - - 0 1",
+        "1r4k1/1rq2pp1/3b1nn1/pBpPp3/P1N4p/2PP1Q1P/6PB/2R2RK1 w - - 0 1",
+        "1r4k1/p1rqbp1p/b1p1p1p1/NpP1P3/3PB3/3Q2P1/P4P1P/3RR1K1 w - - 0 1",
+        "2r3k1/p2q1pp1/Pbrp3p/6n1/1BP1PpP1/R4P2/2QN2KP/1R6 b - - 0 1",
+        "1r6/2q2pk1/2n1p1pp/p1Pr4/P1RP4/1p1RQ2P/1N3PP1/7K b - - 0 1",
+        "1r6/R1nk1p2/1p4pp/pP1p1P2/P2P3P/5PN1/5K2/8 w - - 0 1",
+        "1rb3k1/2pn2pp/p2p4/4p3/1pP4q/1P1PBP1P/1PQ2P2/R3R1K1 w - - 0 1",
+        "1rbqnrk1/6bp/pp3np1/2pPp3/P1P1N3/2N1B3/1P2Q1BP/R4R1K w - - 0 1",
+        "1rr3k1/1q3pp1/pnbQp2p/1p2P3/3B1P2/2PB4/P1P2RPP/R5K1 w - - 0 1",
+        "2kr2r1/1bpnqp2/1p1ppn2/p5pp/P1PP4/4PP2/1P1NBBPP/R2Q1RK1 w - - 0 1",
+        "2b1k2r/5p2/pq1pNp1b/1p6/2r1PPBp/3Q4/PPP3PP/1K1RR3 w k - 0 1",
+        "2b1r1k1/1p6/pQ1p1q1p/P2P3P/2P1pPpN/6P1/4R1K1/8 w - - 0 1",
+        "2b2rk1/2qn1p2/p2p2pp/2pPP3/8/4NN1P/P1Q2PP1/bB2R1K1 w - - 0 1",
+        "2bq2k1/1pr3bp/1Qpr2p1/P2pNp2/3P1P1P/6P1/5PB1/1RR3K1 w - - 0 1",
+        "rr6/8/2pbkp2/ppp1p1p1/P3P3/1P1P1PB1/R1P2PK1/R7 b - - 0 1",
+        "2r2rk1/pb2q2p/1pn1p2p/5p1Q/3P4/P1NB4/1P3PPP/R4RK1 w - - 0 1",
+        "2kr4/ppqnbp1r/2n1p1p1/P2pP3/3P2P1/3BBN2/1P1Q1PP1/R4RK1 w - - 0 1",
+        "2q5/1pb2r1k/p1b3pB/P1Pp3p/3P4/3B1pPP/1R3P1K/2Q5 b - - 0 1",
+        "2r1kb1r/1bqn1pp1/p3p3/1p2P1P1/3Np3/P1N1B3/1PP1Q2P/R4RK1 w k - 0 1",
+        "2r1rb2/1bq2p1k/3p1np1/p1p5/1pP1P1P1/PP2BPN1/2Q3P1/R2R1BK1 b - - 0 1",
+        "2r2bk1/pq3r1p/6p1/2ppP1P1/P7/BP1Q4/2R3P1/3R3K b - - 0 1",
+        "2r2rk1/1bb2ppp/p2ppn2/1p4q1/1PnNP3/P1N4P/2P1QPPB/3RRBK1 w - - 0 1",
+        "2r2rk1/3q3p/p3pbp1/1p1pp3/4P3/2P5/PPN1QPPP/3R1RK1 b - - 0 1",
+        "2r4k/pp3q1b/5PpQ/3p4/3Bp3/1P6/P5RP/6K1 w - - 0 1",
+        "2r3k1/1b2b2p/r2p1pp1/pN1Pn3/1pPB2P1/1P5P/P3R1B1/5RK1 w - - 0 1",
+        "2r3k1/5pp1/1pq4p/p7/P1nR4/2P2P2/Q5PP/4B1K1 b - - 0 1",
+        "6k1/6pp/4r3/p1qpp3/Pp6/1n1P1B1P/1B2Q1P1/3R1K2 w - - 0 1",
+        "r2qkb1r/1b1n1ppp/p3pn2/1pp5/3PP3/2NB1N2/PP3PPP/R1BQ1RK1 w kq - 0 1",
+        "r3r1k1/pn1bnpp1/1p2p2p/1q1pPP2/1BpP3N/2P2BP1/2P3QP/R4RK1 w - - 0 1",
+        "2r5/p3kpp1/1pn1p2p/8/1PP2P2/PB1R1KP1/7P/8 b - - 0 1",
+        "2rq1rk1/1b2bppp/p2p1n2/1p1Pp3/1Pn1P3/5N1P/P1B2PP1/RNBQR1K1 w - - 0 1",
+        "2rqr1k1/1b2bp1p/ppn1p1pB/3n4/3P3P/P1NQ1N2/1PB2PP1/3RR1K1 w - - 0 1",
+        "3Rb3/5ppk/2r1r3/p5Pp/1pN2P1P/1P5q/P4Q2/K2R4 b - - 0 1",
+        "3Rbrk1/4Q2p/6q1/pp3p2/4p2P/1P4P1/8/5R1K w - - 0 1",
+        "3bn3/3r1p1k/3Pp1p1/1q6/Np2BP1P/3R2PK/8/3Q4 w - - 0 1",
+        "3k1r1r/p2n1p1p/q2p2pQ/1p2P3/2pP4/P4N2/5PPP/2R1R1K1 w - - 0 1",
+        "3r1bk1/1p2qp1p/p5p1/P1pPp3/2QnP3/3BB3/1P3PPP/2R3K1 w - - 0 1",
+        "3r1bkr/2q3pp/1p1Npp2/pPn1P3/5B2/1P6/2P2PPP/R2QR1K1 w - - 0 1",
+        "3r2k1/p2q1pp1/1p2n1p1/2p1P2n/P4P2/2B1Q1P1/7P/1R3BK1 w - - 0 1",
+        "3r4/8/pq3kr1/3Bp3/7p/1P3P2/P5PP/3RQ2K b - - 0 1",
+        "3r4/pk1p3p/1p2pp2/1N6/2P1KP2/6P1/3R3P/8 w - - 0 1",
+        "4k2r/1b2b3/p3pp1p/1p1p4/3BnpP1/P1P4R/1KP4P/5BR1 w k - 0 1",
+        "4k3/r2bbprp/3p1p1N/2qBpP2/ppP1P1P1/1P1R3P/P7/1KR1Q3 w - - 0 1",
+        "4q1k1/pb5p/Nbp1p1r1/3r1p2/PP1Pp1pP/4P1P1/1BR1QP2/2R3K1 w - - 0 1",
+        "4r1k1/1pb3qp/p1b1r1p1/P1Pp4/3P1p2/2BB4/1R1Q1PPP/1R4K1 b - - 0 1",
+        "4r1k1/5p1p/p2q2p1/3p4/3Qn3/2P1RN2/Pr3PPP/R5K1 w - - 0 1",
+        "4rr1k/pp1n2bp/7n/1Pp1pp1q/2Pp3N/1N1P1PP1/P5QP/2B1RR1K b - - 0 1",
+        "4rrk1/p6p/2q2pp1/1p6/2pP1BQP/5N2/P4PP1/2R3K1 w - - 0 1",
+        "5nk1/1bp1rnp1/pp1p4/4p1P1/2PPP3/NBP5/P2B4/4R1K1 w - - 0 1",
+        "5r2/1p1k4/2bp4/r3pp1p/PRP4P/2P2PP1/2B2K2/7R b - - 0 1",
+        "5r2/5p1Q/4pkp1/p7/1pb2q1P/5P2/P4RP1/3R2K1 w - - 0 1",
+        "5rk1/1Q3pp1/p2p3p/4p1b1/N3PqP1/1N1K4/PP6/3R4 b - - 0 1",
+        "7r/3nkpp1/4p3/p1pbP3/1r3P1p/1P2B2P/P2RBKP1/7R b - - 0 1",
+        "8/1r1rq2k/2p3p1/3b1p1p/4p2P/1N1nP1P1/2Q2PK1/RR3B2 b - - 0 1",
+        "8/1r2k3/4p2p/R3K2P/1p1P1P2/1P6/8/8 w - - 0 1",
+        "8/3r1pp1/p7/2k2PpP/rp1pB3/2pK1P2/P1R5/1R6 w - - 0 1",
+        "8/6k1/3P1bp1/2B1p3/1P6/1Q3P1q/7r/1K2R3 b - - 0 1",
+        "b2rrbk1/2q2p1p/pn1p2p1/1p4P1/2nNPB1P/P1N3Q1/1PP3B1/1K1RR3 w - - 0 1",
+        "b7/2pr1kp1/1p3p2/p2p3p/P1nP1N2/4P1P1/P1R2P1P/2R3K1 w - - 0 1",
+        "k1qbr1n1/1p4p1/p1p1p1Np/2P2p1P/3P4/R7/PP2Q1P1/1K1R4 w - - 0 1",
+        "r1b1rnk1/pp3pq1/2p3p1/6P1/2B2P1R/2P5/PP1Q2P1/2K4R w - - 0 1",
+        "r1bq1rk1/pp3pbp/3Pp1p1/2p5/4PP2/2P5/P2QB1PP/1RB1K2R b K - 0 1",
+        "r1bqr2k/pppn2bp/4n3/2P1p1p1/1P2Pp2/5NPB/PBQN1P1P/R4RK1 w - - 0 1",
+        "r1br1k2/1pq2pb1/1np1p1pp/2N1N3/p2P1P1P/P3P1R1/1PQ3P1/1BR3K1 w - - 0 1",
+        "r1n2k1r/5pp1/2R5/pB2pPq1/P2pP3/6Pp/1P2Q2P/5RK1 w - - 0 1",
+        "r1r2bk1/pp1n1p1p/2pqb1p1/3p4/1P1P4/1QN1PN2/P3BPPP/2RR2K1 w - - 0 1",
+        "r2q1r2/pp1b2kp/2n1p1p1/3p4/3P1P1P/2PB1N2/6P1/R3QRK1 w - - 0 1",
+        "r2q1rk1/pp2b1pp/1np1b3/4pp2/1P6/P1NP1BP1/2Q1PP1P/1RB2RK1 w - - 0 1",
+        "r2q4/6k1/r1p3p1/np1p1p2/3P4/4P1P1/R2QBPK1/7R w - - 0 1",
+        "r2qr1k1/pp3pbp/5np1/2p2b2/8/2PP1Q2/PPB3PP/RNB2RK1 b - - 0 1",
+        "r3k2r/1bq1bpp1/p4n2/2p1pP2/2NpP2p/3B4/PPP3PP/R1B1QR1K b k - 0 1",
+        "r3k2r/2q2p2/p2bpPpp/1b1p4/1p1B1PPP/8/PPPQ4/1K1R1B1R w kq - 0 1",
+        "r3k2r/ppq2p1p/2n1p1p1/3pP3/5PP1/2P1Q3/PP2N2P/3R1RK1 b k - 0 1",
+        "r3r1k1/1pp1np1p/1b1p1p2/pP2p3/2PP2b1/P3PN2/1B3PPP/R3KB1R w KQ - 0 1",
+        "r3r1k1/1pq2pbp/p1ppbnp1/4n3/2P1PB2/1NN2P2/PP1Q2PP/R3RBK1 w - - 0 1",
+        "r3r1k1/bpp1np1p/3p1p2/pPP1p3/3P2b1/P3PN2/1B3PPP/R3KB1R w KQ - 0 1",
+        "r3r1k1/pp2q3/2b1pp2/6pN/Pn1P4/6R1/1P3PP1/3QRBK1 w - - 0 1",
+        "r4r2/1p2pbk1/1np1qppp/p7/3PP2P/P1Q2NP1/1P3PB1/2R1R1K1 w - - 0 1",
+        "r4r2/2p2kb1/1p1p2p1/qPnPp2n/2B1PP2/pP6/P1Q1N2R/1KB4R w - - 0 1",
+        "r4rk1/2p5/p2p1n2/1p1P3p/2P1p1pP/1P4B1/1P3PP1/3RR1K1 w - - 0 1",
+        "r4rk1/2qnb1pp/4p3/ppPb1p2/3Pp3/1PB3P1/R1QNPPBP/R5K1 b - - 0 1",
+        "r4rk1/p5pp/1p2b3/2Pn1p2/P2Pp2P/4P1Pq/2Q1BP2/R1BR2K1 w - - 0 1",
+        "r4rk1/pbq2p2/2p2np1/1p2b2p/4P3/2N1BPP1/PPQ1B2P/R2R2K1 b - - 0 1",
+        "r4rk1/pp1b2b1/n2p1nq1/2pP1p1p/2P1pP2/PP4PP/1BQ1N1B1/R3RNK1 b - - 0 1",
+        "rn3rk1/p1p1qp2/1pbppn1p/6p1/P1PP4/2PBP1B1/3N1P1P/R2QK1R1 w Q - 0 1",
+        "rnbq1rk1/2p1p1bp/p3pnp1/1p6/3P4/1QN1BN2/PP3PPP/R3KB1R w KQ - 0 1",
+        "rr3n1k/q3bpn1/2p1p1p1/2PpP2p/pP1P1N1P/2BB1NP1/P2Q1P2/6RK w - - 0 1",
+        "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1",
+        "r1b1kb1r/3q1ppp/pBp1pn2/8/Np3P2/5B2/PPP3PP/R2Q1RK1 w kq - 0 1",
+        "r2qkb1r/1ppb1ppp/p7/4p3/P1Q1P3/2P5/5PPP/R1B2KNR b kq - 0 1",
+        "r1bqk2r/ppp1nppp/4p3/n5N1/2BPp3/P1P5/2P2PPP/R1BQK2R w KQkq - 0 1",
+        "r1bqr1k1/pp1nb1p1/4p2p/3p1p2/3P4/P1N1PNP1/1PQ2PP1/3RKB1R w K - 0 1",
+        "r3kr2/1pp4p/1p1p4/7q/4P1n1/2PP2Q1/PP4P1/R1BB2K1 b q - 0 1",
+        "r1bqk2r/pppp1ppp/5n2/2b1n3/4P3/1BP3Q1/PP3PPP/RNB1K1NR b KQkq - 0 1",
+        "r3k2r/pbp2pp1/3b1n2/1p6/3P3p/1B2N1Pq/PP1PQP1P/R1B2RK1 b kq - 0 1",
+        "r1b1k1nr/pp3pQp/4pq2/3pn3/8/P1P5/2P2PPP/R1B1KBNR w KQkq - 0 1",
+        "rn2k1nr/pbp2ppp/3q4/1p2N3/2p5/QP6/PB1PPPPP/R3KB1R b KQkq - 0 1",
+        "rnbqkb1r/1p3ppp/5N2/1p2p1B1/2P5/8/PP2PPPP/R2QKB1R b KQkq - 0 1",
+        "r1b1k2r/1pp1q2p/p1n3p1/3QPp2/8/1BP3B1/P5PP/3R1RK1 w kq - 0 1",
+        "r2r2k1/ppqbppbp/2n2np1/2pp4/6P1/1P1PPNNP/PBP2PB1/R2QK2R b KQ - 0 1",
+        "r3kbnr/p4ppp/2p1p3/8/Q1B3b1/2N1B3/PP3PqP/R3K2R w KQkq - 0 1",
+        "r3r1k1/5pp1/p1p4p/2Pp4/8/q1NQP1BP/5PP1/4K2R b K - 0 1",
+        "r3k2r/pb1q1p2/8/2p1pP2/4p1p1/B1P1Q1P1/P1P3K1/R4R2 b kq - 0 1",
+        "r1q2rk1/p3bppb/3p1n1p/2nPp3/1p2P1P1/6NP/PP2QPB1/R1BNK2R b KQ - 0 1",
+        "r3k2r/2p2p2/p2p1n2/1p2p3/4P2p/1PPPPp1q/1P5P/R1N2QRK b kq - 0 1",
+        "r1b2rk1/ppqn1p1p/2n1p1p1/2b3N1/2N5/PP1BP3/1B3PPP/R2QK2R w KQ - 0 1",
+        "r3k3/ppp2Npp/4Bn2/2b5/1n1pp3/N4P2/PPP3qP/R2QKR2 b Qq - 0 1",
+        "rr4k1/p1pq2pp/Q1n1pn2/2bpp3/4P3/2PP1NN1/PP3PPP/R1B1K2R b KQ - 0 1",
+        "4kb1r/2q2p2/r2p4/pppBn1B1/P6P/6Q1/1PP5/2KRR3 w k - 0 1",
+        "r3kb1r/1pp3p1/p3bp1p/5q2/3QN3/1P6/PBP3P1/3RR1K1 w kq - 0 1",
+        "r3k3/P5bp/2N1bp2/4p3/2p5/6NP/1PP2PP1/3R2K1 w q - 0 1",
+        "r1bqk2r/pp3ppp/5n2/8/1b1npB2/2N5/PP1Q2PP/1K2RBNR w kq - 0 1",
+        "rnbqr2k/pppp1Qpp/8/b2NN3/2B1n3/8/PPPP1PPP/R1B1K2R w KQ - 0 1",
+        "2r1k2r/2pn1pp1/1p3n1p/p3PP2/4q2B/P1P5/2Q1N1PP/R4RK1 w k - 0 1",
+        "2r1kb1r/pp3ppp/2n1b3/1q1N2B1/1P2Q3/8/P4PPP/3RK1NR w Kk - 0 1",
+        "2kr2nr/pp1n1ppp/2p1p3/q7/1b1P1B2/P1N2Q1P/1PP1BPP1/R3K2R w KQ - 0 1",
+        "r2qkb1r/pppb2pp/2np1n2/5pN1/2BQP3/2N5/PPP2PPP/R1B1K2R w KQkq - 0 1",
     };       
 
     std.debug.print("\n", .{});
