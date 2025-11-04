@@ -19,6 +19,7 @@ const PieceType = position.PieceType;
 const Color = position.Color;
 const Move = position.Move;
 const MoveFlags = position.MoveFlags;
+const Square = position.Square;
 
 const MoveList = lists.MoveList;
 const ScoreList = lists.ScoreList;
@@ -282,6 +283,27 @@ pub const Search = struct {
 
     pub fn new() Search {
         return Search{};
+    }
+
+    fn print_uci_move(self: *Search, pos: *Position, mv: Move, side: Color) void {
+        _ = self;
+        // Fast-path: check castling flag first; only then consider 960 formatting
+        if ((mv.flags == MoveFlags.OO or mv.flags == MoveFlags.OOO) and uci.is_chess960() and pos.is_chess960) {
+            const ci = side.toU4();
+            const rook_sq = if (mv.flags == MoveFlags.OO)
+                pos.castle_rook_k_start[ci]
+            else
+                pos.castle_rook_q_start[ci];
+            if (rook_sq != Square.NO_SQUARE) {
+                const k_from = position.sq_to_coord[mv.from];
+                const r_from = position.sq_to_coord[rook_sq.toU()];
+                printout(uci.stdout, "{s}{s} ", .{ k_from, r_from });
+                return;
+            }
+        }
+        const repr = mv.to_str();
+        const s = if (mv.is_promotion()) repr[0..5] else repr[0..4];
+        printout(uci.stdout, "{s} ", .{s});
     }
 
     fn clear_pv_table(self: *Search) void {
@@ -622,13 +644,14 @@ pub const Search = struct {
 
                 var next_ply: usize = 0;
                 while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
-                    var pv_move = self.pv_table[0][next_ply];
+                    const pv_move = self.pv_table[0][next_ply];
+                    self.print_uci_move(pos, pv_move, color);
                     //const pv_move_str = pv_move.to_str(allocator);
                     //pv_move_str = pv_move.to_str(allocator);
                     //defer allocator.free(pv_move_str);
-                    const pv_move_repr = pv_move.to_str();
-                    const pv_move_str = if (pv_move.is_promotion()) pv_move_repr[0..5] else pv_move_repr[0..4];
-                    printout(uci.stdout, "{s} ", .{pv_move_str});
+                    // const pv_move_repr = pv_move.to_str();
+                    // const pv_move_str = if (pv_move.is_promotion()) pv_move_repr[0..5] else pv_move_repr[0..4];
+                    // printout(uci.stdout, "{s} ", .{pv_move_str});
                 }
 
                 printout(uci.stdout, "\n", .{});
@@ -654,9 +677,27 @@ pub const Search = struct {
         }
 
         if (self.manager.printout) {
-            const move_name_repr = self.best_move.to_str();
-            const move_name = if (self.best_move.is_promotion()) move_name_repr[0..5] else move_name_repr[0..4];
-            printout(uci.stdout, "bestmove {s}\n", .{move_name});
+            // Print bestmove: check castling flag first, then 960 formatting
+            if ((self.best_move.flags == MoveFlags.OO or self.best_move.flags == MoveFlags.OOO) and uci.is_chess960() and pos.is_chess960) {
+                const ci = color.toU4();
+                const rook_sq = if (self.best_move.flags == MoveFlags.OO)
+                    pos.castle_rook_k_start[ci]
+                else
+                    pos.castle_rook_q_start[ci];
+                if (rook_sq != Square.NO_SQUARE) {
+                    const k_from = position.sq_to_coord[self.best_move.from];
+                    const r_from = position.sq_to_coord[rook_sq.toU()];
+                    printout(uci.stdout, "bestmove {s}{s}\n", .{ k_from, r_from });
+                } else {
+                    const repr = self.best_move.to_str();
+                    const move_name = if (self.best_move.is_promotion()) repr[0..5] else repr[0..4];
+                    printout(uci.stdout, "bestmove {s}\n", .{move_name});
+                }
+            } else {
+                const repr = self.best_move.to_str();
+                const move_name = if (self.best_move.is_promotion()) repr[0..5] else repr[0..4];
+                printout(uci.stdout, "bestmove {s}\n", .{move_name});
+            }
         }
     }
 
