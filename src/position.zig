@@ -1312,25 +1312,6 @@ pub const Position = struct {
         return bb.pop_count(pieces);
     }
 
-    // This is old version of is_insufficient_material:
-    // TODO: write zig test to test the new version of function
-    // pub inline fn is_insufficient_material(self: *Position) bool {
-    //     const remaining_pieces = self.all_pieces(Color.White) | self.all_pieces(Color.Black);
-    //     const white_bishop = self.piece_bb[Piece.WHITE_BISHOP.toU4()];
-    //     const black_bishop = self.piece_bb[Piece.BLACK_BISHOP.toU4()];
-    //     const white_knight = self.piece_bb[Piece.WHITE_KNIGHT.toU4()];
-    //     const black_knight = self.piece_bb[Piece.BLACK_KNIGHT.toU4()];
-
-    //     const piece_cnt = bb.pop_count(remaining_pieces);
-
-    //     if (piece_cnt == 2) {
-    //         return true;
-    //     }
-
-    //     return (piece_cnt == 3 and ((remaining_pieces & (white_bishop | black_bishop | white_knight | black_knight)) != 0));
-
-    // }
-
     pub inline fn is_insufficient_material(self: *Position) bool {
         const white_king_sq = self.bitboard_of_pt(Color.White, PieceType.King);
         const black_king_sq = self.bitboard_of_pt(Color.Black, PieceType.King);
@@ -1870,6 +1851,13 @@ pub const Position = struct {
                         continue;
                     },
                     else => {
+                        // Record clearer diagnostic: unexpected piece letter and its square
+                        var buf: [128]u8 = undefined;
+                        const coord = sq_to_coord[sq_u6];
+                        const msg = std.fmt.bufPrint(&buf, "Unexpected piece '{c}' at {s}", .{ c, coord }) catch "";
+                        const mlen = @min(msg.len, self.fen_error.len);
+                        @memcpy(self.fen_error[0..mlen], msg[0..mlen]);
+                        self.fen_error_len = mlen;
                         return FenParseError.InvalidPosition;
                     },
                 };
@@ -2155,7 +2143,6 @@ pub const Position = struct {
         if (self.is_chess960) {
             // Always output Shredder letters for 960/DFRC
         if ((castling_rights & Castling.WK.toU4()) != 0) {
-            try fen_parts.append(allocator, 'K');
             has_castling = true;
                 const rs = self.castle_rook_k_start[Color.White.toU4()];
                 if (rs != Square.NO_SQUARE) {
@@ -2165,7 +2152,6 @@ pub const Position = struct {
                 }
         }
         if ((castling_rights & Castling.WQ.toU4()) != 0) {
-            try fen_parts.append(allocator, 'Q');
             has_castling = true;
                 const rs = self.castle_rook_q_start[Color.White.toU4()];
                 if (rs != Square.NO_SQUARE) {
@@ -2175,7 +2161,6 @@ pub const Position = struct {
         }
             }
         if ((castling_rights & Castling.BK.toU4()) != 0) {
-            try fen_parts.append(allocator, 'k');
             has_castling = true;
                 const rs = self.castle_rook_k_start[Color.Black.toU4()];
                 if (rs != Square.NO_SQUARE) {
@@ -2962,25 +2947,6 @@ pub const Position = struct {
         }
     }    
 
-    // TODO: think about using this function, which is more general
-    // pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList, comptime noisy: bool) void {
-
-    //     const ctx = self.computeMoveGenContext(Us);
-
-    //     if (ctx.check_count > 0) {
-    //         self.generate_evasions(Us, ctx, list);
-    //         return;
-    //     }
-
-    //     //generate_captures_list(self, Us, list);
-    //     //generate_quiets_list(self, Us, list);
-    //     self.generate_all_captures_no_evasion(Us, ctx, list);
-    //     if (noisy) {
-    //         return;
-    //     } 
-    //     self.generate_all_quiets_no_evasion(Us, ctx, list);
-    //     return;
-    // }    
 
     pub fn generate_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
 
@@ -3110,10 +3076,6 @@ pub const Position = struct {
 
         return;
     }
-
-
-
-
 
 };
 
