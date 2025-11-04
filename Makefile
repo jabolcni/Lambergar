@@ -39,6 +39,7 @@ clean:
 	@echo "Cleaning build artifacts..."
 	@if exist "lambergar*.exe" $(RM_CMD) "lambergar*.exe"
 	@if exist "Lambergar*.exe" $(RM_CMD) "Lambergar*.exe"
+	@if exist "lamb*.exe" $(RM_CMD) "lamb*.exe"
 	@if exist ".zig-cache" $(RMDIR_CMD) .zig-cache
 	@if exist "zig-out" $(RMDIR_CMD) zig-out
 	@echo "Clean complete"
