@@ -2323,12 +2323,12 @@ pub const Position = struct {
         self.generate_all_pinned_pawn_moves(Us, ctx, list, capture_mask);
         self.generate_noisy_moves(Us, ctx, list, capture_mask, quiet_mask);        
         self.generate_all_king_moves(ctx, list);
-        self.generate_castling_moves_frc(Us, ctx, list);
-        // if (self.is_chess960) {
-        //     self.generate_castling_moves_frc(Us, ctx, list);
-        // } else {
-        //     self.generate_castling_moves_standard(Us, ctx, list);
-        // }
+        //self.generate_castling_moves_frc(Us, ctx, list);
+        if (self.is_chess960) {
+            self.generate_castling_moves_frc(Us, ctx, list);
+        } else {
+            self.generate_castling_moves_standard(Us, ctx, list);
+        }
         self.generate_quiet_moves(Us, ctx, list, quiet_mask);
 
         return;        
@@ -2350,12 +2350,12 @@ pub const Position = struct {
     pub fn generate_all_quiets_no_evasion(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
 
         const quiet_mask = ~ctx.all_bb;
-        self.generate_castling_moves_frc(Us, ctx, list);
-        // if (self.is_chess960) {
-        //     self.generate_castling_moves_frc(Us, ctx, list);
-        // } else {
-        //     self.generate_castling_moves_standard(Us, ctx, list);
-        // }
+        //self.generate_castling_moves_frc(Us, ctx, list);
+        if (self.is_chess960) {
+            self.generate_castling_moves_frc(Us, ctx, list);
+        } else {
+            self.generate_castling_moves_standard(Us, ctx, list);
+        }
         self.generate_quiet_pinned_pawn_moves(Us, ctx, list);
         self.generate_pinned_slider_moves(Us, ctx, list, quiet_mask, 0, false);                
         self.generate_quiet_moves(Us, ctx, list, quiet_mask);
@@ -3006,12 +3006,12 @@ pub const Position = struct {
             },
             else => {
                 quiet_mask = ~ctx.all_bb;
-                self.generate_castling_moves_frc(Us, ctx, list);
-                // if (self.is_chess960) {
-                //     generate_castling_moves_frc(self, Us, ctx, list);
-                // } else {
-                //     generate_castling_moves_standard(self, Us, ctx, list);
-                // }
+                //self.generate_castling_moves_frc(Us, ctx, list);
+                if (self.is_chess960) {
+                    generate_castling_moves_frc(self, Us, ctx, list);
+                } else {
+                    generate_castling_moves_standard(self, Us, ctx, list);
+                }
                 generate_quiet_pinned_pawn_moves(self, Us, ctx, list);
                 generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, 0, false);                
             },
