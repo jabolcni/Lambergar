@@ -517,6 +517,15 @@ pub const Move = packed struct {
                 return move;
             }
         }
+        // Fallback: compare UCI strings of legals against input (handles any internal encoding quirks)
+        for (0..list2.count) |i| {
+            const m = list2.moves[i];
+            const u = m.to_str();
+            const u_slice = if (m.is_promotion()) u[0..5] else u[0..4];
+            if (u_slice.len == move_str.len and std.mem.eql(u8, u_slice, move_str)) {
+                return m;
+            }
+        }
         return MoveParseError.IllegalMove;
     }
 
