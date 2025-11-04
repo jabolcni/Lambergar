@@ -92,6 +92,10 @@ pub fn start_main_search(search: *Search, pos: *Position) void {
             thread.join();
         }
     }
+
+    // Mark engine as idle: allow `isready` to reply after search completes.
+    @atomicStore(bool, &uci.thinkers[0].stop, true, .seq_cst);
+    @atomicStore(bool, &uci.search_running, false, .seq_cst);
 }
 
 pub fn start_search(search: *Search, pos: *Position, _delta: i32) void {
