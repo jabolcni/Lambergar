@@ -7,6 +7,7 @@ const attacks = @import("attacks.zig");
 const zobrist = @import("zobrist.zig");
 const search = @import("search.zig");
 const ms = @import("movescorer.zig");
+const datagen = @import("datagen.zig");
 const nnue = @import("nnue.zig");
 const bb = @import("bitboard.zig");
 const lists = @import("lists.zig");
@@ -587,61 +588,59 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             const depth = try u32_from_str(words.next() orelse "1");
 
             perft.perft_test_with_stats(&pos[0], @as(u4, @intCast(depth)));
+        } else if (std.mem.eql(u8, command, "datagen")) {
+            // Usage: datagen games N [depth D] [plies P] [random FIRST NEXT] [debug] [strict] [skipnoisy] [filename NAME.bin]
+            var cfg: datagen.GenConfig = .{};
 
-            // Uncomment below for datagen support
-            // } else if (std.mem.eql(u8, command, "datagen")) {
-            //     // Usage: datagen games N [depth D] [plies P] [random FIRST NEXT] [debug] [strict] [skipnoisy] [filename NAME.bin]
-            //     var cfg: datagen.GenConfig = .{};
+            while (words.next()) |arg| {
+                if (std.mem.eql(u8, arg, "games")) {
+                    if (words.next()) |n_tok| cfg.games = usize_from_str(n_tok) catch cfg.games;
+                } else if (std.mem.eql(u8, arg, "depth")) {
+                    if (words.next()) |d_tok| cfg.best_depth = @as(u32, @intCast(usize_from_str(d_tok) catch cfg.best_depth));
+                } else if (std.mem.eql(u8, arg, "plies")) {
+                    if (words.next()) |p_tok| cfg.max_plies = usize_from_str(p_tok) catch cfg.max_plies;
+                } else if (std.mem.eql(u8, arg, "random")) {
+                    // random FIRST NEXT
+                    if (words.next()) |f_tok| cfg.first_random = usize_from_str(f_tok) catch cfg.first_random;
+                    if (words.next()) |n_tok| cfg.next_mixed = usize_from_str(n_tok) catch cfg.next_mixed;
+                } else if (std.mem.eql(u8, arg, "debug")) {
+                    cfg.debug = true;
+                } else if (std.mem.eql(u8, arg, "strict")) {
+                    cfg.strict = true;
+                } else if (std.mem.eql(u8, arg, "skipnoisy")) {
+                    cfg.skip_noisy = true;
+                } else if (std.mem.eql(u8, arg, "filename")) {
+                    if (words.next()) |nm| cfg.filename = nm;
+                } else if (std.mem.eql(u8, arg, "random_min_ply")) {
+                    if (words.next()) |v| cfg.random_min_ply = usize_from_str(v) catch cfg.random_min_ply;
+                } else if (std.mem.eql(u8, arg, "random_50_ply")) {
+                    if (words.next()) |v| cfg.random_50_ply = usize_from_str(v) catch cfg.random_50_ply;
+                } else if (std.mem.eql(u8, arg, "random_10_ply")) {
+                    if (words.next()) |v| cfg.random_10_ply = usize_from_str(v) catch cfg.random_10_ply;
+                } else if (std.mem.eql(u8, arg, "random_move_count")) {
+                    if (words.next()) |v| cfg.random_move_count = usize_from_str(v) catch cfg.random_move_count;
+                } else if (std.mem.eql(u8, arg, "save_min_ply")) {
+                    if (words.next()) |v| cfg.save_min_ply = usize_from_str(v) catch cfg.save_min_ply;
+                } else if (std.mem.eql(u8, arg, "save_max_ply")) {
+                    if (words.next()) |v| cfg.save_max_ply = usize_from_str(v) catch cfg.save_max_ply;
+                } else if (std.mem.eql(u8, arg, "adjudicate_draws_by_score")) {
+                    cfg.adjudicate_draws_by_score = true;
+                } else if (std.mem.eql(u8, arg, "adjudicate_draws_by_insufficient_mating_material")) {
+                    cfg.adjudicate_draws_by_insufficient_mating_material = true;
+                }
+            }
 
-            //     while (words.next()) |arg| {
-            //         if (std.mem.eql(u8, arg, "games")) {
-            //             if (words.next()) |n_tok| cfg.games = usize_from_str(n_tok) catch cfg.games;
-            //         } else if (std.mem.eql(u8, arg, "depth")) {
-            //             if (words.next()) |d_tok| cfg.best_depth = @as(u32, @intCast(usize_from_str(d_tok) catch cfg.best_depth));
-            //         } else if (std.mem.eql(u8, arg, "plies")) {
-            //             if (words.next()) |p_tok| cfg.max_plies = usize_from_str(p_tok) catch cfg.max_plies;
-            //         } else if (std.mem.eql(u8, arg, "random")) {
-            //             // random FIRST NEXT
-            //             if (words.next()) |f_tok| cfg.first_random = usize_from_str(f_tok) catch cfg.first_random;
-            //             if (words.next()) |n_tok| cfg.next_mixed = usize_from_str(n_tok) catch cfg.next_mixed;
-            //         } else if (std.mem.eql(u8, arg, "debug")) {
-            //             cfg.debug = true;
-            //         } else if (std.mem.eql(u8, arg, "strict")) {
-            //             cfg.strict = true;
-            //         } else if (std.mem.eql(u8, arg, "skipnoisy")) {
-            //             cfg.skip_noisy = true;
-            //         } else if (std.mem.eql(u8, arg, "filename")) {
-            //             if (words.next()) |nm| cfg.filename = nm;
-            //         } else if (std.mem.eql(u8, arg, "random_min_ply")) {
-            //             if (words.next()) |v| cfg.random_min_ply = usize_from_str(v) catch cfg.random_min_ply;
-            //         } else if (std.mem.eql(u8, arg, "random_50_ply")) {
-            //             if (words.next()) |v| cfg.random_50_ply = usize_from_str(v) catch cfg.random_50_ply;
-            //         } else if (std.mem.eql(u8, arg, "random_10_ply")) {
-            //             if (words.next()) |v| cfg.random_10_ply = usize_from_str(v) catch cfg.random_10_ply;
-            //         } else if (std.mem.eql(u8, arg, "random_move_count")) {
-            //             if (words.next()) |v| cfg.random_move_count = usize_from_str(v) catch cfg.random_move_count;
-            //         } else if (std.mem.eql(u8, arg, "save_min_ply")) {
-            //             if (words.next()) |v| cfg.save_min_ply = usize_from_str(v) catch cfg.save_min_ply;
-            //         } else if (std.mem.eql(u8, arg, "save_max_ply")) {
-            //             if (words.next()) |v| cfg.save_max_ply = usize_from_str(v) catch cfg.save_max_ply;
-            //         } else if (std.mem.eql(u8, arg, "adjudicate_draws_by_score")) {
-            //             cfg.adjudicate_draws_by_score = true;
-            //         } else if (std.mem.eql(u8, arg, "adjudicate_draws_by_insufficient_mating_material")) {
-            //             cfg.adjudicate_draws_by_insufficient_mating_material = true;
-            //         }
-            //     }
-
-            //     // Normalize filename: ensure it ends with .bin
-            //     var final_name = cfg.filename;
-            //     if (!std.mem.endsWith(u8, final_name, ".bin")) {
-            //         final_name = std.fmt.allocPrint(allocator, "{s}.bin", .{cfg.filename}) catch cfg.filename;
-            //     }
-            //     printout(stdout, "info string datagen start games={} depth={} plies={} bin={s}\n", .{ cfg.games, cfg.best_depth, cfg.max_plies, final_name });
-            //     datagen.generate_binary(std.heap.c_allocator, final_name, cfg) catch |err| {
-            //         printout(stdout, "info string datagen failed: {any}\n", .{err});
-            //         continue;
-            //     };
-            //     printout(stdout, "info string datagen done\n", .{});
+            // Normalize filename: ensure it ends with .bin
+            var final_name = cfg.filename;
+            if (!std.mem.endsWith(u8, final_name, ".bin")) {
+                final_name = std.fmt.allocPrint(allocator, "{s}.bin", .{cfg.filename}) catch cfg.filename;
+            }
+            printout(stdout, "info string datagen start games={} depth={} plies={} bin={s}\n", .{ cfg.games, cfg.best_depth, cfg.max_plies, final_name });
+            datagen.generate_binary(std.heap.c_allocator, final_name, cfg) catch |err| {
+                printout(stdout, "info string datagen failed: {any}\n", .{err});
+                continue;
+            };
+            printout(stdout, "info string datagen done\n", .{});
         } else if (std.mem.eql(u8, command, "seepos")) {
             var list: MoveList = .{};
 
@@ -1499,6 +1498,30 @@ pub fn perft_test(allocator: std.mem.Allocator) !void {
             }
         }
     }
+}
+
+pub fn run_datagen(allocator: std.mem.Allocator, cfg: datagen.GenConfig) !void {
+    // For datagen, enable NNUE if available and initialize it explicitly
+    // so that search/eval matches normal UCI runs.
+    nnue.engine_using_nnue = true;
+    try nnue.embed_and_init();
+    nnue.engine_loaded_net = true;
+
+    try init_all(allocator);
+
+    try tt.TT.init(128 + 1);
+    defer tt.TT.deinit();
+
+    // Prepare a base position to ensure tables, etc., are sane
+    var tmp = Position.new();
+    try tmp.set(start_position);
+
+    // Normalize filename and run binary generation
+    var final_name = cfg.filename;
+    if (!std.mem.endsWith(u8, final_name, ".bin")) {
+        final_name = std.fmt.allocPrint(allocator, "{s}.bin", .{cfg.filename}) catch cfg.filename;
+    }
+    try datagen.generate_binary(allocator, final_name, cfg);
 }
 
 // Uncomment below for datagen support

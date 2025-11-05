@@ -259,6 +259,7 @@ pub const Search = struct {
     ply: u16 = 0,
     seldepth: u16 = 0,
     tbhits: u64 = 0,
+    root_score: i32 = 0,
 
     pv_length: [MAX_PLY]u16 = undefined,
     pv_table: [MAX_PLY][MAX_PLY]Move = undefined,
@@ -560,6 +561,7 @@ pub const Search = struct {
                 }
 
                 self.best_move = self.pv_table[0][0];
+                self.root_score = score;
 
                 delta += 2 + @divTrunc(delta, 2);
 
