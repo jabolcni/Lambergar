@@ -2708,7 +2708,7 @@ pub const Position = struct {
         }
     }
 
-    // Helper: fill the q-th empty (0-based) with given piece
+    // Fill the q-th empty (0-based) with given piece
     fn place_qth_empty(back_rank: *[8]u8, q: u16, ch: u8) void {
         var count: u16 = 0;
         var i: usize = 0;
