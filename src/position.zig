@@ -421,13 +421,11 @@ pub const Move = packed struct {
     } 
 
     pub inline fn is_tactical(self: Move) bool {
-        //std.debug.print("is_tactical\n", .{});
         return (self.is_capture() or self.is_promotion());
         //return if (self.is_capture()) true else false;
     }
 
     pub inline fn is_quiet(self: Move) bool {
-        //std.debug.print("is_quiet\n", .{});
         return if (self.is_tactical()) false else true;
     }
 
@@ -470,8 +468,6 @@ pub const Move = packed struct {
         const from = Square.from_str(move_str[0..2]).toU6();
         const to = Square.from_str(move_str[2..4]).toU6();
 
-        //var list = std.ArrayList(Move).initCapacity(std.heap.c_allocator, 48) catch unreachable;
-        //defer list.deinit();
         var list2: MoveList = .{};
 
         if (pos.side_to_play == Color.White) {
@@ -518,6 +514,7 @@ pub const Move = packed struct {
             }
         }
         // Fallback: compare UCI strings of legals against input (handles any internal encoding quirks)
+        // TODO: Solve this issue
         for (0..list2.count) |i| {
             const m = list2.moves[i];
             const u = m.to_str();
@@ -544,6 +541,7 @@ pub const Move = packed struct {
         // Handle castling (Chess960-aware: king from current square to g/c file)
         if (std.mem.eql(u8, move_str, "O-O")) {
             // side_to_play is runtime; use bitboard_of_pc, not comptime-only bitboard_of_pt
+            // TODO: implement comptime version of this code
             const king_bb = curr_pos.bitboard_of_pc(Piece.make_piece(curr_pos.side_to_play, PieceType.King));
             const ks = bb.get_ls1b_index(king_bb);
             const kd = if (curr_pos.side_to_play == .White) Square.g1.toU6() else Square.g8.toU6();
@@ -570,7 +568,6 @@ pub const Move = packed struct {
         var is_cap = false;
         var move_idx: usize = 0;
 
-        // Check for piece identifier (N, B, R, Q, K)
         if (move_idx < move_str.len and move_str[move_idx] >= 'A' and move_str[move_idx] <= 'Z') {
             piece = move_str[move_idx];
             move_idx += 1;
@@ -631,6 +628,7 @@ pub const Move = packed struct {
         const dest_idx = dest_rank * 8 + dest_file;
 
         // Debug: Print legal moves
+        // TODO: eventually remove so that code will be faster, currently it is here for debug purposes
         var move_list: MoveList = .{};
         if (curr_pos.side_to_play == Color.White) {
             curr_pos.generate_legals(Color.White, &move_list);
@@ -758,8 +756,7 @@ pub inline fn ignore_ooo_danger(comptime c: Color) u64 {
     return if (c == Color.White) 0x2 else 0x200000000000000;
 }
 
-//Stores position information which cannot be recovered on undo-ing a move
-//pub const UndoInfo = packed struct {
+// pub const UndoInfo = packed struct {
 pub const UndoInfo = struct {
     entry: u64,
     captured: Piece,
@@ -825,10 +822,13 @@ pub const Position = struct {
     is_chess960: bool = false,
 
     // Last FEN parse diagnostic message (if any)
+    // This is for debuging purposes
+    // TODO: you can remove it for release version, but do proper testing
     fen_error: [128]u8 = undefined,
     fen_error_len: usize = 0,
 
     // Fullmove number from input FEN (defaults to 1)
+    // TODO: revert to previous way you did it, I do not really like it this way
     fullmove_number: u32 = 1,
 
     pub fn new() Position {
@@ -998,6 +998,7 @@ pub const Position = struct {
         } else if (pc.type_of() == PieceType.Bishop or pc.type_of() == PieceType.Knight) {
             self.minor_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
         }
+        // TODO: this could probably be erase, think about why you added this code in the past (related to correction history)
         // if (pc.type_of() == PieceType.King) {
         //     self.pawn_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
         //     self.major_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
@@ -1024,6 +1025,7 @@ pub const Position = struct {
         } else if (pc.type_of() == PieceType.Bishop or pc.type_of() == PieceType.Knight) {
             self.minor_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
         }
+        // TODO: this could probably be erase, think about why you added this code in the past (related to correction history)
         // if (pc.type_of() == PieceType.King) {
         //     self.pawn_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
         //     self.major_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
@@ -1056,6 +1058,7 @@ pub const Position = struct {
         } else if (pc.type_of() == PieceType.Bishop or pc.type_of() == PieceType.Knight) {
             self.minor_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
         }
+        // TODO: this could probably be erase, think about why you added this code in the past (related to correction history)
         // if (pc.type_of() == PieceType.King) {
         //     self.pawn_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
         //     self.major_hash ^= zobrist.zobrist_table[pc_idx][s_idx];
@@ -1101,6 +1104,7 @@ pub const Position = struct {
             self.minor_hash ^= zobrist.zobrist_table[to_idx][to];
         }  
 
+        // TODO: this could probably be erase, think about why you added this code in the past (related to correction history)
         // if (from_pc.type_of() == PieceType.King) {
         //     self.pawn_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to] ^ zobrist.zobrist_table[to_idx][to];
         //     self.major_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to] ^ zobrist.zobrist_table[to_idx][to];
@@ -1137,6 +1141,7 @@ pub const Position = struct {
         } else if (from_pc.type_of() == PieceType.Bishop or from_pc.type_of() == PieceType.Knight) {
             self.minor_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
         } 
+        // TODO: this could probably be erase, think about why you added this code in the past (related to correction history)
         // if (from_pc.type_of() == PieceType.King) {
         //     self.pawn_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
         //     self.major_hash ^= zobrist.zobrist_table[from_idx][from] ^ zobrist.zobrist_table[from_idx][to];
@@ -1454,6 +1459,7 @@ pub const Position = struct {
                 const rd: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
                 if (rs == kd) {
                     // Rook occupies king destination: remove rook, move king, then place rook at rd
+                    // TODO: the old way was to use move_piece_quiet function for rook, revert back to old ways
                     const rook_pc = self.board[rs];
                     self.remove_piece(rs);
                     if (m.from != kd) self.move_piece_quiet(m.from, kd);
@@ -1488,6 +1494,7 @@ pub const Position = struct {
                 const rs: u6 = self.castle_rook_q_start[ci].toU6();
                 const rd: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
                 if (rs == kd) {
+                    // TODO: the old way was to use move_piece_quiet function for rook, revert back to old ways
                     const rook_pc = self.board[rs];
                     self.remove_piece(rs);
                     if (m.from != kd) self.move_piece_quiet(m.from, kd);
@@ -1643,6 +1650,7 @@ pub const Position = struct {
                 const rd: u6 = if (C == .White) Square.f1.toU6() else Square.f8.toU6();
                 // Overlap-safe undo: remove rook from its castled square (if it moved),
                 // move king back, then restore rook to its starting square.
+                // TODO: the old way was to use move_piece_quiet function for rook, revert back to old ways
                 const rook_moved: bool = (rs != rd);
                 var rook_pc: Piece = Piece.NO_PIECE;
                 if (rook_moved) {
@@ -1658,6 +1666,7 @@ pub const Position = struct {
                 const rs: u6 = self.castle_rook_q_start[ci].toU6();
                 const rd: u6 = if (C == .White) Square.d1.toU6() else Square.d8.toU6();
                 // Overlap-safe undo: same sequence as OO
+                // TODO: the old way was to use move_piece_quiet function for rook, revert back to old ways
                 const rook_moved_q: bool = (rs != rd);
                 var rook_pc_q: Piece = Piece.NO_PIECE;
                 if (rook_moved_q) {
@@ -1852,6 +1861,7 @@ pub const Position = struct {
                     },
                     else => {
                         // Record clearer diagnostic: unexpected piece letter and its square
+                        // TODO: this was for additional debuging, you could probably remove this now for better speed, but it probably does not affect it, so I just keep it here
                         var buf: [128]u8 = undefined;
                         const coord = sq_to_coord[sq_u6];
                         const msg = std.fmt.bufPrint(&buf, "Unexpected piece '{c}' at {s}", .{ c, coord }) catch "";
@@ -1866,6 +1876,7 @@ pub const Position = struct {
             }
             if (file != 8) {
                 // Record rank width issue
+                // TODO: for debugging purposes, I solved the issues, so you might just remove it
                 var buf: [128]u8 = undefined;
                 const msg = std.fmt.bufPrint(&buf, "Invalid rank width at rank {} (saw {} files)", .{ 8 - rank, file }) catch "";
                 const mlen = @min(msg.len, self.fen_error.len);
@@ -1876,6 +1887,7 @@ pub const Position = struct {
             rank += 1;
         }
         if (rank != 8) {
+            // TODO: for debugging purposes, I solved the issues, so you might just remove it
             var buf: [128]u8 = undefined;
             const msg = std.fmt.bufPrint(&buf, "Invalid position: expected 8 ranks, got {}", .{ rank }) catch "";
             const mlen = @min(msg.len, self.fen_error.len);
@@ -2035,6 +2047,8 @@ pub const Position = struct {
 
         self.hash ^= zobrist.castling_keys[self.history[self.game_ply].castling];
         // Build per-square castling-rights clear table based on detected starts
+        // It works, but in better code this would be unneceserry 
+        // TODO: think about how to improve this
         self.rebuild_castle_rights_clear_table();
         self.history[self.game_ply].hash_key = self.hash;
 
@@ -2142,35 +2156,36 @@ pub const Position = struct {
 
         if (self.is_chess960) {
             // Always output Shredder letters for 960/DFRC
-        if ((castling_rights & Castling.WK.toU4()) != 0) {
-            has_castling = true;
+            // TODO: actually I saw that other engines output the standard letters, think about changing this to standard letters
+            if ((castling_rights & Castling.WK.toU4()) != 0) {
+                has_castling = true;
                 const rs = self.castle_rook_k_start[Color.White.toU4()];
                 if (rs != Square.NO_SQUARE) {
                     const base: u8 = 'A';
                     const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
                     try fen_parts.append(allocator, base + f);
                 }
-        }
-        if ((castling_rights & Castling.WQ.toU4()) != 0) {
-            has_castling = true;
+            }
+            if ((castling_rights & Castling.WQ.toU4()) != 0) {
+                has_castling = true;
                 const rs = self.castle_rook_q_start[Color.White.toU4()];
                 if (rs != Square.NO_SQUARE) {
                     const base: u8 = 'A';
                     const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
                     try fen_parts.append(allocator, base + f);
-        }
+                }
             }
-        if ((castling_rights & Castling.BK.toU4()) != 0) {
-            has_castling = true;
+            if ((castling_rights & Castling.BK.toU4()) != 0) {
+                has_castling = true;
                 const rs = self.castle_rook_k_start[Color.Black.toU4()];
                 if (rs != Square.NO_SQUARE) {
                     const base: u8 = 'a';
                     const f: u8 = @as(u8, @intCast(rs.file_of().toU3()));
                     try fen_parts.append(allocator, base + f);
                 }
-        }
-        if ((castling_rights & Castling.BQ.toU4()) != 0) {
-            has_castling = true;
+            }
+            if ((castling_rights & Castling.BQ.toU4()) != 0) {
+                has_castling = true;
                 const rs = self.castle_rook_q_start[Color.Black.toU4()];
                 if (rs != Square.NO_SQUARE) {
                     const base: u8 = 'a';
@@ -2249,7 +2264,6 @@ pub const Position = struct {
         try fen_parts.append(allocator, ' ');
         const ep_square = self.history[self.game_ply].epsq; // Assuming Square enum
         if (ep_square != Square.NO_SQUARE) {
-            // Assuming sq_to_coord array exists as in your provided code
             const ep_str = sq_to_coord[ep_square.toU()]; // Use toU() which returns usize
             try fen_parts.appendSlice(allocator, ep_str);
         } else {
@@ -2258,7 +2272,6 @@ pub const Position = struct {
 
         // --- 5. Halfmove clock (50-move counter) ---
         try fen_parts.append(allocator, ' ');
-        // Assuming fifty_move_counter or similar field exists in history
         const halfmove_clock = self.history[self.game_ply].fifty; // Adjust field name if needed
         var halfmove_buf: [10]u8 = undefined; // Buffer for integer to string conversion
         const halfmove_str = try std.fmt.bufPrint(&halfmove_buf, "{}", .{halfmove_clock});
@@ -2323,12 +2336,12 @@ pub const Position = struct {
         self.generate_all_pinned_pawn_moves(Us, ctx, list, capture_mask);
         self.generate_noisy_moves(Us, ctx, list, capture_mask, quiet_mask);        
         self.generate_all_king_moves(ctx, list);
-        //self.generate_castling_moves_frc(Us, ctx, list);
-        if (self.is_chess960) {
-            self.generate_castling_moves_frc(Us, ctx, list);
-        } else {
-            self.generate_castling_moves_standard(Us, ctx, list);
-        }
+        self.generate_castling_moves_frc(Us, ctx, list);
+        // if (self.is_chess960) {
+        //     self.generate_castling_moves_frc(Us, ctx, list);
+        // } else {
+        //     self.generate_castling_moves_standard(Us, ctx, list);
+        // }
         self.generate_quiet_moves(Us, ctx, list, quiet_mask);
 
         return;        
@@ -2350,12 +2363,12 @@ pub const Position = struct {
     pub fn generate_all_quiets_no_evasion(self: *Position, comptime Us: Color, ctx: MoveGenContext, list: *MoveList) void {
 
         const quiet_mask = ~ctx.all_bb;
-        //self.generate_castling_moves_frc(Us, ctx, list);
-        if (self.is_chess960) {
-            self.generate_castling_moves_frc(Us, ctx, list);
-        } else {
-            self.generate_castling_moves_standard(Us, ctx, list);
-        }
+        self.generate_castling_moves_frc(Us, ctx, list);
+        // if (self.is_chess960) {
+        //     self.generate_castling_moves_frc(Us, ctx, list);
+        // } else {
+        //     self.generate_castling_moves_standard(Us, ctx, list);
+        // }
         self.generate_quiet_pinned_pawn_moves(Us, ctx, list);
         self.generate_pinned_slider_moves(Us, ctx, list, quiet_mask, 0, false);                
         self.generate_quiet_moves(Us, ctx, list, quiet_mask);
@@ -3006,12 +3019,12 @@ pub const Position = struct {
             },
             else => {
                 quiet_mask = ~ctx.all_bb;
-                //self.generate_castling_moves_frc(Us, ctx, list);
-                if (self.is_chess960) {
-                    generate_castling_moves_frc(self, Us, ctx, list);
-                } else {
-                    generate_castling_moves_standard(self, Us, ctx, list);
-                }
+                self.generate_castling_moves_frc(Us, ctx, list);
+                // if (self.is_chess960) {
+                //     generate_castling_moves_frc(self, Us, ctx, list);
+                // } else {
+                //     generate_castling_moves_standard(self, Us, ctx, list);
+                // }
                 generate_quiet_pinned_pawn_moves(self, Us, ctx, list);
                 generate_pinned_slider_moves(self, Us, ctx, list, quiet_mask, 0, false);                
             },
