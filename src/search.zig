@@ -643,9 +643,11 @@ pub const Search = struct {
                 printout(uci.stdout, "pv ", .{});
 
                 var next_ply: usize = 0;
+                var pv_side = color;
                 while (!self.pv_table[0][next_ply].is_empty() and next_ply < self.pv_length[0]) : (next_ply += 1) {
                     const pv_move = self.pv_table[0][next_ply];
-                    self.print_uci_move(pos, pv_move, color);
+                    self.print_uci_move(pos, pv_move, pv_side);
+                    pv_side = pv_side.change_side();
                     //const pv_move_str = pv_move.to_str(allocator);
                     //pv_move_str = pv_move.to_str(allocator);
                     //defer allocator.free(pv_move_str);
