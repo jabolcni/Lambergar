@@ -322,14 +322,22 @@ pub const TranspositionTable = struct {
 
     pub fn fetch(self: *TranspositionTable, hash: u64) ?scoreEntry {
         const idx = self.index(hash);
-        const lock_idx = idx / self.bucket_size;
-        self.locks[lock_idx].lock();
-        defer self.locks[lock_idx].unlock();
-        self.lookups += 1; // Increment total lookups
-        for (self.ttArray[idx]) |entry| {
-            if (entry.hash_key == hash and entry.bound != Bound.BOUND_NONE) {
-                self.hits += 1; // Increment hits on success
-                return entry;
+        // Lock-free read: accept benign races; double-check to reduce race effects.
+        _ = @atomicRmw(u64, &self.lookups, .Add, 1, .monotonic);
+
+        const bucket_ptr = &self.ttArray[idx];
+        var i: usize = 0;
+        while (i < BUCKET_SIZE) : (i += 1) {
+            const e_ptr = &bucket_ptr.*[i];
+            const key1 = e_ptr.hash_key;
+            const bound1 = e_ptr.bound;
+            if (bound1 == Bound.BOUND_NONE or key1 != hash) continue;
+
+            // Snapshot the entry, then re-check the key/bound
+            const snap = e_ptr.*;
+            if (snap.hash_key == key1 and snap.hash_key == hash and snap.bound != Bound.BOUND_NONE) {
+                _ = @atomicRmw(u64, &self.hits, .Add, 1, .monotonic);
+                return snap;
             }
         }
         return null;
