@@ -967,6 +967,8 @@ pub fn bench(allocator: std.mem.Allocator, depth: u32) !void {
 
     thinkers[0] = Search.new();
     thinkers[0].clear_for_new_game();
+    thinkers[0].thread_id = 0; // mark main
+    thinkers[0].seed = 0;
     thinkers[0].manager = search.SearchManager.new();
     thinkers[0].max_depth = depth;
     thinkers[0].manager.configure(&curr_pos);
@@ -983,6 +985,8 @@ pub fn bench(allocator: std.mem.Allocator, depth: u32) !void {
         // Set up position
 
         thinkers[0].clear_for_new_game();
+        thinkers[0].thread_id = 0;
+        thinkers[0].seed = 0;
         tt.TT.clear();
         try curr_pos.set(fen);
         thinkers[0].max_depth = depth;

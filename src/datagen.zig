@@ -47,6 +47,8 @@ fn pick_best_move(pos: *Position, depth: u32, debug: bool) BestInfo {
     s.clear_for_new_game();
     s.clear_for_new_search();
     s.manager = search.SearchManager.new();
+    s.thread_id = 0; // main thread semantics for TB gating
+    s.seed = 0; // deterministic ordering
     s.manager.termination = search.Termination.DEPTH;
     s.manager.printout = debug; // when true, emits UCI-like info depth lines
     s.manager.max_depth = depth;
@@ -98,6 +100,8 @@ fn pick_best_move_strict(pos: *Position, depth: u32, debug: bool) BestInfo {
     s.clear_for_new_game();
     s.clear_for_new_search();
     s.manager = search.SearchManager.new();
+    s.thread_id = 0; // main thread semantics for TB gating
+    s.seed = 0; // deterministic ordering
     s.manager.termination = search.Termination.DEPTH;
     s.manager.max_depth = depth;
     s.manager.printout = debug;
