@@ -33,7 +33,7 @@ pub const Bound = enum(u2) {
     BOUND_LOWER = 3,
 };
 
-pub const scoreEntry = packed struct {
+pub const scoreEntry = struct {
     hash_key: u64,
     move: Move, // 16-bits
     score: i32,
@@ -87,19 +87,29 @@ pub const TranspositionTable = struct {
     pub fn init(self: *TranspositionTable, size_mb: u64) !void {
         tt_allocator.free(self.ttArray);
         const total_entries = size_mb * MB / @sizeOf(scoreEntry);
-        const size = total_entries / BUCKET_SIZE; // Number of buckets
+        var size = total_entries / BUCKET_SIZE; // Number of buckets
+        if (size == 0) size = 1;
+        // Round down to the nearest power of two for proper masking
+        var v = size;
+        v |= v >> 1;
+        v |= v >> 2;
+        v |= v >> 4;
+        v |= v >> 8;
+        v |= v >> 16;
+        v |= v >> 32;
+        const pow2 = (v + 1) >> 1;
         if (uci.debug) {
-            std.debug.print("Hash size in buckets: {}\n", .{size});
-            std.debug.print("Total entries: {}\n", .{size * BUCKET_SIZE});
-            std.debug.print("Hash size in MB: {}\n", .{size * BUCKET_SIZE * @sizeOf(scoreEntry) / MB});
+            std.debug.print("Hash size in buckets: {} (pow2 adjusted)\n", .{pow2});
+            std.debug.print("Total entries: {}\n", .{pow2 * BUCKET_SIZE});
+            std.debug.print("Hash size in MB: {}\n", .{pow2 * BUCKET_SIZE * @sizeOf(scoreEntry) / MB});
         }
-        self.ttArray = try tt_allocator.alloc([BUCKET_SIZE]scoreEntry, size);
+        self.ttArray = try tt_allocator.alloc([BUCKET_SIZE]scoreEntry, pow2);
         self.bucket_size = 4096; // Lock granularity (buckets per lock)
-        const num_locks = (size + self.bucket_size - 1) / self.bucket_size;
+        const num_locks = (pow2 + self.bucket_size - 1) / self.bucket_size;
         self.locks = try tt_allocator.alloc(SpinLock, num_locks);
         for (self.locks) |*lock| lock.* = SpinLock{};
-        self.size = size;
-        self.mask = size - 1;
+        self.size = pow2;
+        self.mask = pow2 - 1;
         self.age = 0;
         self.clear();
     }
@@ -337,6 +347,10 @@ pub const TranspositionTable = struct {
             if (published == 0) continue;
 
             const snap = e_ptr.*; // snapshot after acquire
+            // Recheck publication after snapshot to reduce race effects
+            const still_published = @atomicLoad(u8, &e_ptr.valid, .acquire);
+            if (still_published == 0) continue;
+
             if (snap.hash_key == hash and snap.bound != Bound.BOUND_NONE) {
                 _ = @atomicRmw(u64, &self.hits, .Add, 1, .seq_cst);
                 return snap;
