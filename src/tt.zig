@@ -40,6 +40,8 @@ pub const scoreEntry = packed struct {
     bound: Bound, // 2-bits
     depth: i8,
     age: u6,
+    // Publication flag: 0 = invalid/empty, 1 = published. Written last on store with release semantics.
+    valid: u8,
 
     pub fn new(k: u64, m: Move, s: i32, b: Bound, d: i8, a: u6) scoreEntry {
         return scoreEntry{
@@ -49,6 +51,7 @@ pub const scoreEntry = packed struct {
             .bound = b,
             .depth = d,
             .age = a,
+            .valid = if (b == Bound.BOUND_NONE) 0 else 1,
         };
     }
 };
@@ -165,59 +168,60 @@ pub const TranspositionTable = struct {
 
     pub fn store(self: *TranspositionTable, entry: scoreEntry) void {
         const idx = self.index(entry.hash_key);
-        const lock_idx = idx / self.bucket_size;
-        self.locks[lock_idx].lock();
-        defer self.locks[lock_idx].unlock();
-
-        var bucket = &self.ttArray[idx];
         const key = entry.hash_key;
         const current_age = self.age;
 
-        // Check for existing entry with matching key
-        for (bucket) |*e| {
-            if (e.hash_key == key) {
-                // Update move only if new one is provided
-                if (!entry.move.is_empty()) {
-                    e.move = entry.move;
-                }
-                // Update entry if exact bound, deeper search, or different age
-                if (entry.bound == Bound.BOUND_EXACT or
-                    entry.depth + 5 > e.depth or
-                    e.age != current_age)
-                {
-                    e.* = entry;
-                }
+        const bucket_ptr = &self.ttArray[idx];
+
+        // Try update in-place if key matches
+        var i: usize = 0;
+        while (i < BUCKET_SIZE) : (i += 1) {
+            const e_ptr = &bucket_ptr.*[i];
+            if (e_ptr.hash_key == key) {
+                // Invalidate before write
+                @atomicStore(u8, &e_ptr.valid, 0, .seq_cst);
+                if (!entry.move.is_empty()) e_ptr.move = entry.move;
+                e_ptr.hash_key = key;
+                e_ptr.score = entry.score;
+                e_ptr.depth = entry.depth;
+                e_ptr.bound = entry.bound;
+                e_ptr.age = current_age;
+                // Publish
+                const v: u8 = if (entry.bound == Bound.BOUND_NONE) 0 else 1;
+                @atomicStore(u8, &e_ptr.valid, v, .release);
                 return;
             }
         }
 
-        // Find least valuable entry to replace
+        // Select replacement slot
         var replace_idx: usize = 0;
         var best_value: i32 = std.math.maxInt(i32);
-        for (bucket, 0..) |e, i| {
+        i = 0;
+        while (i < BUCKET_SIZE) : (i += 1) {
+            const e = bucket_ptr.*[i];
             const age_diff: i32 = @as(i32, current_age -% e.age);
-            const value = @as(i32, e.depth) - age_diff * 4;
-            if (value < best_value) {
+            const prefer_exact: i32 = if (e.bound == Bound.BOUND_EXACT) 8 else 0;
+            const value = @as(i32, e.depth) - age_diff * 4 + prefer_exact; // lower is worse
+            if (value < best_value or e.valid == 0) {
                 best_value = value;
                 replace_idx = i;
             }
         }
 
-        // Preserve existing move if no new move and keys differ
-        if (entry.move.is_empty() and key != bucket[replace_idx].hash_key) {
-            bucket[replace_idx].move = bucket[replace_idx].move;
-        } else {
-            bucket[replace_idx].move = entry.move;
+        const tgt = &bucket_ptr.*[replace_idx];
+        // Invalidate target then write and publish
+        @atomicStore(u8, &tgt.valid, 0, .seq_cst);
+        // Preserve existing move if no new move provided and replacing different key
+        if (!entry.move.is_empty() or tgt.hash_key == key) {
+            tgt.move = entry.move;
         }
-
-        // Overwrite if more valuable
-        if (entry.bound == Bound.BOUND_EXACT or
-            key != bucket[replace_idx].hash_key or
-            entry.depth + 5 > bucket[replace_idx].depth or
-            bucket[replace_idx].age != current_age)
-        {
-            bucket[replace_idx] = entry;
-        }
+        tgt.hash_key = key;
+        tgt.score = entry.score;
+        tgt.depth = entry.depth;
+        tgt.bound = entry.bound;
+        tgt.age = current_age;
+        const v2: u8 = if (entry.bound == Bound.BOUND_NONE) 0 else 1;
+        @atomicStore(u8, &tgt.valid, v2, .release);
     }
 
     // pub  fn store(self: *TranspositionTable, entry: scoreEntry) void {
@@ -322,21 +326,19 @@ pub const TranspositionTable = struct {
 
     pub fn fetch(self: *TranspositionTable, hash: u64) ?scoreEntry {
         const idx = self.index(hash);
-        // Lock-free read: accept benign races; double-check to reduce race effects.
-        _ = @atomicRmw(u64, &self.lookups, .Add, 1, .monotonic);
+        // Lock-free read with publish flag: acquire on valid to see a fully published entry.
+        _ = @atomicRmw(u64, &self.lookups, .Add, 1, .seq_cst);
 
         const bucket_ptr = &self.ttArray[idx];
         var i: usize = 0;
         while (i < BUCKET_SIZE) : (i += 1) {
             const e_ptr = &bucket_ptr.*[i];
-            const key1 = e_ptr.hash_key;
-            const bound1 = e_ptr.bound;
-            if (bound1 == Bound.BOUND_NONE or key1 != hash) continue;
+            const published = @atomicLoad(u8, &e_ptr.valid, .acquire);
+            if (published == 0) continue;
 
-            // Snapshot the entry, then re-check the key/bound
-            const snap = e_ptr.*;
-            if (snap.hash_key == key1 and snap.hash_key == hash and snap.bound != Bound.BOUND_NONE) {
-                _ = @atomicRmw(u64, &self.hits, .Add, 1, .monotonic);
+            const snap = e_ptr.*; // snapshot after acquire
+            if (snap.hash_key == hash and snap.bound != Bound.BOUND_NONE) {
+                _ = @atomicRmw(u64, &self.hits, .Add, 1, .seq_cst);
                 return snap;
             }
         }
