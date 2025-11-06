@@ -15,3 +15,7 @@ zig-out/
 *.dll
 *.so
 *.dylib
+
+# 
+zapiski.md
+lambergar*/
