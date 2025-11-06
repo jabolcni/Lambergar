@@ -25,10 +25,11 @@ pub fn histoy_bonus(_entry: *i32, bonus: i32) void {
     _entry.* += bonus - @divTrunc(_entry.* * @as(i32, @intCast(@abs(bonus))), history_divider);
 }
 
-fn corr_update(_entry: *i32, err: i32, weight: i32) void {
-    const interp = (_entry.* * (CORRHIST_WEIGHT_SCALE - weight) + err * weight) >> 10;
-    const clamped = std.math.clamp(interp, -MAX_CORRHIST, MAX_CORRHIST);
-    _entry.* = @as(i32, @intCast(clamped));
+fn corr_update(_entry: *i16, err: i32, weight: i32) void {
+    const curr: i32 = _entry.*;
+    const interp: i32 = (curr * (CORRHIST_WEIGHT_SCALE - weight) + err * weight) >> 10;
+    const clamped: i32 = std.math.clamp(interp, -MAX_CORRHIST, MAX_CORRHIST);
+    _entry.* = @as(i16, @intCast(clamped));
 }
 
 pub fn update_corr_history(search: *Search, pos: *Position, corr_eval: i32, score: i32, depth: i8) void {
@@ -39,20 +40,36 @@ pub fn update_corr_history(search: *Search, pos: *Position, corr_eval: i32, scor
     const depth_i32: i32 = @as(i32, @intCast(depth));
     const weight: i32 = @min(depth_i32 * depth_i32 + 2 * depth_i32 + 1, 128);
 
-    corr_update(&search.pawn_corr[pos.pawn_hash % CORRHIST_SIZE][pos.side_to_play.toU4()], err, weight);
-    corr_update(&search.non_pawn_corr[pos.non_pawn_hash[0] % CORRHIST_SIZE][pos.side_to_play.toU4()][0], err, weight);
-    corr_update(&search.non_pawn_corr[pos.non_pawn_hash[1] % CORRHIST_SIZE][pos.side_to_play.toU4()][1], err, weight);
-    corr_update(&search.major_corr[pos.major_hash % CORRHIST_SIZE][pos.side_to_play.toU4()], err, weight);
-    corr_update(&search.minor_corr[pos.minor_hash % CORRHIST_SIZE][pos.side_to_play.toU4()], err, weight);
+    const mask: u64 = CORRHIST_SIZE - 1;
+    const ci: usize = pos.side_to_play.toU4();
+    const pawn_idx: usize = @as(usize, @intCast(pos.pawn_hash & mask));
+    const np0_idx: usize = @as(usize, @intCast(pos.non_pawn_hash[0] & mask));
+    const np1_idx: usize = @as(usize, @intCast(pos.non_pawn_hash[1] & mask));
+    const maj_idx: usize = @as(usize, @intCast(pos.major_hash & mask));
+    const min_idx: usize = @as(usize, @intCast(pos.minor_hash & mask));
+
+    corr_update(&search.pawn_corr[pawn_idx][ci], err, weight);
+    corr_update(&search.non_pawn_corr[np0_idx][ci][0], err, weight);
+    corr_update(&search.non_pawn_corr[np1_idx][ci][1], err, weight);
+    corr_update(&search.major_corr[maj_idx][ci], err, weight);
+    corr_update(&search.minor_corr[min_idx][ci], err, weight);
 }
 
 pub fn get_correction(search: *Search, pos: *Position) i32 {
     var corr_eval: i32 = 0;
-    corr_eval += search.pawn_corr[pos.pawn_hash % CORRHIST_SIZE][pos.side_to_play.toU4()] * 4;
-    corr_eval += search.non_pawn_corr[pos.non_pawn_hash[0] % CORRHIST_SIZE][pos.side_to_play.toU4()][0] * 6;
-    corr_eval += search.non_pawn_corr[pos.non_pawn_hash[1] % CORRHIST_SIZE][pos.side_to_play.toU4()][1] * 6;
-    corr_eval += search.major_corr[pos.major_hash % CORRHIST_SIZE][pos.side_to_play.toU4()] * 4;
-    corr_eval += search.minor_corr[pos.minor_hash % CORRHIST_SIZE][pos.side_to_play.toU4()] * 4;
+    const mask: u64 = CORRHIST_SIZE - 1;
+    const ci: usize = pos.side_to_play.toU4();
+    const pawn_idx: usize = @as(usize, @intCast(pos.pawn_hash & mask));
+    const np0_idx: usize = @as(usize, @intCast(pos.non_pawn_hash[0] & mask));
+    const np1_idx: usize = @as(usize, @intCast(pos.non_pawn_hash[1] & mask));
+    const maj_idx: usize = @as(usize, @intCast(pos.major_hash & mask));
+    const min_idx: usize = @as(usize, @intCast(pos.minor_hash & mask));
+
+    corr_eval += @as(i32, search.pawn_corr[pawn_idx][ci]) * 4;
+    corr_eval += @as(i32, search.non_pawn_corr[np0_idx][ci][0]) * 6;
+    corr_eval += @as(i32, search.non_pawn_corr[np1_idx][ci][1]) * 6;
+    corr_eval += @as(i32, search.major_corr[maj_idx][ci]) * 4;
+    corr_eval += @as(i32, search.minor_corr[min_idx][ci]) * 4;
 
     corr_eval = @divTrunc(corr_eval, 1024);
     return corr_eval;

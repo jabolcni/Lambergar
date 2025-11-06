@@ -104,7 +104,7 @@ pub const Bin40Writer = struct {
 
     pub fn open(path: []const u8) !Bin40Writer {
         const f = try std.fs.cwd().createFile(path, .{ .read = false, .truncate = true });
-        return .{ .file = f, .buf = [_]u8{0} ** 4096, .buf_len = 0 };
+        return .{ .file = f, .buf = @splat(0), .buf_len = 0 };
     }
 
     fn flush(self: *Bin40Writer) !void {
@@ -128,7 +128,7 @@ pub const Bin40Writer = struct {
     }
 
     pub fn write_packed(self: *Bin40Writer, sfen32: *const [32]u8, score_cp: i32, move16: u16, game_ply: u16, game_result: i8) !void {
-        var buf: [40]u8 = [_]u8{0} ** 40;
+        var buf: [40]u8 = @splat(0);
         @memcpy(buf[0..32], sfen32);
         const cp = clamp_cp(score_cp);
         const cp_u16: u16 = @bitCast(cp);
@@ -225,7 +225,7 @@ pub const Bin40Writer = struct {
         result_white: f32,
         game_ply: u16,
     ) !void {
-        var buf: [40]u8 = [_]u8{0} ** 40;
+        var buf: [40]u8 = @splat(0);
 
         // --- pack PackedSfen into first 32 bytes ---
         const data = buf[0..32];

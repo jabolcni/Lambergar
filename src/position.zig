@@ -816,7 +816,7 @@ pub const Position = struct {
     classical_variant: [2]bool = .{ false, false },
     // Precomputed per-square table: which castling rights to clear if a move
     // involves this square (either as from or to). Built after FEN initialization.
-    castle_rights_clear_by_sq: [64]u4 = .{0} ** 64,
+    castle_rights_clear_by_sq: [64]u4 = @splat(0),
 
     // Whether this position should export castling rights using Shredder-FEN letters (Chess960/DFRC mode)
     is_chess960: bool = false,
@@ -840,20 +840,20 @@ pub const Position = struct {
         @memset(pos.board[0..64], Piece.NO_PIECE);
         pos.hash = 0;
         pos.pawn_hash = 0;
-        pos.non_pawn_hash = .{0} ** 2;
+        pos.non_pawn_hash = @splat(0);
         pos.major_hash = 0;
         pos.minor_hash = 0;
         pos.history[0] = UndoInfo.new();
         pos.eval.eval_mg = 0;
         pos.eval.eval_eg = 0;
-        pos.eval.phase = [1]u8{0} ** 2;
+        pos.eval.phase = @splat(0);
         pos.delta = nnue.DeltaPieces{};
 
         pos.castle_king_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.castle_rook_k_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.castle_rook_q_start = .{ Square.NO_SQUARE, Square.NO_SQUARE };
         pos.classical_variant = .{ false, false };
-        pos.castle_rights_clear_by_sq = .{0} ** 64;
+        pos.castle_rights_clear_by_sq = @splat(0);
 
         pos.is_chess960 = false;
         pos.fullmove_number = 1;
@@ -2071,7 +2071,7 @@ pub const Position = struct {
 
     fn rebuild_castle_rights_clear_table(self: *Position) void {
         // Reset
-        self.castle_rights_clear_by_sq = .{0} ** 64;
+        self.castle_rights_clear_by_sq = @splat(0);
         // White
         if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE) {
             const ks = self.castle_king_start[Color.White.toU4()].toU6();

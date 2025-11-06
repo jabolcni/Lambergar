@@ -215,7 +215,7 @@ pub fn init_pesto_tables() void {
 pub const Evaluation = struct {
     eval_mg: i32 = 0,
     eval_eg: i32 = 0,
-    phase: [2]u8 = [1]u8{0} ** 2,
+    phase: [2]u8 = @splat(0),
 
     pub  fn put_piece(self: *Evaluation, pc: Piece, s_idx: u6) void {
 
