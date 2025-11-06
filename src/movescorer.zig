@@ -81,6 +81,11 @@ pub fn score_move(pos: *Position, search: *Search, move_list: *MoveList, score_l
                     }
                 }
             }
+
+            // Tiny per-thread perturbation to diversify helper ordering (Lazy SMP)
+            const salt_u32: u32 = ((@as(u32, @truncate(pos.hash))) ^ search.seed) & 31;
+            const salt: i32 = @as(i32, @intCast(salt_u32)) - 16; // in [-16, +15]
+            score += salt;
         }
 
         score_list.append(score);

@@ -282,6 +282,10 @@ pub const Search = struct {
 
     non_terminal_nodes: u64 = 0, // Nodes with legal moves
 
+    // Per-thread identifiers for Lazy SMP diversification
+    thread_id: u8 = 0,
+    seed: u32 = 0,
+
     pub fn new() Search {
         return Search{};
     }
@@ -639,7 +643,7 @@ pub const Search = struct {
                     printout(uci.stdout, "cp {} ", .{score});
                 }
                 printout(uci.stdout, "nodes {} nps {d} time {d} hashfull {d} ebf {d:.2} ", .{ self.nodes, nps, elapsed_ms, est_hash_full, ebf });
-                if (use_tb) {
+                if (use_tb and self.manager.printout) {
                     printout(uci.stdout, "tbhits {d} ", .{tbhits});
                 }
                 printout(uci.stdout, "pv ", .{});
@@ -869,7 +873,7 @@ pub const Search = struct {
             }
         }
 
-        if (use_tb) {
+        if (use_tb and self.manager.printout) {
             if (!is_root and !skip_move) {
                 const wdl_result = fathom.probeWDL(pos, depth);
                 if ((wdl_result >= 0) and (wdl_result <= 4)) {

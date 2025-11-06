@@ -240,6 +240,10 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
             for (1..num_threads) |i| {
                 thinkers[i].manager.termination = search.Termination.INFINITE;
+                thinkers[i].manager.printout = false; // helpers never print
+                // tag helpers with id/seed for slight diversification
+                thinkers[i].thread_id = @as(u8, @intCast(i));
+                thinkers[i].seed = 0x9e3779b9 * @as(u32, @intCast(i));
                 pos[i] = pos[0].copy();
                 const delta: i32 = @as(i32, 5 + @divFloor(@as(i32, @intCast(i)), 2) * 2);
                 threads[i] = try std.Thread.spawn(.{}, search.start_search, .{ &thinkers[i], &pos[i], delta });
