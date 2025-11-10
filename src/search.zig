@@ -988,8 +988,9 @@ pub const Search = struct {
                     // if (@abs(beta) < MATE_VALUE and depth < 6) {
                     //     return if (_is_mate_score(score)) beta else score;
                     // }
-                    score = self.pvs(depth - R, beta - 1, beta, pos, false, me);
-                    if (score >= beta) return score;
+
+                    // score = self.pvs(depth - R, beta - 1, beta, pos, false, me);
+                    // if (score >= beta) return score;
 
                     if (pos.eval.phase[me.toU4()] < 4 and depth < 6) {
                         const verification_depth = depth - R - 2;
