@@ -44,7 +44,7 @@ void affine_c(
         output[out_idx] = (uint8_t)sum;
     }
 }
-
+#endif
 #if defined(__AVX2__)
 #include <immintrin.h>
 
