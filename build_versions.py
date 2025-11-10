@@ -6,30 +6,30 @@ def rename_and_move_file(command, bin_dir):
 
     start = command.find('--prefix "') + len('--prefix "')
     end = command.find('"', start)
-    directory = command[start:end]
-    command = command[start:end]
+    prefix_name = command[start:end]
+    directory = prefix_name
 
-    print(directory)
+    print(prefix_name)
 
     if directory is not None:
         # Change to the specified directory and then to the 'bin' subdirectory
         os.chdir(os.path.join(directory, 'bin'))
 
         # Check if the command contains 'win' or 'linux'
-        if 'win' in command and os.path.exists('lambergar.exe'):
+        if 'win' in prefix_name and os.path.exists('lambergar.exe'):
             # Rename 'lambergar.exe'
-            os.rename('lambergar.exe', f'{command}.exe')
+            os.rename('lambergar.exe', f'{prefix_name}.exe')
             if not os.path.exists(bin_dir):
                 os.makedirs(bin_dir)            
             # Move the new file to the specified bin_dir
-            shutil.move(f'{command}.exe', os.path.join(bin_dir, f'{command}.exe'))
-        elif 'linux' in command and os.path.exists('lambergar'):
+            shutil.move(f'{prefix_name}.exe', os.path.join(bin_dir, f'{prefix_name}.exe'))
+        elif 'linux' in prefix_name and os.path.exists('lambergar'):
             # Rename 'lambergar'
-            os.rename('lambergar', command)
+            os.rename('lambergar', prefix_name)
             if not os.path.exists(bin_dir):
                 os.makedirs(bin_dir)            
             # Move the new file to the specified bin_dir
-            shutil.move(command, os.path.join(bin_dir, command))
+            shutil.move(prefix_name, os.path.join(bin_dir, prefix_name))
 
         # Delete the 'bin' directory and the command directory
         os.chdir('..')  # Go up one directory
