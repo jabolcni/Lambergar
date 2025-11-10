@@ -1,6 +1,50 @@
 #include "affine.h"
 #include <stdint.h>
 
+#if defined(__AVX512VNNI__) || defined(__AVX2VNNI__) || defined(__VNNI__)
+#define USE_AVX_VNNI 1
+#endif
+
+#if defined(USE_AVX_VNNI)
+#include <immintrin.h>
+
+// AVX-VNNI implementation
+void affine_c(
+    const uint8_t* input,
+    uint8_t* output,
+    const int32_t* biases,
+    const int8_t* weights,
+    int input_len,
+    int output_len
+) {
+    for (int out_idx = 0; out_idx < output_len; ++out_idx) {
+        __m256i total_sum_vec = _mm256_setzero_si256();
+        const int8_t* w_row = weights + (size_t)out_idx * input_len;
+        int i = 0;
+        for (; i + 31 < input_len; i += 32) {
+            __m256i x = _mm256_loadu_si256((const __m256i*)(input + i));
+            __m256i w = _mm256_loadu_si256((const __m256i*)(w_row + i));
+            total_sum_vec = _mm256_dpbusd_epi32(total_sum_vec, x, w);
+        }
+        
+        __m128i lo_128 = _mm256_castsi256_si128(total_sum_vec);
+        __m128i hi_128 = _mm256_extracti128_si256(total_sum_vec, 1);
+        __m128i sum_128 = _mm_add_epi32(lo_128, hi_128);
+        sum_128 = _mm_hadd_epi32(sum_128, sum_128);
+        sum_128 = _mm_hadd_epi32(sum_128, sum_128);
+        int32_t sum = biases[out_idx] + _mm_cvtsi128_si32(sum_128);
+
+        for (; i < input_len; ++i) {
+            sum += (int32_t)input[i] * (int32_t)w_row[i];
+        }
+
+        sum >>= 6;
+        if (sum < 0) sum = 0;
+        if (sum > 127) sum = 127;
+        output[out_idx] = (uint8_t)sum;
+    }
+}
+
 #if defined(__AVX2__)
 #include <immintrin.h>
 
@@ -196,7 +240,7 @@ void affine_c(
     }
 }
 
-#else
+#elif !defined(USE_AVX_VNNI) // Fallback if not AVX2 and not VNNI
 
 // Fallback scalar implementation if AVX2 is not available
 void affine_c(
@@ -221,4 +265,4 @@ void affine_c(
     }
 }
 
-#endif // __AVX2__
+#endif // __AVX2__ or USE_AVX_VNNI
