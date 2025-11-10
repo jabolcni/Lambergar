@@ -65,9 +65,9 @@ pub const DeltaPieces = struct {
     }
 
     pub fn debug_print(self: *DeltaPieces) void {
-        std.debug.print("DeltaPieces (count = {}):\n", .{self.count});
+        std.debug.print("DeltaPieces (count = { }):\n", .{self.count});
         for (0..self.count) |i| {
-            std.debug.print("  Piece: {}, From: {}, To: {}\n", .{ self.pieces[i], self.from[i], self.to[i] });
+            std.debug.print("  Piece: { }, From: { }, To: { }\n", .{ self.pieces[i], self.from[i], self.to[i] });
         }
     }
 };
