@@ -270,7 +270,7 @@ pub const SearchManager = struct {
 pub const NodeState = struct {
     eval: i32 = undefined,
     is_null: bool = false,
-    is_tactical: bool = false,
+    is_noisy: bool = false,
     move: Move = Move.empty(),
     piece: Piece = Piece.NO_PIECE,
 };
@@ -424,7 +424,7 @@ pub const Search = struct {
         for (0..(MAX_PLY + 4)) |i| {
             self.ns_stack[i].eval = 0;
             self.ns_stack[i].is_null = false;
-            self.ns_stack[i].is_tactical = false;
+            self.ns_stack[i].is_noisy = false;
             self.ns_stack[i].move = Move.empty();
             self.ns_stack[i].piece = Piece.NO_PIECE;
         }
@@ -1032,11 +1032,11 @@ pub const Search = struct {
             // Null Move Pruning (NMP)
             if (best_score >= beta and !is_null and depth >= 2 and (pos.eval.phase[me.toU4()] > 0) and (!tt_hit or !(tt_bound == tt.Bound.BOUND_UPPER) or tt_score >= beta)) {
                 var R = 5 + @divTrunc(depth, 5) + @as(i8, @intCast(@min(3, @divTrunc(best_score - beta, 230))));
-                R += if (self.ns_stack[self.ply - 1].is_tactical) 1 else 0;
+                R += if (self.ns_stack[self.ply - 1].is_noisy) 1 else 0;
 
                 // make null move
                 self.ns_stack[self.ply].is_null = true;
-                self.ns_stack[self.ply].is_tactical = false;
+                self.ns_stack[self.ply].is_noisy = false;
                 self.ns_stack[self.ply].move = Move.empty();
                 self.ns_stack[self.ply].piece = Piece.NO_PIECE;
                 self.ply += 1;
@@ -1171,7 +1171,7 @@ pub const Search = struct {
             // make move
             played += 1;
             self.ns_stack[self.ply].is_null = false;
-            self.ns_stack[self.ply].is_tactical = !mv_quiet;
+            self.ns_stack[self.ply].is_noisy = !mv_quiet;
             self.ns_stack[self.ply].move = move;
             self.ns_stack[self.ply].piece = piece;
             self.ply += 1;
@@ -1203,7 +1203,7 @@ pub const Search = struct {
                 // make move
                 // played += 1;
                 self.ns_stack[self.ply].is_null = false;
-                self.ns_stack[self.ply].is_tactical = !mv_quiet;
+                self.ns_stack[self.ply].is_noisy = !mv_quiet;
                 self.ns_stack[self.ply].move = move;
                 self.ns_stack[self.ply].piece = piece;
                 self.ply += 1;

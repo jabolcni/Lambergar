@@ -257,7 +257,7 @@ pub const PieceType = enum(u3) {
 
 /// ASCII representations of pieces.
 pub const PIECE_STR = "PNBRQK~>pnbrqk.";
-/// Unicode representations of pieces.
+/// Unicode representations of pieces. The colors of pieces are actually switched, because in black terminal then the are of crrect color
 pub const unicodePIECE_STR = &[_][]const u8{
     // zig fmt: off
     "♟︎", "♞", "♝", "♜", "♛", "♚", "~", ">",
@@ -300,16 +300,6 @@ pub const Piece = enum(u4) {
 
     pub inline fn toU4(self: Piece) u4 {
         return @as(u4, @intFromEnum(self));
-    }
-
-    pub inline fn mass(self: Piece) u4 {
-        if (self == Piece.WHITE_PAWN or self == Piece.BLACK_PAWN) return 0;
-        if (self == Piece.WHITE_KNIGHT or self == Piece.BLACK_KNIGHT) return 1;
-        if (self == Piece.WHITE_BISHOP or self == Piece.BLACK_BISHOP) return 1;
-        if (self == Piece.WHITE_ROOK or self == Piece.BLACK_ROOK) return 2;
-        if (self == Piece.WHITE_QUEEN or self == Piece.BLACK_QUEEN) return 2;
-        if (self == Piece.WHITE_KING or self == Piece.BLACK_KING) return 3;
-        return 0;
     }
 };
 
@@ -463,15 +453,15 @@ pub const Move = packed struct {
         return ( self.flags.toU4() >= MoveFlags.PR_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PR_QUEEN.toU4() );
     } 
 
-    /// Checks if the move is tactical (capture or promotion).
-    pub inline fn is_tactical(self: Move) bool {
+    /// Checks if the move is noisy (capture or promotion).
+    pub inline fn is_noisy(self: Move) bool {
         return (self.is_capture() or self.is_promotion());
         //return if (self.is_capture()) true else false;
     }
 
     /// Checks if the move is quiet (not tactical).
     pub inline fn is_quiet(self: Move) bool {
-        return if (self.is_tactical()) false else true;
+        return if (self.is_noisy()) false else true;
     }
 
     /// Checks if two moves are equal.
@@ -517,12 +507,12 @@ pub const Move = packed struct {
         const from = Square.from_str(move_str[0..2]).toU6();
         const to = Square.from_str(move_str[2..4]).toU6();
 
-        var list2: MoveList = .{};
+        var list: MoveList = .{};
 
         if (pos.side_to_play == Color.White) {
-            pos.generate_legals(Color.White, &list2);
+            pos.generate_legals(Color.White, &list);
         } else {
-            pos.generate_legals(Color.Black, &list2);
+            pos.generate_legals(Color.Black, &list);
         }
 
         // Chess960 UCI castling fast-path: if input encodes castling as king-from + rook-from,
@@ -552,8 +542,8 @@ pub const Move = packed struct {
             }
         }
 
-        for (0..list2.count) |i| {
-            const move = list2.moves[i];
+        for (0..list.count) |i| {
+            const move = list.moves[i];
             if (move.from == adj_from and move.to == adj_to and (require_flag == null or move.flags == require_flag.?)) {
                 if (move.is_promotion()) {
                     if (PROM_TYPESTR[move.flags.toU4()][0] != move_str[4])
@@ -564,8 +554,8 @@ pub const Move = packed struct {
         }
         // Fallback: compare UCI strings of legals against input (handles any internal encoding quirks)
         // TODO: Solve this issue
-        for (0..list2.count) |i| {
-            const m = list2.moves[i];
+        for (0..list.count) |i| {
+            const m = list.moves[i];
             const u = m.to_str();
             const u_slice = if (m.is_promotion()) u[0..5] else u[0..4];
             if (u_slice.len == move_str.len and std.mem.eql(u8, u_slice, move_str)) {
@@ -776,6 +766,7 @@ pub const Castling = enum(u4) {
     }       
 };
 
+/// --- This code is legacy code for castling from before the support for FRC and DFRC was implemented
 /// Bitmasks for standard castling related squares.
 pub const WHITE_OO_MASK: u64 = 0x90;
 pub const WHITE_OOO_MASK: u64 = 0x11;
@@ -800,6 +791,7 @@ pub inline fn oo_mask(comptime c: Color) u64 {
 pub inline fn ooo_mask(comptime c: Color) u64 {
     return if (c == Color.White) WHITE_OOO_MASK else BLACK_OOO_MASK;
 }
+/// --- 
 
 /// Returns the bitmask for squares that must be empty for kingside castling.
 pub inline fn oo_blockers_mask(comptime c: Color) u64 {
@@ -821,7 +813,6 @@ pub inline fn ignore_ooo_danger(comptime c: Color) u64 {
 pub const UndoInfo = struct {
     /// Bitmask of squares involved in castling rights before the move.
     entry: u64,
-    /// The piece that was captured, if any.
     captured: Piece,
     epsq: Square,
     fifty: u16,
@@ -1272,21 +1263,18 @@ pub const Position = struct {
         return self.piece_bb[Piece.new(c, pt).toU4()];
     }
 
-    //Returns the bitboard of all bishops and queens of a given color
     /// Returns the bitboard of all bishops and queens of a given color.
     pub inline fn diagonal_sliders(self: *Position, comptime C: Color) u64 {
         return if (C == Color.White) self.piece_bb[Piece.WHITE_BISHOP.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()] else
         self.piece_bb[Piece.BLACK_BISHOP.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()];    
     }
 
-    //Returns the bitboard of all rooks and queens of a given color
     /// Returns the bitboard of all rooks and queens of a given color.
     pub inline fn orthogonal_sliders(self: *Position, comptime C: Color) u64 {
         return if (C == Color.White) self.piece_bb[Piece.WHITE_ROOK.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()] else
         self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()];    
     }   
 
-    //Returns a bitboard containing all the pieces of a given color
     /// Returns a bitboard containing all the pieces of a given color.
     pub inline fn all_pieces(self: *Position, comptime C: Color) u64 {
         return if (C == Color.White) self.piece_bb[Piece.WHITE_PAWN.toU4()] | self.piece_bb[Piece.WHITE_KNIGHT.toU4()] | self.piece_bb[Piece.WHITE_BISHOP.toU4()] | self.piece_bb[Piece.WHITE_ROOK.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()] | self.piece_bb[Piece.WHITE_KING.toU4()] else
@@ -1415,70 +1403,50 @@ pub const Position = struct {
 
     /// Checks for insufficient material to determine if the game is a draw.
     pub inline fn is_insufficient_material(self: *Position) bool {
-        const white_king_sq = self.bitboard_of_pt(Color.White, PieceType.King);
-        const black_king_sq = self.bitboard_of_pt(Color.Black, PieceType.King);
-
-        if (white_king_sq == 0 or black_king_sq == 0) return false;
-
-        // Count all pieces on both sides
-        const total_pieces = bb.pop_count(self.all_pieces(Color.White) | self.all_pieces(Color.Black));
-        if (total_pieces == 2) return true; // K vs K
-
-        const white_pawns = self.bitboard_of_pt(Color.White, PieceType.Pawn);
-        const black_pawns = self.bitboard_of_pt(Color.Black, PieceType.Pawn);
-        const white_knights = self.bitboard_of_pt(Color.White, PieceType.Knight);
-        const black_knights = self.bitboard_of_pt(Color.Black, PieceType.Knight);
-        const white_bishops = self.bitboard_of_pt(Color.White, PieceType.Bishop);
-        const black_bishops = self.bitboard_of_pt(Color.Black, PieceType.Bishop);
-
-        // If any pawns exist, not insufficient material
-        if (white_pawns != 0 or black_pawns != 0) return false;
-
-        // K vs K + N/B
-        if (total_pieces == 3) {
-            const minor_present = (white_knights | black_knights | white_bishops | black_bishops) != 0;
-            return minor_present;
+        // If there are any pawns or major pieces (rooks, queens), it's not insufficient material.
+        if ((self.piece_bb[Piece.WHITE_PAWN.toU4()] | self.piece_bb[Piece.BLACK_PAWN.toU4()] |
+            self.piece_bb[Piece.WHITE_ROOK.toU4()] | self.piece_bb[Piece.BLACK_ROOK.toU4()] |
+            self.piece_bb[Piece.WHITE_QUEEN.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()]) != 0)
+        {
+            return false;
         }
 
-        // K + N vs K + N
-        if (total_pieces == 4 and white_knights != 0 and black_knights != 0 and
-            white_bishops == 0 and black_bishops == 0)
-        {
+        const white_knights = self.piece_bb[Piece.WHITE_KNIGHT.toU4()];
+        const black_knights = self.piece_bb[Piece.BLACK_KNIGHT.toU4()];
+        const white_bishops = self.piece_bb[Piece.WHITE_BISHOP.toU4()];
+        const black_bishops = self.piece_bb[Piece.BLACK_BISHOP.toU4()];
+
+        const white_knight_count = bb.pop_count(white_knights);
+        const black_knight_count = bb.pop_count(black_knights);
+        const white_bishop_count = bb.pop_count(white_bishops);
+        const black_bishop_count = bb.pop_count(black_bishops);
+
+        // K vs K
+        if (white_knight_count == 0 and black_knight_count == 0 and white_bishop_count == 0 and black_bishop_count == 0) {
             return true;
         }
 
-        // K + B vs K + B (same color bishops)
-        if (white_bishops != 0 and black_bishops != 0 and
-            white_knights == 0 and black_knights == 0 and
-            white_pawns == 0 and black_pawns == 0)
-        {
-            const white_bishop_square = bb.get_ls1b_index(white_bishops);
-            const black_bishop_square = bb.get_ls1b_index(black_bishops);
+        // K+N vs K or K+B vs K
+        if ((white_knight_count + white_bishop_count <= 1) and (black_knight_count + black_bishop_count <= 1)) {
+            // This covers K vs K+N, K vs K+B, K+N vs K, K+B vs K, K+N vs K+N, K+B vs K+N, K+N vs K+B.
+            // The only case not a draw is K+B vs K+B with opposite-colored bishops, which is handled next.
+            if (white_bishop_count == 1 and black_bishop_count == 1) {
+                // K+B vs K+B. Check if bishops are on the same color.
+                const white_bishop_on_light = (bb.WHITE_FIELDS & white_bishops) != 0;
+                const black_bishop_on_light = (bb.WHITE_FIELDS & black_bishops) != 0;
+                return white_bishop_on_light == black_bishop_on_light;
+            }
+            return true;
+        }
 
-            // Check if both bishops are on the same color square
-            const white_bishop_color = (white_bishop_square % 8) + (white_bishop_square / 8);
-            const black_bishop_color = (black_bishop_square % 8) + (black_bishop_square / 8);
-
-            if ((white_bishop_color % 2) == (black_bishop_color % 2)) {
+        // K vs K + multiple bishops all on same-colored squares
+        if (white_knight_count == 0 and black_knight_count == 0) {
+            if (white_bishop_count > 0 and black_bishop_count == 0 and (white_bishops & bb.WHITE_FIELDS == 0 or white_bishops & bb.BLACK_FIELDS == 0)) {
                 return true;
             }
-        }
-
-        // K + B vs K + N
-        if (total_pieces == 4 and
-            ((white_bishops != 0 and black_knights != 0) or
-            (black_bishops != 0 and white_knights != 0)) and
-            white_pawns == 0 and black_pawns == 0)
-        {
-            return true;
-        }
-
-        // K + 2N vs K
-        if (total_pieces == 4 and
-            ((white_knights != 0 and bb.pop_count(white_knights) == 2 and black_knights == 0) or
-            (black_knights != 0 and bb.pop_count(black_knights) == 2 and white_knights == 0)))
-        {
-            return true;
+            if (black_bishop_count > 0 and white_bishop_count == 0 and (black_bishops & bb.WHITE_FIELDS == 0 or black_bishops & bb.BLACK_FIELDS == 0)) {
+                return true;
+            }
         }
 
         return false;

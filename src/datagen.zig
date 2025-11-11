@@ -230,7 +230,7 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
             const mv = chosen orelse break;
 
             // Save only within window; skip noisy, in-check, or mate-in-N positions
-            if (pos.game_ply >= cfg.save_min_ply and pos.game_ply <= cfg.save_max_ply and !(cfg.skip_noisy and bm.is_tactical()) and !is_any_check(&pos) and best.dm == 0) {
+            if (pos.game_ply >= cfg.save_min_ply and pos.game_ply <= cfg.save_max_ply and !(cfg.skip_noisy and bm.is_noisy()) and !is_any_check(&pos) and best.dm == 0) {
                 const ts0 = std.time.nanoTimestamp();
                 var s32: [32]u8 = undefined;
                 binw.pack_sfen32(&pos, &s32);
