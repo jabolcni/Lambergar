@@ -17,6 +17,7 @@ const SQUARE_BB = bb.SQUARE_BB;
 
 const get_ls1b_index = bb.get_ls1b_index;
 
+/// A simple iterator for all 64 squares.
 pub const sq_iter = [_]usize{
     0,  1,  2,  3,  4,  5,  6,  7,
     8,  9,  10, 11, 12, 13, 14, 15,
@@ -28,6 +29,7 @@ pub const sq_iter = [_]usize{
     56, 57, 58, 59, 60, 61, 62, 63,
 };
 
+/// Maps a square index (0-63) to its algebraic notation string (e.g., "a1", "h8").
 pub const sq_to_coord = [65][:0]const u8{
     // zig fmt: off
     "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
@@ -42,6 +44,7 @@ pub const sq_to_coord = [65][:0]const u8{
     // zig fmt: on
 }; 
 
+/// Represents a square on the chessboard, from a1 (0) to h8 (63).
 pub const Square = enum(u7) {
     // zig fmt: off
     a1, b1, c1, d1, e1, f1, g1, h1,
@@ -55,59 +58,73 @@ pub const Square = enum(u7) {
     NO_SQUARE,
     // zig fmt: on
 
+    /// Converts the square to a `usize` index.
     pub fn toU(self: Square) usize {
         return @as(usize, @intFromEnum(self));
     }
 
+    /// Converts the square to a `u7` integer.
     pub fn toU7(self: Square) u7 {
         return @as(u7, @intFromEnum(self));
     }
 
+    /// Converts the square to a `u6` integer, suitable for bitboard indices.
     pub fn toU6(self: Square) u6 {
         return @as(u6, @truncate(@intFromEnum(self)));
     }
 
+    /// Creates a `Square` from a `usize` index.
     pub fn fromInt(square: usize) Square {
         return @enumFromInt(square);
     }
 
+    /// Creates a `Square` from a `u6` index.
     pub fn fromU6(square: u6) Square {
         return @enumFromInt(square);
     }
 
+    /// Creates a `Square` from an algebraic notation string (e.g., "e4").
     pub fn from_str(str: []const u8) Square {
         return @enumFromInt((str[1] - '1') * 8 + (str[0] - 'a'));
     }
 
+    /// Gets the rank of the square.
     pub fn rank_of(self: Square) Rank {
         return @as(Rank, @enumFromInt(@intFromEnum(self) >> 3));
     }
 
+    /// Gets the file of the square.
     pub fn file_of(self: Square) File {
         return @as(File, @enumFromInt(@intFromEnum(self) & 0b111));
     }
 
+    /// Gets the main diagonal index of the square.
     pub fn diagonal_of(self: Square) u4 {
         return (7 + @as(u4, @intCast(self.rank_of().toU3())) - @as(u4, @intCast(self.file_of().toU3())));
     }
 
+    /// Gets the anti-diagonal index of the square.
     pub fn anti_diagonal_of(self: Square) u4 {
         return @as(u4, @intCast(self.rank_of().toU3())) + @as(u4, @intCast(self.file_of().toU3()));
     }
 
+    /// Creates a `Square` from a `File` and `Rank`.
     pub fn create_square(f: File, r: Rank) Square {
         return @as(Square, @enumFromInt(@intFromEnum(f) | (@intFromEnum(r) << 3)));
     }
 };
 
+/// Gets the rank index (0-7) from a square index.
 pub fn rank_of_iter(sq: usize) usize {
     return sq >> 3;
 }
 
+/// Gets the rank index as an `isize`.
 pub fn rank_of_isize(sq: usize) isize {
     return @as(isize, @intCast(sq >> 3));
 }
 
+/// Gets the rank index from a `u6` square index.
 pub fn rank_of_u6(sq: u6) u6 {
     return sq >> 3;
 }
@@ -117,34 +134,42 @@ pub fn relative_rank_of_u6(sq: u6, comptime c: Color) u6 {
     return if (c == Color.White) rank else 7 - rank;
 }
 
+/// Gets the file index (0-7) from a square index.
 pub fn file_of_iter(sq: usize) usize {
     return sq & 0b111;
 }
 
+/// Gets the file index as an `isize`.
 pub fn file_of_isize(sq: usize) isize {
     return @as(isize, @intCast(sq & 0b111));
 }
 
+/// Gets the file index from a `u6` square index.
 pub fn file_of_u6(sq: u6) u6 {
     return sq & 0b111;
 }
 
+/// Gets the main diagonal index from a square index.
 pub fn diagonal_of_iter(sq: usize) usize {
     return 7 + rank_of_iter(sq) - file_of_iter(sq);
 }
 
+/// Gets the main diagonal index from a `u6` square index.
 pub fn diagonal_of_u6(sq: u6) u6 {
     return 7 + rank_of_u6(sq) - file_of_u6(sq);
 }
 
+/// Gets the anti-diagonal index from a square index.
 pub fn anti_diagonal_of_iter(sq: usize) usize {
     return rank_of_iter(sq) + file_of_iter(sq);
 }
 
+/// Gets the anti-diagonal index from a `u6` square index.
 pub fn anti_diagonal_of_u6(sq: u6) u6 {
     return rank_of_u6(sq) + file_of_u6(sq);
 }
 
+/// Shifts a bitboard in a given direction.
 pub inline fn shift(b: u64, comptime d: Direction) u64 {
     return switch (d) {
         Direction.NORTH => b << 8,
@@ -160,10 +185,13 @@ pub inline fn shift(b: u64, comptime d: Direction) u64 {
     };
 }
 
+/// String representations for move types, used for debugging.
 pub const MOVE_TYPESTR = [_][:0]const u8{ "", "", " O-O", " O-O-O", "N", "B", "R", "Q", " (capture)", "", " e.p.", "", "N", "B", "R", "Q" };
+/// String representations for promotion pieces.
 pub const PROM_TYPESTR = [_][:0]const u8{ "", "", "", "", "n", "b", "r", "q", "", "", "", "", "n", "b", "r", "q" };
 
 pub const NCOLORS: usize = 2;
+/// Represents the two colors in chess.
 pub const Color = enum(u4) {
     White,
     Black,
@@ -179,6 +207,7 @@ pub const Color = enum(u4) {
 };
 
 pub const NDIRS: usize = 8;
+/// Represents the directions on a chessboard, used for move generation and ray attacks.
 pub const Direction = enum(i8) {
     NORTH = 8,
     NORTH_EAST = 9,
@@ -203,6 +232,7 @@ pub const Direction = enum(i8) {
 };
 
 pub const NPIECE_TYPES: usize = 6;
+/// Represents the types of pieces, independent of color.
 pub const PieceType = enum(u3) {
     Pawn,
     Knight,
@@ -225,7 +255,9 @@ pub const PieceType = enum(u3) {
     }
 };
 
+/// ASCII representations of pieces.
 pub const PIECE_STR = "PNBRQK~>pnbrqk.";
+/// Unicode representations of pieces.
 pub const unicodePIECE_STR = &[_][]const u8{
     // zig fmt: off
     "♟︎", "♞", "♝", "♜", "♛", "♚", "~", ">",
@@ -234,6 +266,7 @@ pub const unicodePIECE_STR = &[_][]const u8{
 };
 
 pub const NPIECES: usize = 15;
+/// Represents a piece with its color and type.
 pub const Piece = enum(u4) {
     WHITE_PAWN,
     WHITE_KNIGHT,
@@ -280,6 +313,7 @@ pub const Piece = enum(u4) {
     }
 };
 
+/// Represents a file (column) on the board.
 pub const File = enum(u3) {
     AFILE,
     BFILE,
@@ -295,6 +329,7 @@ pub const File = enum(u3) {
     }
 };
 
+/// Represents a rank (row) on the board.
 pub const Rank = enum(u3) {
     RANK1,
     RANK2,
@@ -319,6 +354,7 @@ pub const Rank = enum(u3) {
     }
 };
 
+/// Flags that describe the type of a move (quiet, capture, castling, promotion, etc.).
 pub const MoveFlags = enum(u4) {
     QUIET = 0b0000, // 0
     DOUBLE_PUSH = 0b0001, // 1
@@ -378,11 +414,13 @@ const MoveParseError = error{
     IllegalMove,
 };
 
+/// Represents a single chess move, packed into 16 bits (6 for 'from', 6 for 'to', 4 for 'flags').
 pub const Move = packed struct {
     from: u6,
     to: u6,
     flags: MoveFlags,
 
+    /// Returns an empty or null move.
     pub inline fn empty() Move {
         return Move{
             .from = 0,
@@ -391,6 +429,7 @@ pub const Move = packed struct {
         };
     }
 
+    /// Creates a new move.
     pub fn new(from: Square, to: Square, flags: MoveFlags) Move {
         return Move{
             .from = from.toU6(),
@@ -399,6 +438,7 @@ pub const Move = packed struct {
         };
     }
 
+    /// Checks if the move is a capture.
     pub inline fn is_capture(self: Move) bool {
         const flag: u4 = self.flags.toU4();
         //std.debug.print("flag = {}\n", .{flag}); 
@@ -407,36 +447,44 @@ pub const Move = packed struct {
         return if (is_not_capture) false else true;
     }
 
+    /// Checks if the move is a promotion.
     pub inline fn is_promotion(self: Move) bool {
         //return ( (self.flags.toU4() >= MoveFlags.PR_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PR_QUEEN.toU4()) or (self.flags.toU4() >= MoveFlags.PC_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PC_QUEEN.toU4()) );
         return (self.flags.promote_type() != PieceType.NoType);
     }
 
+    /// Checks if the move is a promotion with capture.
     pub inline fn is_promotion_with_capture(self: Move) bool {
         return ( self.flags.toU4() >= MoveFlags.PC_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PC_QUEEN.toU4() );
     }    
 
+    /// Checks if the move is a quiet promotion (no capture).
     pub inline fn is_promotion_no_capture(self: Move) bool {
         return ( self.flags.toU4() >= MoveFlags.PR_KNIGHT.toU4() and self.flags.toU4() <= MoveFlags.PR_QUEEN.toU4() );
     } 
 
+    /// Checks if the move is tactical (capture or promotion).
     pub inline fn is_tactical(self: Move) bool {
         return (self.is_capture() or self.is_promotion());
         //return if (self.is_capture()) true else false;
     }
 
+    /// Checks if the move is quiet (not tactical).
     pub inline fn is_quiet(self: Move) bool {
         return if (self.is_tactical()) false else true;
     }
 
+    /// Checks if two moves are equal.
     pub inline fn equal(self: Move, a: Move) bool {
         return std.meta.eql(self, a);
     }
 
+    /// Checks if the move is an empty/null move.
     pub inline fn is_empty(self: Move) bool {
         return self.equal(Move.empty());
     }
 
+    /// Converts the move to its UCI string representation (e.g., "e2e4", "g1f3", "e7e8q").
     pub fn to_str(self: Move) [5]u8 {
         var result: [5]u8 = undefined;
         @memcpy(result[0..2], sq_to_coord[self.from]);
@@ -464,6 +512,7 @@ pub const Move = packed struct {
 
     // }
 
+    /// Parses a UCI move string and finds the corresponding legal move in the position.
     pub fn parse_move(move_str: []const u8, pos: *Position) !Move {
         const from = Square.from_str(move_str[0..2]).toU6();
         const to = Square.from_str(move_str[2..4]).toU6();
@@ -526,6 +575,7 @@ pub const Move = packed struct {
         return MoveParseError.IllegalMove;
     }
 
+    /// Parses an algebraic move string (e.g., "Nxe5", "O-O") by converting it to UCI and then finding the move.
     pub fn parse_alg_move(move_str: []const u8, pos: *Position) !Move {
         const uci_move = try algebraic_to_uci(move_str, pos);
         defer std.testing.allocator.free(uci_move);  
@@ -533,6 +583,7 @@ pub const Move = packed struct {
         return move;     
     }
 
+    /// Converts an algebraic move string to its UCI representation.
     fn algebraic_to_uci(move_str: []const u8, curr_pos: *Position) ![]const u8 {
         // Buffer for UCI string (max 5 chars: e.g., "e7e8q")
         var uci_buf: [5]u8 = undefined;
@@ -689,6 +740,7 @@ pub const Move = packed struct {
     }
 
 
+    /// Prints the move in a human-readable format for debugging.
     pub fn print(self: Move) void {
         std.debug.print("{s}{s}{s}", .{
             sq_to_coord[self.from],
@@ -703,6 +755,7 @@ pub const Move = packed struct {
 
 };
 
+/// Helper function to generate moves from a bitboard of target squares and add them to a list.
 pub inline fn make_list(sq_from: Square, to: u64, comptime flag: MoveFlags, move_list: *MoveList) void {
     var b = to;
     while (b != 0) {
@@ -710,6 +763,7 @@ pub inline fn make_list(sq_from: Square, to: u64, comptime flag: MoveFlags, move
     }
 }
 
+/// Bit flags representing castling rights.
 pub const Castling = enum(u4) {
     WK = 1,
     WQ = 2,
@@ -722,6 +776,7 @@ pub const Castling = enum(u4) {
     }       
 };
 
+/// Bitmasks for standard castling related squares.
 pub const WHITE_OO_MASK: u64 = 0x90;
 pub const WHITE_OOO_MASK: u64 = 0x11;
 
@@ -736,29 +791,37 @@ pub const BLACK_OOO_BLOCKERS_AND_ATTACKERS_MASK: u64 = 0xe00000000000000;
 
 pub const ALL_CASTLING_MASK: u64 = 0x9100000000000091;
 
+/// Returns the bitmask for kingside castling for a given color.
 pub inline fn oo_mask(comptime c: Color) u64 {
     return if (c == Color.White) WHITE_OO_MASK else BLACK_OO_MASK;
 }
 
+/// Returns the bitmask for queenside castling for a given color.
 pub inline fn ooo_mask(comptime c: Color) u64 {
     return if (c == Color.White) WHITE_OOO_MASK else BLACK_OOO_MASK;
 }
 
+/// Returns the bitmask for squares that must be empty for kingside castling.
 pub inline fn oo_blockers_mask(comptime c: Color) u64 {
     return if (c == Color.White) WHITE_OO_BLOCKERS_AND_ATTACKERS_MASK else BLACK_OO_BLOCKERS_AND_ATTACKERS_MASK;
 }
 
+/// Returns the bitmask for squares that must be empty for queenside castling.
 pub inline fn ooo_blockers_mask(comptime c: Color) u64 {
     return if (c == Color.White) WHITE_OOO_BLOCKERS_AND_ATTACKERS_MASK else BLACK_OOO_BLOCKERS_AND_ATTACKERS_MASK;
 }
 
+/// Returns a bitmask for a square that can be attacked during queenside castling without invalidating it.
 pub inline fn ignore_ooo_danger(comptime c: Color) u64 {
     return if (c == Color.White) 0x2 else 0x200000000000000;
 }
 
 // pub const UndoInfo = packed struct {
+/// Stores information needed to undo a move. An instance is created for each move made.
 pub const UndoInfo = struct {
+    /// Bitmask of squares involved in castling rights before the move.
     entry: u64,
+    /// The piece that was captured, if any.
     captured: Piece,
     epsq: Square,
     fifty: u16,
@@ -766,6 +829,7 @@ pub const UndoInfo = struct {
     hash_key: u64,
     accumulator: nnue.Accumulator,
 
+    /// Creates a new, empty UndoInfo for the start of a game.
     pub fn new() UndoInfo {
         return UndoInfo{
             .entry = 0,
@@ -778,6 +842,7 @@ pub const UndoInfo = struct {
         };
     }
 
+    /// Creates a copy of the previous UndoInfo, incrementing the fifty-move counter.
     pub fn copy(prev: UndoInfo) UndoInfo {
         return UndoInfo{
             .entry = prev.entry,
@@ -791,17 +856,22 @@ pub const UndoInfo = struct {
     }
 };
 
+/// The main struct representing the state of a chess position.
 pub const Position = struct {
+    /// Bitboards for each piece type and color.
     piece_bb: [NPIECES]u64 = undefined,
+    /// An array representing the board, mapping each square to the piece on it.
     board: [64]Piece = undefined,
     side_to_play: Color = undefined,
     game_ply: u16 = undefined,
     hash: u64 = undefined,
+    // Hashes for specific piece sets, used for evaluation correction history.
     pawn_hash: u64 = undefined, // for correction history
     non_pawn_hash: [2]u64 = undefined, // for correction history
     major_hash: u64 = undefined, // for correction history
     minor_hash: u64 = undefined, // for correction history
 
+    /// A stack of `UndoInfo` structs to allow for unmaking moves.
     history: [2048]UndoInfo = undefined,
 
     eval: Evaluation = undefined,
@@ -831,6 +901,7 @@ pub const Position = struct {
     // TODO: revert to previous way you did it, I do not really like it this way
     fullmove_number: u32 = 1,
 
+    /// Creates a new, empty position.
     pub fn new() Position {
         var pos = Position{};
 
@@ -863,6 +934,7 @@ pub const Position = struct {
         return pos;
     }
 
+    /// Creates a deep copy of a position.
     pub fn copy(from: Position) Position {
         return Position{
             .piece_bb = from.piece_bb,
@@ -887,6 +959,8 @@ pub const Position = struct {
         };
     }
 
+    /// A context struct that pre-computes various bitboards and values needed for move generation.
+    /// This avoids redundant calculations within the move generation functions.
     pub const MoveGenContext = struct {
         us_bb: u64,
         them_bb: u64,
@@ -904,6 +978,7 @@ pub const Position = struct {
         check_count: u7 = 0,
     };
 
+    /// Computes and returns a `MoveGenContext` for the current position and side to move.
     pub fn computeMoveGenContext(self: *Position, comptime Us: Color) MoveGenContext {
         const Them = Us.change_side();
 
@@ -981,6 +1056,7 @@ pub const Position = struct {
         };
     }
 
+    /// Adds a piece to the board and updates all relevant state (bitboards, hashes, evaluation).
     pub inline fn add_piece_to_board(self: *Position, pc: Piece, s_idx: u6) void {
         const pc_idx = pc.toU4();
 
@@ -1008,6 +1084,7 @@ pub const Position = struct {
         self.eval.put_piece(pc, s_idx);
     } 
 
+    /// A variant of `add_piece_to_board` used during FEN parsing, with slightly different evaluation updates.
     pub inline fn put_piece(self: *Position, pc: Piece, s_idx: u6) void {
         const pc_idx = pc.toU4();
 
@@ -1040,6 +1117,7 @@ pub const Position = struct {
         } 
     }
 
+    /// Removes a piece from the board and updates all relevant state.
     pub inline fn remove_piece(self: *Position, s_idx: u6) void {
         const pc = self.board[s_idx];
         const pc_idx = pc.toU4();
@@ -1073,6 +1151,7 @@ pub const Position = struct {
         }    
     }
 
+    /// Moves a piece from one square to another, handling a capture. Updates all relevant state.
     pub inline fn move_piece(self: *Position, from: u6, to: u6) void {
         
         var from_pc = self.board[from];
@@ -1125,6 +1204,7 @@ pub const Position = struct {
         }           
     }
 
+    /// Moves a piece from one square to another for a quiet move (no capture). Updates all relevant state.
     pub inline fn move_piece_quiet(self: *Position, from: u6, to: u6) void {
         var from_pc = self.board[from];
         const from_idx = from_pc.toU4();
@@ -1161,6 +1241,7 @@ pub const Position = struct {
 
     }
 
+    /// Handles a promotion with a capture.
     pub inline fn move_promote_capture(self: *Position, from: u6, to: u6, prom_pc: Piece) void {
 
         const captured = self.board[to];
@@ -1181,40 +1262,48 @@ pub const Position = struct {
 
     } 
 
+    /// Returns the bitboard for a specific piece (e.g., white knights).
     pub inline fn bitboard_of_pc(self: *Position, pc: Piece) u64 {
         return self.piece_bb[pc.toU4()];
     }
 
+    /// Returns the bitboard for a specific piece type and color.
     pub inline fn bitboard_of_pt(self: *Position, comptime c: Color, comptime pt: PieceType) u64 {
         return self.piece_bb[Piece.new(c, pt).toU4()];
     }
 
     //Returns the bitboard of all bishops and queens of a given color
+    /// Returns the bitboard of all bishops and queens of a given color.
     pub inline fn diagonal_sliders(self: *Position, comptime C: Color) u64 {
         return if (C == Color.White) self.piece_bb[Piece.WHITE_BISHOP.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()] else
         self.piece_bb[Piece.BLACK_BISHOP.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()];    
     }
 
     //Returns the bitboard of all rooks and queens of a given color
+    /// Returns the bitboard of all rooks and queens of a given color.
     pub inline fn orthogonal_sliders(self: *Position, comptime C: Color) u64 {
         return if (C == Color.White) self.piece_bb[Piece.WHITE_ROOK.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()] else
         self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()];    
     }   
 
     //Returns a bitboard containing all the pieces of a given color
+    /// Returns a bitboard containing all the pieces of a given color.
     pub inline fn all_pieces(self: *Position, comptime C: Color) u64 {
         return if (C == Color.White) self.piece_bb[Piece.WHITE_PAWN.toU4()] | self.piece_bb[Piece.WHITE_KNIGHT.toU4()] | self.piece_bb[Piece.WHITE_BISHOP.toU4()] | self.piece_bb[Piece.WHITE_ROOK.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()] | self.piece_bb[Piece.WHITE_KING.toU4()] else
         self.piece_bb[Piece.BLACK_PAWN.toU4()] | self.piece_bb[Piece.BLACK_KNIGHT.toU4()] | self.piece_bb[Piece.BLACK_BISHOP.toU4()] | self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()] | self.piece_bb[Piece.BLACK_KING.toU4()];    
     }  
 
+    /// Returns a bitboard of all white pieces.
     pub inline fn all_white_pieces(self: *Position) u64 {
         return self.piece_bb[Piece.WHITE_PAWN.toU4()] | self.piece_bb[Piece.WHITE_KNIGHT.toU4()] | self.piece_bb[Piece.WHITE_BISHOP.toU4()] | self.piece_bb[Piece.WHITE_ROOK.toU4()] | self.piece_bb[Piece.WHITE_QUEEN.toU4()] | self.piece_bb[Piece.WHITE_KING.toU4()];    
     } 
 
+    /// Returns a bitboard of all black pieces.
     pub inline fn all_black_pieces(self: *Position) u64 {
         return self.piece_bb[Piece.BLACK_PAWN.toU4()] | self.piece_bb[Piece.BLACK_KNIGHT.toU4()] | self.piece_bb[Piece.BLACK_BISHOP.toU4()] | self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()] | self.piece_bb[Piece.BLACK_KING.toU4()];    
     }        
 
+    /// Returns a bitboard of all pieces of a given color that attack a specific square.
     pub inline fn attackers_from(self: *Position, s: u6, occ: u64, comptime C: Color) u64 {
         return if (C == Color.White) 
         (attacks.pawn_attacks_from_square(s, Color.Black) & self.piece_bb[Piece.WHITE_PAWN.toU4()]) | 
@@ -1228,6 +1317,7 @@ pub const Position = struct {
         (attacks.piece_attacks(s, occ, PieceType.Rook) & (self.piece_bb[Piece.BLACK_ROOK.toU4()] | self.piece_bb[Piece.BLACK_QUEEN.toU4()]));        
     } 
 
+    /// Returns a bitboard of all pieces from both sides that attack a specific square.
     pub inline fn all_attackers(self: *Position, s: u6, occ: u64) u64 {
         //return self.attackers_from(s, occ, Color.White) | self.attackers_from(s, occ, Color.Black);
         //return self.attackers_plus_king_from(s, occ, Color.White) | self.attackers_plus_king_from(s, occ, Color.Black);
@@ -1244,12 +1334,14 @@ pub const Position = struct {
         (attacks.piece_attacks(s, occ, PieceType.King) & self.piece_bb[Piece.BLACK_KING.toU4()]);  
     }    
 
+    /// Checks if the king of the given color is in check.
     pub inline fn in_check(self: *Position, comptime C: Color) bool {
         const oC = if (C == Color.White) Color.Black else Color.White;
         const square = Square.fromU6(bb.get_ls1b_index(self.piece_bb[Piece.new(C, PieceType.King).toU4()]));
         return (self.attackers_from(square.toU6(), (self.all_pieces(Color.White) | self.all_pieces(Color.Black)), oC) != 0);
     }
 
+    /// Checks if the current position is a three-fold repetition.
     pub inline fn is_repetition(self: *Position) bool {
         // repeatition test: position fen r5k1/pbN2rp1/4Q1Np/2pn1pB1/8/P7/1PP2PPP/6K1 b - - 0 25 moves d5c7 g6e7 g8f8 e7g6 f8g8 g6e7 g8f8 e7g6 f8g8
 
@@ -1277,6 +1369,7 @@ pub const Position = struct {
 
     }
 
+    /// Checks if the current position has occurred at least once before in the game history.
     pub inline fn upcoming_repetition(self: *Position) bool {
         // repeatition test: position fen r5k1/pbN2rp1/4Q1Np/2pn1pB1/8/P7/1PP2PPP/6K1 b - - 0 25 moves d5c7 g6e7 g8f8 e7g6 f8g8 g6e7 g8f8 e7g6 f8g8
 
@@ -1300,6 +1393,7 @@ pub const Position = struct {
 
     }    
 
+    /// Checks if the fifty-move rule can be claimed.
     pub inline fn is_fifty(self: *Position) bool {
         if (self.history[self.game_ply].fifty >= 100) {
             return true;
@@ -1307,16 +1401,19 @@ pub const Position = struct {
         return false;
     }
 
+    /// Counts the number of pawns on the board.
     pub inline fn pawns_count(self: *Position) u7 {
         const pawns = self.piece_bb[Piece.WHITE_PAWN.toU4()] | self.piece_bb[Piece.BLACK_PAWN.toU4()];
         return bb.pop_count(pawns);
     }
 
+    /// Counts the number of a specific piece on the board.
     pub inline fn piece_count(self: *Position, pc: Piece) u7 {
         const pieces = self.piece_bb[pc.toU4()];
         return bb.pop_count(pieces);
     }
 
+    /// Checks for insufficient material to determine if the game is a draw.
     pub inline fn is_insufficient_material(self: *Position) bool {
         const white_king_sq = self.bitboard_of_pt(Color.White, PieceType.King);
         const black_king_sq = self.bitboard_of_pt(Color.Black, PieceType.King);
@@ -1387,6 +1484,7 @@ pub const Position = struct {
         return false;
     }
 
+    /// Checks if the game is a draw due to fifty-move rule, insufficient material, or repetition.
     pub inline fn is_draw(self: *Position) bool {
 
         if (self.is_fifty() or self.is_insufficient_material() or self.is_repetition()) {
@@ -1397,6 +1495,7 @@ pub const Position = struct {
 
     }
 
+    /// Makes a move on the board, updating the position state.
     pub fn play(self: *Position, m: Move, comptime C: Color) void {
 
         self.side_to_play = self.side_to_play.change_side();
@@ -1613,6 +1712,7 @@ pub const Position = struct {
 
     }
 
+    /// Makes a null move (passes the turn to the other side).
     pub fn play_null_move(self: *Position) void {
         
         self.side_to_play = self.side_to_play.change_side();
@@ -1633,6 +1733,7 @@ pub const Position = struct {
 
     }
 
+    /// Unmakes a move, restoring the position to its previous state.
     pub fn undo(self: *Position, m: Move, comptime C: Color) void {
         
         switch (m.flags) {
@@ -1709,6 +1810,7 @@ pub const Position = struct {
         }
     }
 
+    /// Unmakes a null move.
     pub fn undo_null_move(self: *Position) void {
         self.side_to_play = self.side_to_play.change_side();
         self.hash ^= zobrist.side_key;
@@ -1720,6 +1822,7 @@ pub const Position = struct {
         }
     }    
 
+    /// Calculates the Zobrist hash for the current position from scratch.
     pub fn calculate_hash(self: Position) u64 {
         var hash: u64 = 0;
 
@@ -1759,6 +1862,7 @@ pub const Position = struct {
       
     }
 
+    /// Prints an ASCII representation of the board to the console for debugging.
     pub fn print(self: Position) void {
         const s = "   +---+---+---+---+---+---+---+---+\n";
         const t = "     A   B   C   D   E   F   G   H\n";
@@ -1783,6 +1887,7 @@ pub const Position = struct {
     }
 
     /// To use unicode print, you have use command "chcp 65001" in terminal to switch to 
+    /// To use unicode print, you have to use command "chcp 65001" in terminal to switch to
     /// Active code page: 65001, which properly shows the unicode characters
     pub fn print_unicode(self: *Position) void {
         const s = "    -----------------\n";
@@ -1828,6 +1933,7 @@ pub const Position = struct {
         InvalidFullMoveCounter,
     };
 
+    /// Sets the position from a FEN (Forsyth-Edwards Notation) string.
     pub fn set(self: *Position, fen: []const u8) !void {
 
         self.* = Position.new();
@@ -2069,6 +2175,7 @@ pub const Position = struct {
 
     }
 
+    /// Rebuilds the table used to determine which castling rights are cleared by a move on a given square.
     fn rebuild_castle_rights_clear_table(self: *Position) void {
         // Reset
         self.castle_rights_clear_by_sq = @splat(0);
@@ -2977,6 +3084,7 @@ pub const Position = struct {
         return;
     }  
 
+    /// Generates all legal moves in the current position.
     pub fn generate_noisy_legals(self: *Position, comptime Us: Color, list: *MoveList) void {
 
         const ctx = self.computeMoveGenContext(Us);
@@ -2990,6 +3098,7 @@ pub const Position = struct {
         return;
     }          
 
+    /// An alternative implementation for generating legal moves (potentially for testing/comparison).
     pub fn generate_legals2(self: *Position, comptime Us: Color, list: *MoveList) void {
 
         generate_captures_list(self, Us, list);
@@ -2998,6 +3107,7 @@ pub const Position = struct {
         return;
     }
 
+    /// Generates all legal quiet (non-tactical) moves.
     pub fn generate_quiets_list(self: *Position, comptime Us: Color, list: *MoveList) void {
         const ctx = self.computeMoveGenContext(Us);
 
@@ -3034,6 +3144,7 @@ pub const Position = struct {
         return;
     }
 
+    /// Generates all legal capture moves.
     pub fn generate_captures_list(self: *Position, comptime Us: Color, list: *MoveList) void {
         const ctx = self.computeMoveGenContext(Us);
 
