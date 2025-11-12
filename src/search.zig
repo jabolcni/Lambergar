@@ -602,7 +602,11 @@ pub const Search = struct {
 
             // Aspiration window loop.
             aspirationloop: while (delta <= MAX_SCORE) {
-                score = self.pvs(depth - fails, alpha, beta, pos, false, color);
+                var reduced_depth: i8 = depth - @divTrunc(fails, 2);
+                if (reduced_depth < 1) {
+                    reduced_depth = 1;
+                }
+                score = self.pvs(reduced_depth, alpha, beta, pos, false, color);
 
                 if (self.stop) {
                     break :mainloop;
@@ -624,7 +628,7 @@ pub const Search = struct {
                 } else if (score >= beta) {
                     beta = @min(score + delta, MAX_SCORE);
                     // If the score is within the window, the search for this depth is successful.
-                    if (fails < 2) fails += 1;
+                    fails += 1;
                 } else {
                     break :aspirationloop;
                 }
