@@ -155,30 +155,26 @@ pub const Bin40Writer = struct {
         return @as(u4, pc.toU4());
     }
 
-    // fn encode_move16(mv: Move) u16 {
-    //     // Stockfish packed move used by many tooling: to in low 6, from in next 6, promo in high 4
-    //     var code: u16 = 0;
-    //     code |= @as(u16, mv.to & 0x3F);
-    //     code |= (@as(u16, mv.from & 0x3F)) << 6;
-    //     var promo: u16 = 0;
-    //     if (mv.is_promotion()) {
-    //         const pt = mv.flags.promote_type();
-    //         promo = switch (pt) {
-    //             .Knight => 1,
-    //             .Bishop => 2,
-    //             .Rook => 3,
-    //             .Queen => 4,
-    //             else => 0,
-    //         };
-    //     }
-    //     code |= (promo & 0xF) << 12;
-    //     return code;
-    // }
-    pub fn encode_move16(mv: Move) u16 {
+    pub fn encode_move16(pos: *const Position, mv: Move) u16 {
         // Stockfish packed move: to in low 6, from in next 6, promo in bits 12-13, flags in bits 14-15
         var code: u16 = 0;
-        code |= @as(u16, mv.to & 0x3F);
-        code |= (@as(u16, mv.from & 0x3F)) << 6;
+        const from_sq: u6 = mv.from;
+        var to_sq: u6 = mv.to;
+
+        if (mv.flags == position.MoveFlags.OO or mv.flags == position.MoveFlags.OOO) {
+            // Encode castling using Chess960/Shredder convention (king start -> rook start)
+            const ci = pos.side_to_play.toU4();
+            const rook_sq = if (mv.flags == position.MoveFlags.OO)
+                pos.castle_rook_k_start[ci]
+            else
+                pos.castle_rook_q_start[ci];
+            if (rook_sq != position.Square.NO_SQUARE) {
+                to_sq = rook_sq.toU6();
+            }
+        }
+
+        code |= @as(u16, to_sq & 0x3F);
+        code |= (@as(u16, from_sq & 0x3F)) << 6;
 
         var promo: u16 = 0;
         var flags: u16 = 0;
@@ -290,7 +286,7 @@ pub const Bin40Writer = struct {
         buf[33] = @as(u8, @truncate(cp_u16 >> 8));
 
         // move16
-        const m16 = encode_move16(bm);
+        const m16 = encode_move16(pos, bm);
         buf[34] = @as(u8, @truncate(m16));
         buf[35] = @as(u8, @truncate(m16 >> 8));
 

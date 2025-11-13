@@ -2037,13 +2037,18 @@ pub const Position = struct {
             dynamic_all_castle_mask |= SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()];
         self.history[self.game_ply].entry = dynamic_all_castle_mask;
 
+        const w_k_classical = (self.castle_king_start[Color.White.toU4()] == Square.e1 and self.castle_rook_k_start[Color.White.toU4()] == Square.h1);
+        const w_q_classical = (self.castle_king_start[Color.White.toU4()] == Square.e1 and self.castle_rook_q_start[Color.White.toU4()] == Square.a1);
+        const b_k_classical = (self.castle_king_start[Color.Black.toU4()] == Square.e8 and self.castle_rook_k_start[Color.Black.toU4()] == Square.h8);
+        const b_q_classical = (self.castle_king_start[Color.Black.toU4()] == Square.e8 and self.castle_rook_q_start[Color.Black.toU4()] == Square.a8);
+
         for (castling_fen) |cf| {
             switch (cf) {
                 'K' =>  {
                     if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE) {
                         self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.WK.toU4();
-                        if (!self.classical_variant[Color.White.toU4()]) {
+                        if (!w_k_classical) {
                             self.is_chess960 = true;
                         }
                     }
@@ -2052,7 +2057,7 @@ pub const Position = struct {
                     if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE) {
                         self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.White.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.WQ.toU4();
-                        if (!self.classical_variant[Color.White.toU4()]) {
+                        if (!w_q_classical) {
                             self.is_chess960 = true;
                         }
                     }
@@ -2061,7 +2066,7 @@ pub const Position = struct {
                     if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE) {
                         self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.Black.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.BK.toU4();
-                        if (!self.classical_variant[Color.Black.toU4()]) {
+                        if (!b_k_classical) {
                             self.is_chess960 = true;
                         }
                     }
@@ -2070,7 +2075,7 @@ pub const Position = struct {
                     if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE) {
                         self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.BQ.toU4();
-                        if (!self.classical_variant[Color.Black.toU4()]) {
+                        if (!b_q_classical) {
                             self.is_chess960 = true;
                         }
                     }

@@ -236,7 +236,7 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
                 binw.pack_sfen32(&pos, &s32);
                 const be = BinEntry{
                     .sfen32 = s32,
-                    .move16 = binw.Bin40Writer.encode_move16(bm), // BIN stores best move
+                    .move16 = binw.Bin40Writer.encode_move16(&pos, bm), // BIN stores best move
                     .score_cp = best.score,
                     .ply = @intCast(pos.game_ply),
                     .stm_white = (pos.side_to_play == Color.White),

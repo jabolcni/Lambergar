@@ -81,6 +81,7 @@ command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_
 build_ver(command, bin_dir)
 
 command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-{version}-x86_64-linux-AVX2"'
+# command = f'zig build -Dtarget=x86_64-linux --release=fast -Dcpu=x86_64_v3 --prefix "lambergar-x86_64-linux-AVX2"'
 build_ver(command, bin_dir)
 
 # Raspberry Pi version 
