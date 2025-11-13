@@ -166,8 +166,8 @@ pub const SearchManager = struct {
         };
     }
 
-    /// Configures the search based on UCI options and the current position.
-    pub fn configure(self: *SearchManager, pos: *Position) void {
+    /// Configures the search based on UCI options and the side to move.
+    pub fn configure(self: *SearchManager, side_to_move: Color) void {
         var rem_time: ?u64 = null;
         var rem_enemy_time: ?u64 = null;
         var time_inc: ?u32 = null;
@@ -191,7 +191,7 @@ pub const SearchManager = struct {
         }
         if (self.wtime) |wt| {
             self.termination = Termination.TIME;
-            if (pos.side_to_play == Color.White) {
+            if (side_to_move == Color.White) {
                 rem_time = wt;
             } else {
                 rem_enemy_time = wt;
@@ -199,17 +199,17 @@ pub const SearchManager = struct {
         }
         if (self.btime) |bt| {
             self.termination = Termination.TIME;
-            if (pos.side_to_play == Color.Black) {
+            if (side_to_move == Color.Black) {
                 rem_time = bt;
             } else {
                 rem_enemy_time = bt;
             }
         }
         if (self.winc) |wi| {
-            if (pos.side_to_play == Color.White) time_inc = wi;
+            if (side_to_move == Color.White) time_inc = wi;
         }
         if (self.binc) |bi| {
-            if (pos.side_to_play == Color.Black) time_inc = bi;
+            if (side_to_move == Color.Black) time_inc = bi;
         }
 
         self.set_time_limits(self.movestogo, self.movetime, rem_time, time_inc);
@@ -313,6 +313,7 @@ pub const Search = struct {
     // Per-thread identifiers for Lazy SMP diversification
     thread_id: u8 = 0,
     seed: u32 = 0,
+    ponderhit_signal: bool = false,
 
     pub fn new() Search {
         return Search{};
@@ -338,6 +339,29 @@ pub const Search = struct {
         const repr = mv.to_str();
         const s = if (mv.is_promotion()) repr[0..5] else repr[0..4];
         printout(uci.stdout, "{s} ", .{s});
+    }
+
+    fn encode_move_for_best(self: *Search, pos: *Position, mv: Move, mover: Color, buf: *[5]u8) ?[]const u8 {
+        _ = self;
+        if (mv.is_empty()) return null;
+
+        if ((mv.flags == MoveFlags.OO or mv.flags == MoveFlags.OOO) and uci.is_chess960() and pos.is_chess960) {
+            const ci = mover.toU4();
+            const rook_sq = if (mv.flags == MoveFlags.OO)
+                pos.castle_rook_k_start[ci]
+            else
+                pos.castle_rook_q_start[ci];
+            if (rook_sq != Square.NO_SQUARE) {
+                @memcpy(buf[0..2], position.sq_to_coord[mv.from]);
+                @memcpy(buf[2..4], position.sq_to_coord[rook_sq.toU()]);
+                return buf[0..4];
+            }
+        }
+
+        const repr = mv.to_str();
+        const len: usize = if (mv.is_promotion()) 5 else 4;
+        @memcpy(buf[0..len], repr[0..len]);
+        return buf[0..len];
     }
 
     /// Clears the Principal Variation (PV) table.
@@ -474,10 +498,25 @@ pub const Search = struct {
         self.non_terminal_nodes = 0;
         self.ply = 0;
         self.tbhits = 0;
+        @atomicStore(bool, &self.ponderhit_signal, false, .seq_cst);
+    }
+
+    fn process_ponderhit(self: *Search) void {
+        if (!self.manager.ponder) return;
+        if (!@atomicLoad(bool, &self.ponderhit_signal, .seq_cst)) return;
+        @atomicStore(bool, &self.ponderhit_signal, false, .seq_cst);
+        self.manager.ponder = false;
+    }
+
+    /// Signal from the UCI thread that ponder mode should convert into a regular search.
+    pub fn request_ponderhit(self: *Search) void {
+        @atomicStore(bool, &self.ponderhit_signal, true, .seq_cst);
     }
 
     /// Checks for search termination conditions like stop command, node limits, or time limits.
     pub fn check_stop_conditions(self: *Search) bool {
+        self.process_ponderhit();
+
         if (self.stop) return true;
 
         if (self.manager.termination == Termination.INFINITE) {
@@ -501,6 +540,8 @@ pub const Search = struct {
     /// Checks for early termination based on time management heuristics.
     /// This allows the engine to stop searching earlier if the position seems stable or improving with each new searched depth.
     pub fn check_early_stop_conditions(self: *Search, pos: *Position, stability: u8, improving: i16) bool {
+        self.process_ponderhit();
+
         if (self.stop) return true;
 
         var early_adjusted_ms = self.manager.early_ms;
@@ -731,27 +772,21 @@ pub const Search = struct {
 
         // Print the final 'bestmove' UCI command.
         if (self.manager.printout) {
-            // Print bestmove: check castling flag first, then 960 formatting
-            // TODO: not very happy with this part, it is correct, but could probably be streamlined a bit
-            if ((self.best_move.flags == MoveFlags.OO or self.best_move.flags == MoveFlags.OOO) and uci.is_chess960() and pos.is_chess960) {
-                const ci = color.toU4();
-                const rook_sq = if (self.best_move.flags == MoveFlags.OO)
-                    pos.castle_rook_k_start[ci]
-                else
-                    pos.castle_rook_q_start[ci];
-                if (rook_sq != Square.NO_SQUARE) {
-                    const k_from = position.sq_to_coord[self.best_move.from];
-                    const r_from = position.sq_to_coord[rook_sq.toU()];
-                    printout(uci.stdout, "bestmove {s}{s}\n", .{ k_from, r_from });
-                } else {
-                    const repr = self.best_move.to_str();
-                    const move_name = if (self.best_move.is_promotion()) repr[0..5] else repr[0..4];
-                    printout(uci.stdout, "bestmove {s}\n", .{move_name});
+            var best_buf: [5]u8 = undefined;
+            if (self.encode_move_for_best(pos, self.best_move, color, &best_buf)) |best_str| {
+                if (self.manager.ponder) {
+                    const ponder_move = if (self.pv_length[0] >= 2) self.pv_table[0][1] else Move.empty();
+                    if (!ponder_move.is_empty()) {
+                        var ponder_buf: [5]u8 = undefined;
+                        if (self.encode_move_for_best(pos, ponder_move, color.change_side(), &ponder_buf)) |ponder_str| {
+                            printout(uci.stdout, "bestmove {s} ponder {s}\n", .{ best_str, ponder_str });
+                            return;
+                        }
+                    }
                 }
+                printout(uci.stdout, "bestmove {s}\n", .{best_str});
             } else {
-                const repr = self.best_move.to_str();
-                const move_name = if (self.best_move.is_promotion()) repr[0..5] else repr[0..4];
-                printout(uci.stdout, "bestmove {s}\n", .{move_name});
+                printout(uci.stdout, "bestmove (none)\n", .{});
             }
         }
     }

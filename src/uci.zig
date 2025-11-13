@@ -37,6 +37,7 @@ pub var stdout: *std.Io.Writer = undefined;
 
 // UCI options
 var uci_chess960: bool = false; // Advertised to GUI; engine supports Chess960 from FEN
+var uci_ponder: bool = true; // Advertised ponder support
 
 pub inline fn is_chess960() bool {
     return uci_chess960;
@@ -189,6 +190,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             printout(stdout, "option name Threads type spin default {d} min {d} max {d}\n", .{ 1, 1, MAX_THREADS });
             printout(stdout, "option name UseNNUE type check default {}\n", .{nnue.engine_using_nnue});
             printout(stdout, "option name UCI_Chess960 type check default {}\n", .{uci_chess960});
+            printout(stdout, "option name Ponder type check default {}\n", .{uci_ponder});
             //printout(stdout,"option name EvalFile type string default \n", .{});
             printout(stdout, "option name Debug type check default {}\n", .{debug});
             if (use_tb) {
@@ -209,7 +211,11 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
             while (words.next()) |arg| {
                 if (std.mem.eql(u8, arg, "ponder")) {
-                    thinkers[0].manager.ponder = false;
+                    if (uci_ponder) {
+                        thinkers[0].manager.ponder = true;
+                    } else {
+                        printout(stdout, "info string Ponder disabled via setoption\n", .{});
+                    }
                 } else if (std.mem.eql(u8, arg, "wtime")) {
                     if (words.next()) |val| thinkers[0].manager.wtime = u64_from_str(val) catch continue;
                 } else if (std.mem.eql(u8, arg, "btime")) {
@@ -235,7 +241,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                 }
             }
 
-            thinkers[0].manager.configure(&pos[0]);
+            thinkers[0].manager.configure(pos[0].side_to_play);
             tt.TT.increase_age();
 
             for (1..num_threads) |i| {
@@ -260,6 +266,12 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
         } else if (std.mem.eql(u8, command, "stop")) {
             //thinker.stop = true;
             @atomicStore(bool, &thinkers[0].stop, true, .seq_cst);
+        } else if (std.mem.eql(u8, command, "ponderhit")) {
+            const running = @atomicLoad(bool, &search_running, .seq_cst);
+            if (!running or main_search_thread == null) continue;
+            if (@atomicLoad(bool, &thinkers[0].manager.ponder, .seq_cst)) {
+                thinkers[0].request_ponderhit();
+            }
         } else if (std.mem.eql(u8, command, "isready")) {
 
             // Reply if engine is idle (no search running)
@@ -329,6 +341,16 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
 
                         if (debug) {
                             std.debug.print("UCI_Chess960 = {}\n", .{uci_chess960});
+                        }
+                    } else continue;
+                } else if (std.mem.eql(u8, arg, "Ponder")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        arg = words.next().?;
+                        if (std.mem.eql(u8, arg, "true")) {
+                            uci_ponder = true;
+                        } else if (std.mem.eql(u8, arg, "false")) {
+                            uci_ponder = false;
                         }
                     } else continue;
                 } else if (std.mem.eql(u8, arg, "EvalFile")) {
@@ -971,7 +993,7 @@ pub fn bench(allocator: std.mem.Allocator, depth: u32) !void {
     thinkers[0].seed = 0;
     thinkers[0].manager = search.SearchManager.new();
     thinkers[0].max_depth = depth;
-    thinkers[0].manager.configure(&curr_pos);
+    thinkers[0].manager.configure(curr_pos.side_to_play);
     thinkers[0].manager.printout = false;
 
     var nodes: u64 = 0;

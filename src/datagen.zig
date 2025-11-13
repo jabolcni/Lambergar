@@ -56,7 +56,7 @@ fn pick_best_move(pos: *Position, depth: u32, debug: bool) BestInfo {
     // Match a cold 'go depth' run: clear TT to avoid cross-position contamination,
     // then configure time/windows and age TT like UCI.
     tt.TT.clear();
-    s.manager.configure(pos);
+    s.manager.configure(pos.side_to_play);
     tt.TT.increase_age();
     pos.history[pos.game_ply].accumulator = nnue.refresh_accumulator(pos.*);
     // Seed accumulator eval for the correct side (nnue.evaluate requires comptime Color)
@@ -109,7 +109,7 @@ fn pick_best_move_strict(pos: *Position, depth: u32, debug: bool) BestInfo {
 
     // Fresh TT per position to mimic a dedicated 'go depth' run
     tt.TT.clear();
-    s.manager.configure(pos);
+    s.manager.configure(pos.side_to_play);
     tt.TT.increase_age();
 
     pos.history[pos.game_ply].accumulator = nnue.refresh_accumulator(pos.*);
