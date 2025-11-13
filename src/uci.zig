@@ -112,6 +112,16 @@ fn parse_and_apply_moves(curr_pos: *Position, moves_str: []const u8) !void {
     }
 }
 
+fn collect_rank_string(source_pos: *const Position, rank: Rank) [8]u8 {
+    var buf: [8]u8 = undefined;
+    const base: usize = @as(usize, rank.toU3()) * 8;
+    for (0..8) |file| {
+        const piece = source_pos.board[base + file];
+        buf[file] = position.PIECE_STR[@as(usize, piece.toU4())];
+    }
+    return buf;
+}
+
 pub fn init_all(allocator: std.mem.Allocator) !void {
     attacks.initialise_all_databases();
     zobrist.initialise_zobrist_keys();
@@ -408,12 +418,71 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                         try parse_and_apply_moves(&pos[0], words.rest());
                     }
                 }
+            } else if (std.mem.eql(u8, pos_variant, "startposfrc")) {
+                const idx_token = words.next() orelse {
+                    printout(stdout, "info string Missing Chess960 index for startposfrc\n", .{});
+                    continue;
+                };
+
+                const idx = std.fmt.parseInt(u16, idx_token, 10) catch {
+                    printout(stdout, "info string Invalid Chess960 index '{s}'\n", .{idx_token});
+                    continue;
+                };
+
+                pos[0].set_chess960_start(idx) catch |err| {
+                    printout(stdout, "info string Failed to set Chess960 start: {any}\n", .{err});
+                    continue;
+                };
+
+                const rank1 = collect_rank_string(&pos[0], Rank.RANK1);
+                const rank8 = collect_rank_string(&pos[0], Rank.RANK8);
+                printout(stdout, "info string {s} {s}\n", .{ rank1[0..], rank8[0..] });
+
+                if (words.next()) |keyword| {
+                    if (std.mem.eql(u8, keyword, "moves")) {
+                        try parse_and_apply_moves(&pos[0], words.rest());
+                    }
+                }
+            } else if (std.mem.eql(u8, pos_variant, "startposdfrc")) {
+                const white_token = words.next() orelse {
+                    printout(stdout, "info string Missing white DFRC index for startposdfrc\n", .{});
+                    continue;
+                };
+                const black_token = words.next() orelse {
+                    printout(stdout, "info string Missing black DFRC index for startposdfrc\n", .{});
+                    continue;
+                };
+
+                const white_idx = std.fmt.parseInt(u16, white_token, 10) catch {
+                    printout(stdout, "info string Invalid white DFRC index '{s}'\n", .{white_token});
+                    continue;
+                };
+                const black_idx = std.fmt.parseInt(u16, black_token, 10) catch {
+                    printout(stdout, "info string Invalid black DFRC index '{s}'\n", .{black_token});
+                    continue;
+                };
+
+                pos[0].set_dfrc_start(white_idx, black_idx) catch |err| {
+                    printout(stdout, "info string Failed to set DFRC start: {any}\n", .{err});
+                    continue;
+                };
+
+                const rank1 = collect_rank_string(&pos[0], Rank.RANK1);
+                const rank8 = collect_rank_string(&pos[0], Rank.RANK8);
+                printout(stdout, "info string {s} {s}\n", .{ rank1[0..], rank8[0..] });
+
+                if (words.next()) |keyword| {
+                    if (std.mem.eql(u8, keyword, "moves")) {
+                        try parse_and_apply_moves(&pos[0], words.rest());
+                    }
+                }
             } else {
                 printout(stdout, "info string Unknown position variant '{s}'\n", .{pos_variant});
                 continue;
             }
         } else if (std.mem.eql(u8, command, "board")) {
             pos[0].print_unicode();
+            //pos[0].print();
 
             const fen = try pos[0].get_fen(allocator);
 

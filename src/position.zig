@@ -2805,13 +2805,13 @@ pub const Position = struct {
         var back: [8]u8 = [_]u8{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
         var n: u16 = index;
 
-        // 1) Bishops on opposite colors
-        const dark_slot = n % 4; // 0..3 -> files 0,2,4,6
-        back[2 * dark_slot] = 'B';
-        n /= 4;
-
+        // 1) Bishops on opposite colors (official indexing places light-square bishop first)
         const light_slot = n % 4; // 0..3 -> files 1,3,5,7
         back[2 * light_slot + 1] = 'B';
+        n /= 4;
+
+        const dark_slot = n % 4; // 0..3 -> files 0,2,4,6
+        back[2 * dark_slot] = 'B';
         n /= 4;
 
         // 2) Queen in one of the 6 remaining squares
@@ -2827,7 +2827,10 @@ pub const Position = struct {
         var empty: [5]u8 = undefined;
         var ec: usize = 0;
         for (0..8) |i| {
-            if (back[i] == ' ') { empty[ec] = @as(u8, @intCast(i)); ec += 1; }
+            if (back[i] == ' ') {
+                empty[ec] = @as(u8, @intCast(i));
+                ec += 1;
+            }
         }
 
         // Map k_idx to combination (i<j) over 5 elements in lexicographic order
@@ -3205,7 +3208,8 @@ test "three-fold repetition: multiple positions" {
 
         // Set position from FEN
         try pos.set(fen);
-        pos.print_unicode();
+        //pos.print_unicode();
+        pos.print();
 
         var moves = std.mem.splitScalar(u8, std.mem.trim(u8, moves_str, " "), ' ');
 
