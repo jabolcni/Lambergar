@@ -60,7 +60,7 @@ def find_rooks(board, color):
 
 def decode_position(data: np.ndarray) -> chess.Board:
     board = chess.Board(None)
-    board.chess960 = True
+    board.chess960 = False
     pos = 0
 
     side, pos = decode_bit(data, pos)
@@ -86,16 +86,50 @@ def decode_position(data: np.ndarray) -> chess.Board:
 
     castling_rights = 0
     w_left, w_right = find_rooks(board, chess.WHITE)
-    if wq_castle and w_left:
-        castling_rights |= chess.BB_SQUARES[chess.square(w_left[-1], 0)]
-    if wk_castle and w_right:
-        castling_rights |= chess.BB_SQUARES[chess.square(w_right[0], 0)]
     b_left, b_right = find_rooks(board, chess.BLACK)
-    if bq_castle and b_left:
-        castling_rights |= chess.BB_SQUARES[chess.square(b_left[-1], 7)]
-    if bk_castle and b_right:
-        castling_rights |= chess.BB_SQUARES[chess.square(b_right[0], 7)]
+
+    def assign_castle(color, kingside, enabled, left_rooks, right_rooks):
+        nonlocal castling_rights
+        if not enabled:
+            return
+        king_sq = board.king(color)
+        if king_sq is None:
+            return
+        rank = 0 if color == chess.WHITE else 7
+        king_file = chess.square_file(king_sq)
+        if kingside:
+            rook_files = right_rooks
+            rook_file = rook_files[0] if rook_files else None
+            if rook_file is None:
+                return
+            rook_sq = chess.square(rook_file, rank)
+            classical = (king_sq == (chess.E1 if color == chess.WHITE else chess.E8) and rook_sq == (chess.H1 if color == chess.WHITE else chess.H8))
+            if classical:
+                castling_rights |= chess.BB_H1 if color == chess.WHITE else chess.BB_H8
+            else:
+                castling_rights |= chess.BB_SQUARES[rook_sq]
+                board.chess960 = True
+        else:
+            rook_files = left_rooks
+            rook_file = rook_files[-1] if rook_files else None
+            if rook_file is None:
+                return
+            rook_sq = chess.square(rook_file, rank)
+            classical = (king_sq == (chess.E1 if color == chess.WHITE else chess.E8) and rook_sq == (chess.A1 if color == chess.WHITE else chess.A8))
+            if classical:
+                castling_rights |= chess.BB_A1 if color == chess.WHITE else chess.BB_A8
+            else:
+                castling_rights |= chess.BB_SQUARES[rook_sq]
+                board.chess960 = True
+
+    assign_castle(chess.WHITE, True, wk_castle, w_left, w_right)
+    assign_castle(chess.WHITE, False, wq_castle, w_left, w_right)
+    assign_castle(chess.BLACK, True, bk_castle, b_left, b_right)
+    assign_castle(chess.BLACK, False, bq_castle, b_left, b_right)
     board.castling_rights = castling_rights
+    classical_mask = chess.BB_A1 | chess.BB_H1 | chess.BB_A8 | chess.BB_H8
+    if castling_rights & ~classical_mask:
+        board.chess960 = True
 
     ep_flag, pos = decode_bit(data, pos)
     if ep_flag:
@@ -119,13 +153,22 @@ def decode_move_to_uci(move_int: int, board: chess.Board) -> str:
     promotion = (move_int >> 12) & 0x3
     flags = (move_int >> 14) & 0x3
 
+    if flags == 3:  # Castling, stored as king square -> rook start square
+        king_file = chess.square_file(from_sq)
+        rook_file = chess.square_file(to_sq)
+        rank = chess.square_rank(from_sq)
+        kingside = rook_file > king_file
+        if not board.chess960:
+            target_file = 6 if kingside else 2  # file g or c
+            to_sq = chess.square(target_file, rank)
+
     from_str = chess.square_name(from_sq)
     to_str = chess.square_name(to_sq)
 
     if flags == 1:  # Promotion
         promo_map = {0: 'n', 1: 'b', 2: 'r', 3: 'q'}
         return from_str + to_str + promo_map.get(promotion, '')
-    else:  # Normal move, en passant, or castling
+    else:
         return from_str + to_str
 
 def debug_move_decoding(raw_move_int: int, board: chess.Board, position_index: int):
@@ -235,7 +278,7 @@ def process_bin_file(filename: str):
             score = extra_data['score'][0]
             ply = extra_data['ply'][0]
             result = extra_data['result'][0]
-            fen = board.fen(shredder=True)
+            fen = board.fen(shredder=False)
 
             out_f.write(f"fen {fen}\n")
             out_f.write(f"move {move_uci}\n")
