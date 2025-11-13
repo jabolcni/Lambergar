@@ -42,12 +42,6 @@ pub inline fn is_chess960() bool {
     return uci_chess960;
 }
 
-// Allow internal users (e.g., datagen) to toggle Chess960 formatting
-// without requiring an external UCI setoption roundtrip.
-pub fn set_chess960_enabled(val: bool) void {
-    uci_chess960 = val;
-}
-
 const HASH_SIZE_MIN = 1;
 const HASH_SIZE_DEFAULT = 128;
 const HASH_SIZE_MAX = 4096;
@@ -67,6 +61,19 @@ var syzygy_path: ?[]const u8 = null;
 
 // Tracks whether a main search is currently running.
 pub var search_running: bool = false;
+
+// Allow internal users (e.g., datagen) to toggle Chess960 formatting
+// without requiring an external UCI setoption roundtrip.
+pub fn set_chess960_enabled(val: bool) void {
+    uci_chess960 = val;
+}
+
+fn sync_position_chess960_state(curr_pos: *Position) void {
+    if (curr_pos.is_chess960 and !uci_chess960) {
+        uci_chess960 = true;
+    }
+    curr_pos.is_chess960 = uci_chess960;
+}
 
 pub fn printout(writer: *std.Io.Writer, comptime str: []const u8, args: anytype) void {
     writer.print(str, args) catch io_error();
@@ -336,6 +343,9 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                         } else if (std.mem.eql(u8, arg, "false")) {
                             uci_chess960 = false;
                         }
+                        for (0..MAX_THREADS) |i| {
+                            pos[i].is_chess960 = uci_chess960;
+                        }
 
                         if (debug) {
                             std.debug.print("UCI_Chess960 = {}\n", .{uci_chess960});
@@ -387,6 +397,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             }
             tt.TT.clear();
             try pos[0].set(start_position);
+            sync_position_chess960_state(&pos[0]);
         } else if (std.mem.eql(u8, command, "position")) {
             const pos_variant = words.next() orelse {
                 printout(stdout, "info string Missing position variant\n", .{});
@@ -407,12 +418,14 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     printout(stdout, "info string Invalid FEN: {s}\n", .{@errorName(err)});
                     continue; // or continue loop, depending on context
                 };
+                sync_position_chess960_state(&pos[0]);
 
                 if (parts.rest().len > 0) {
                     try parse_and_apply_moves(&pos[0], parts.rest());
                 }
             } else if (std.mem.eql(u8, pos_variant, "startpos")) {
                 try pos[0].set(start_position);
+                sync_position_chess960_state(&pos[0]);
                 if (words.next()) |keyword| {
                     if (std.mem.eql(u8, keyword, "moves")) {
                         try parse_and_apply_moves(&pos[0], words.rest());
@@ -433,6 +446,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     printout(stdout, "info string Failed to set Chess960 start: {any}\n", .{err});
                     continue;
                 };
+                sync_position_chess960_state(&pos[0]);
 
                 const rank1 = collect_rank_string(&pos[0], Rank.RANK1);
                 const rank8 = collect_rank_string(&pos[0], Rank.RANK8);
@@ -466,6 +480,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     printout(stdout, "info string Failed to set DFRC start: {any}\n", .{err});
                     continue;
                 };
+                sync_position_chess960_state(&pos[0]);
 
                 const rank1 = collect_rank_string(&pos[0], Rank.RANK1);
                 const rank8 = collect_rank_string(&pos[0], Rank.RANK8);
@@ -491,6 +506,7 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             std.debug.print("FEN: {s}\n", .{fen});
         } else if (std.mem.eql(u8, command, "moves")) {
             var list: MoveList = .{};
+            printout(stdout, "is_chess960: {}, pos[0].is_chess960: {}\n", .{ is_chess960(), pos[0].is_chess960 });
 
             if (pos[0].side_to_play == Color.White) {
                 pos[0].generate_legals(Color.White, &list);

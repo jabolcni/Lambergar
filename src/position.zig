@@ -2043,24 +2043,36 @@ pub const Position = struct {
                     if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.White.toU4()] != Square.NO_SQUARE) {
                         self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.White.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.WK.toU4();
+                        if (!self.classical_variant[Color.White.toU4()]) {
+                            self.is_chess960 = true;
+                        }
                     }
                 },
                 'Q' => {
                     if (self.castle_king_start[Color.White.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.White.toU4()] != Square.NO_SQUARE) {
                         self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.White.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.White.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.WQ.toU4();
+                        if (!self.classical_variant[Color.White.toU4()]) {
+                            self.is_chess960 = true;
+                        }
                     }
                 },
                 'k' => {
                     if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_k_start[Color.Black.toU4()] != Square.NO_SQUARE) {
                         self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_k_start[Color.Black.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.BK.toU4();
+                        if (!self.classical_variant[Color.Black.toU4()]) {
+                            self.is_chess960 = true;
+                        }
                     }
                 },
                 'q' => {
                     if (self.castle_king_start[Color.Black.toU4()] != Square.NO_SQUARE and self.castle_rook_q_start[Color.Black.toU4()] != Square.NO_SQUARE) {
                         self.history[self.game_ply].entry &= ~(SQUARE_BB[self.castle_king_start[Color.Black.toU4()].toU6()] | SQUARE_BB[self.castle_rook_q_start[Color.Black.toU4()].toU6()]);
                     self.history[self.game_ply].castling |= Castling.BQ.toU4();
+                        if (!self.classical_variant[Color.Black.toU4()]) {
+                            self.is_chess960 = true;
+                        }
                     }
                 },
                 // Shredder-FEN letters for rooks allowed to castle
