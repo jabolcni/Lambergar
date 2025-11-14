@@ -8,6 +8,7 @@ const nnue = @import("nnue.zig");
 const lists = @import("lists.zig");
 const uci = @import("uci.zig");
 const fathom = @import("fathom.zig");
+const search_params = @import("search_params.zig");
 
 pub const use_tb = @import("config").use_tb;
 
@@ -83,9 +84,14 @@ pub fn init_lmr() void {
     lmr[0][1] = 1;
     lmr[1][0] = 1;
 
+    const scale = @as(f32, @floatFromInt(search_params.params.lmr_log_scale)) / 100.0;
+
     for (1..MAX_DEPTH) |depth| {
         for (1..MAX_MOVES) |played| {
-            lmr[depth][played] = @intFromFloat(1.0 + @log(@as(f32, @floatFromInt(depth))) * @log(@as(f32, @floatFromInt(played))) * 0.5);
+            const depth_log = @log(@as(f32, @floatFromInt(depth)));
+            const played_log = @log(@as(f32, @floatFromInt(played)));
+            const reduction = 1.0 + depth_log * played_log * scale;
+            lmr[depth][played] = @intFromFloat(@max(1.0, reduction));
         }
     }
 }
@@ -1038,7 +1044,12 @@ pub const Search = struct {
 
             // Null Move Pruning (NMP)
             if (best_score >= beta and !is_null and depth >= 2 and (pos.eval.phase[me.toU4()] > 0) and (!tt_hit or !(tt_bound == tt.Bound.BOUND_UPPER) or tt_score >= beta)) {
-                var R = 5 + @divTrunc(depth, 5) + @as(i8, @intCast(@min(3, @divTrunc(best_score - beta, 230))));
+                const tuned = search_params.params;
+                var R: i8 = tuned.null_move_base + @divTrunc(depth, tuned.null_move_depth_divisor);
+                const beta_term = @divTrunc(best_score - beta, tuned.null_move_beta_divisor);
+                if (beta_term > 0) {
+                    R += @intCast(@min(3, beta_term));
+                }
                 R += if (self.ns_stack[self.ply - 1].is_noisy) 1 else 0;
 
                 // make null move
@@ -1148,7 +1159,7 @@ pub const Search = struct {
                         continue;
                     }
 
-                    const futilityMargin = static_eval + 90 * @as(i32, depth);
+                    const futilityMargin = static_eval + search_params.params.futility_margin_slope * depth_as_i32(depth);
                     if (futilityMargin <= alpha and depth <= 8 and (sc_hist < futility_histroy_limit[improving])) {
                         skip_quiets = true;
                     }

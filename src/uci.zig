@@ -12,6 +12,7 @@ const nnue = @import("nnue.zig");
 const bb = @import("bitboard.zig");
 const lists = @import("lists.zig");
 const fathom = @import("fathom.zig");
+const search_params = @import("search_params.zig");
 
 pub const use_tb = @import("config").use_tb;
 
@@ -94,6 +95,10 @@ fn usize_from_str(str: []const u8) !usize {
 
 fn u64_from_str(str: []const u8) !u64 {
     return std.fmt.parseInt(u64, str, 10);
+}
+
+fn i32_from_str(str: []const u8) !i32 {
+    return std.fmt.parseInt(i32, str, 10);
 }
 
 pub fn i8_from_str(str: []const u8) i8 {
@@ -208,6 +213,9 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             printout(stdout, "option name UCI_Chess960 type check default {}\n", .{uci_chess960});
             //printout(stdout,"option name EvalFile type string default \n", .{});
             printout(stdout, "option name Debug type check default {}\n", .{debug});
+            inline for (search_params.parameter_defs) |def| {
+                printout(stdout, "option name {s} type spin default {d} min {d} max {d}\n", .{ def.name, def.default_value, def.min, def.max });
+            }
             if (use_tb) {
                 printout(stdout, "option name SyzygyPath type string default <empty>\n", .{});
                 printout(stdout, "option name SyzygyProbeDepth type spin default {d} min {d} max {d}\n", .{ fathom.tb_probe_depth, 0, 127 });
@@ -350,6 +358,18 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                         if (debug) {
                             std.debug.print("UCI_Chess960 = {}\n", .{uci_chess960});
                         }
+                    } else continue;
+                } else if (search_params.find_by_name(arg)) |param_id| {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        const raw_token = words.next() orelse continue;
+                        const raw_val = i32_from_str(raw_token) catch continue;
+                        const result = search_params.set_by_id(param_id, raw_val);
+                        if (result.changed and param_id == search_params.ParameterId.lmr_log_scale) {
+                            search.init_lmr();
+                        }
+                        const def = search_params.parameter_defs[@intFromEnum(param_id)];
+                        printout(stdout, "info string {s} = {d}\n", .{ def.name, result.value });
                     } else continue;
                 } else if (std.mem.eql(u8, arg, "EvalFile")) {
                     nnue.engine_loaded_net = false;
