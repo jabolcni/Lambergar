@@ -26,6 +26,12 @@ pub fn build(b: *std.Build) void {
     //const optimize = .Debug;
     const use_tb = true;
 
+    const search_params_pkg = b.createModule(.{
+        .root_source_file = b.path("src/search_params.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const exe = b.addExecutable(.{
         .name = "lambergar",
         .root_module = b.createModule(.{
@@ -95,4 +101,17 @@ pub fn build(b: *std.Build) void {
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
+
+    const spsa_tool = b.addExecutable(.{
+        .name = "print_spsa_input",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/print_spsa_input.zig"),
+            .target = target,
+            .optimize = .ReleaseFast,
+        }),
+    });
+    spsa_tool.root_module.addImport("search_params", search_params_pkg);
+    const run_spsa = b.addRunArtifact(spsa_tool);
+    const spsa_step = b.step("print-spsa", "Print SPSA tuning input");
+    spsa_step.dependOn(&run_spsa.step);
 }

@@ -84,13 +84,15 @@ pub fn init_lmr() void {
     lmr[0][1] = 1;
     lmr[1][0] = 1;
 
-    const scale = @as(f32, @floatFromInt(search_params.params.lmr_log_scale)) / 100.0;
+    const params = search_params.params;
+    const scale = @as(f32, @floatFromInt(params.lmr_log_scale)) / 100.0;
+    const base_offset = @as(f32, @floatFromInt(params.lmr_base_offset));
 
     for (1..MAX_DEPTH) |depth| {
         for (1..MAX_MOVES) |played| {
             const depth_log = @log(@as(f32, @floatFromInt(depth)));
             const played_log = @log(@as(f32, @floatFromInt(played)));
-            const reduction = 1.0 + depth_log * played_log * scale;
+            const reduction = 1.0 + depth_log * played_log * scale + base_offset;
             lmr[depth][played] = @intFromFloat(@max(1.0, reduction));
         }
     }
@@ -865,6 +867,7 @@ pub const Search = struct {
         const qsearch: bool = if (_depth <= 0) true else false;
         const is_root: bool = if (self.ply == 0) true else false;
         const in_check = pos.in_check(me);
+        const tuned = search_params.params;
         var full_search: bool = false;
 
         var alpha: i32 = _alpha;
@@ -1038,13 +1041,12 @@ pub const Search = struct {
             }
 
             // Futility Pruning / Static Null Move Pruning
-            if ((depth <= 8) and ((best_score - 85 * (@as(i32, @intCast(depth)) - improving)) >= beta)) {
+            if ((depth <= 8) and ((best_score - tuned.futility_prune_slope * (@as(i32, @intCast(depth)) - improving)) >= beta)) {
                 return best_score;
             }
 
             // Null Move Pruning (NMP)
-            if (best_score >= beta and !is_null and depth >= 2 and (pos.eval.phase[me.toU4()] > 0) and (!tt_hit or !(tt_bound == tt.Bound.BOUND_UPPER) or tt_score >= beta)) {
-                const tuned = search_params.params;
+            if (best_score >= beta and !is_null and depth >= tuned.null_move_min_depth and (pos.eval.phase[me.toU4()] > 0) and (!tt_hit or !(tt_bound == tt.Bound.BOUND_UPPER) or tt_score >= beta)) {
                 var R: i8 = tuned.null_move_base + @divTrunc(depth, tuned.null_move_depth_divisor);
                 const beta_term = @divTrunc(best_score - beta, tuned.null_move_beta_divisor);
                 if (beta_term > 0) {
@@ -1071,7 +1073,7 @@ pub const Search = struct {
 
                 if (score >= beta) {
                     // Verification search for low material endgames.
-                    if (pos.eval.phase[me.toU4()] < 4 and depth < 6) {
+                    if (pos.eval.phase[me.toU4()] < tuned.null_move_verify_phase and depth < tuned.null_move_verify_depth) {
                         const verification_depth = depth - R - 2;
                         if (verification_depth > 0) {
                             const v_score = self.pvs(verification_depth, beta - 1, beta, pos, false, me);
@@ -1151,15 +1153,17 @@ pub const Search = struct {
                 if (mv_quiet) {
                     if (skip_quiets) continue;
 
-                    if (depth <= histroy_depth[improving] and cm_hist < cm_history_limit[improving]) {
+                    const scaled_cm_limit = @divTrunc(cm_history_limit[improving] * tuned.history_limit_scale, 100);
+                    if (depth <= histroy_depth[improving] and cm_hist < scaled_cm_limit) {
                         continue;
                     }
 
-                    if (depth <= histroy_depth[improving] and sc_hist < (history_limit[improving] * depth)) {
+                    const scaled_history_limit = @divTrunc(history_limit[improving] * tuned.history_limit_scale, 100);
+                    if (depth <= histroy_depth[improving] and sc_hist < (scaled_history_limit * depth_as_i32(depth))) {
                         continue;
                     }
 
-                    const futilityMargin = static_eval + search_params.params.futility_margin_slope * depth_as_i32(depth);
+                    const futilityMargin = static_eval + tuned.futility_margin_slope * depth_as_i32(depth);
                     if (futilityMargin <= alpha and depth <= 8 and (sc_hist < futility_histroy_limit[improving])) {
                         skip_quiets = true;
                     }
@@ -1173,7 +1177,10 @@ pub const Search = struct {
                 // Static Exchange Evaluation (SEE) pruning.
                 if (depth <= 8 and !in_check) {
                     const depth_i32 = depth_as_i32(depth);
-                    const see_val: i32 = if (mv_quiet) -46 * depth_i32 else -10 * depth_i32 * depth_i32;
+                    const see_val: i32 = if (mv_quiet)
+                        -(tuned.see_quiet_coeff * depth_i32)
+                    else
+                        -(tuned.see_capture_coeff * depth_i32 * depth_i32);
                     if (ms.see_value(pos, move, false) < see_val) continue;
                 }
             }
