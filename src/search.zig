@@ -229,7 +229,9 @@ pub const SearchManager = struct {
             self.early_ms = self.max_ms;
         } else if (self.termination == Termination.TIME or self.termination == Termination.MOVETIME) {
             if (movetime) |mt| {
-                self.max_ms = mt - @as(u64, @intCast(overhead));
+                const overhead_u64 = @as(u64, @intCast(overhead));
+                const safe_time = if (mt > overhead_u64) mt - overhead_u64 else 2;
+                self.max_ms = @max(@as(u64, 2), safe_time);
                 self.early_ms = self.max_ms;
                 return;
             } else if (rem_time) |rt| {
@@ -724,13 +726,19 @@ pub const Search = struct {
             var move_list: MoveList = .{};
             const me = if (color == Color.White) Color.White else Color.Black;
             pos.generate_legals(me, &move_list);
-            var score_list: ScoreList = .{};
-            ms.score_move(pos, self, &move_list, &score_list, Move.empty(), me);
-            self.best_move = ms.get_next_best(&move_list, &score_list, 0);
+            if (move_list.count > 0) {
+                var score_list: ScoreList = .{};
+                ms.score_move(pos, self, &move_list, &score_list, Move.empty(), me);
+                self.best_move = ms.get_next_best(&move_list, &score_list, 0);
+            }
         }
 
         // Print the final 'bestmove' UCI command.
         if (self.manager.printout) {
+            if (self.best_move.is_empty()) {
+                printout(uci.stdout, "bestmove 0000\n", .{});
+                return;
+            }
             // Print bestmove: check castling flag first, then 960 formatting
             // TODO: not very happy with this part, it is correct, but could probably be streamlined a bit
             if ((self.best_move.flags == MoveFlags.OO or self.best_move.flags == MoveFlags.OOO) and uci.is_chess960() and pos.is_chess960) {
@@ -1187,7 +1195,7 @@ pub const Search = struct {
             self.nodes += 1;
             // make move
 
-            if (pos.in_check(me)) {
+            if (pos.in_check(opp)) {
                 new_depth += 1;
             }
 
