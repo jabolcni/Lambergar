@@ -163,19 +163,12 @@ pub const Bin40Writer = struct {
 
         if (mv.flags == position.MoveFlags.OO or mv.flags == position.MoveFlags.OOO) {
             const ci = pos.side_to_play.toU4();
-            const rook_sq = if (mv.flags == position.MoveFlags.OO)
-                pos.castle_rook_k_start[ci]
-            else
-                pos.castle_rook_q_start[ci];
-            const king_sq = pos.castle_king_start[ci];
-            if (rook_sq != position.Square.NO_SQUARE and king_sq != position.Square.NO_SQUARE) {
-                const classical = if (mv.flags == position.MoveFlags.OO)
-                    ((ci == position.Color.White.toU4() and king_sq == position.Square.e1 and rook_sq == position.Square.h1) or
-                    (ci == position.Color.Black.toU4() and king_sq == position.Square.e8 and rook_sq == position.Square.h8))
+            if (pos.is_chess960) {
+                const rook_sq = if (mv.flags == position.MoveFlags.OO)
+                    pos.castle_rook_k_start[ci]
                 else
-                    ((ci == position.Color.White.toU4() and king_sq == position.Square.e1 and rook_sq == position.Square.a1) or
-                    (ci == position.Color.Black.toU4() and king_sq == position.Square.e8 and rook_sq == position.Square.a8));
-                if (!classical) {
+                    pos.castle_rook_q_start[ci];
+                if (rook_sq != position.Square.NO_SQUARE) {
                     to_sq = rook_sq.toU6();
                 }
             }

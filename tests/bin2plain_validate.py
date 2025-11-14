@@ -127,8 +127,28 @@ def decode_position(data: np.ndarray) -> chess.Board:
     assign_castle(chess.BLACK, True, bk_castle, b_left, b_right)
     assign_castle(chess.BLACK, False, bq_castle, b_left, b_right)
     board.castling_rights = castling_rights
-    classical_mask = chess.BB_A1 | chess.BB_H1 | chess.BB_A8 | chess.BB_H8
-    if castling_rights & ~classical_mask:
+
+    def requires_chess960(color, kingside_enabled, queenside_enabled, left_rooks, right_rooks):
+        king_sq = board.king(color)
+        if king_sq is None:
+            return False
+        const_e = chess.E1 if color == chess.WHITE else chess.E8
+        if king_sq != const_e:
+            return True
+        rank = 0 if color == chess.WHITE else 7
+        if kingside_enabled:
+            rook_file = right_rooks[0] if right_rooks else None
+            if rook_file is None or rook_file != 7:
+                return True
+        if queenside_enabled:
+            rook_file = left_rooks[-1] if left_rooks else None
+            if rook_file is None or rook_file != 0:
+                return True
+        return False
+
+    if requires_chess960(chess.WHITE, wk_castle, wq_castle, w_left, w_right):
+        board.chess960 = True
+    if requires_chess960(chess.BLACK, bk_castle, bq_castle, b_left, b_right):
         board.chess960 = True
 
     ep_flag, pos = decode_bit(data, pos)
