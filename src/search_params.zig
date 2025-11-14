@@ -14,6 +14,12 @@ pub const ParameterId = enum(u8) {
     null_move_verify_phase,
     null_move_verify_depth,
     futility_prune_slope,
+    razor_depth,
+    razor_margin_offset,
+    razor_margin_scale,
+    futility_prune_depth,
+    reduction_eval_scale,
+    qsearch_delta_margin,
 };
 
 pub const ParameterType = enum { int, float };
@@ -50,6 +56,12 @@ pub const parameter_defs = [_]ParameterDef{
     .{ .id = .null_move_verify_phase, .name = "NullMoveVerifyPhase", .min = 0, .max = 8, .default_value = 4, .spsa_a = 0.4, .spsa_c = 0.04 },
     .{ .id = .null_move_verify_depth, .name = "NullMoveVerifyDepth", .min = 3, .max = 10, .default_value = 6, .spsa_a = 0.4, .spsa_c = 0.04 },
     .{ .id = .futility_prune_slope, .name = "FutilityPruneSlope", .min = 40, .max = 140, .default_value = 85, .spsa_a = 7.0, .spsa_c = 0.7 },
+    .{ .id = .razor_depth, .name = "RazorDepth", .min = 1, .max = 5, .default_value = 2, .spsa_a = 0.3, .spsa_c = 0.03 },
+    .{ .id = .razor_margin_offset, .name = "RazorMarginOffset", .min = 50, .max = 250, .default_value = 150, .spsa_a = 8.0, .spsa_c = 0.8 },
+    .{ .id = .razor_margin_scale, .name = "RazorMarginScale", .min = 0, .max = 150, .default_value = 75, .spsa_a = 6.0, .spsa_c = 0.6 },
+    .{ .id = .futility_prune_depth, .name = "FutilityPruneDepth", .min = 4, .max = 12, .default_value = 8, .spsa_a = 0.5, .spsa_c = 0.05 },
+    .{ .id = .reduction_eval_scale, .name = "ReductionEvalScale", .min = 150, .max = 600, .default_value = 350, .spsa_a = 20.0, .spsa_c = 2.0 },
+    .{ .id = .qsearch_delta_margin, .name = "QDeltaMargin", .min = 200, .max = 800, .default_value = 500, .spsa_a = 20.0, .spsa_c = 2.0 },
 };
 
 pub const SearchParams = struct {
@@ -66,6 +78,12 @@ pub const SearchParams = struct {
     null_move_verify_phase: i8 = @intCast(parameter_defs[@intFromEnum(ParameterId.null_move_verify_phase)].default_value),
     null_move_verify_depth: i8 = @intCast(parameter_defs[@intFromEnum(ParameterId.null_move_verify_depth)].default_value),
     futility_prune_slope: i32 = parameter_defs[@intFromEnum(ParameterId.futility_prune_slope)].default_value,
+    razor_depth: i8 = @intCast(parameter_defs[@intFromEnum(ParameterId.razor_depth)].default_value),
+    razor_margin_offset: i32 = parameter_defs[@intFromEnum(ParameterId.razor_margin_offset)].default_value,
+    razor_margin_scale: i32 = parameter_defs[@intFromEnum(ParameterId.razor_margin_scale)].default_value,
+    futility_prune_depth: i8 = @intCast(parameter_defs[@intFromEnum(ParameterId.futility_prune_depth)].default_value),
+    reduction_eval_scale: i32 = parameter_defs[@intFromEnum(ParameterId.reduction_eval_scale)].default_value,
+    qsearch_delta_margin: i32 = parameter_defs[@intFromEnum(ParameterId.qsearch_delta_margin)].default_value,
 };
 
 pub const SetResult = struct {
@@ -154,6 +172,38 @@ fn applyValue(id: ParameterId, clamped_value: i32) bool {
         .futility_prune_slope => {
             if (params.futility_prune_slope == clamped_value) return false;
             params.futility_prune_slope = clamped_value;
+            return true;
+        },
+        .razor_depth => {
+            const val: i8 = @intCast(clamped_value);
+            if (params.razor_depth == val) return false;
+            params.razor_depth = val;
+            return true;
+        },
+        .razor_margin_offset => {
+            if (params.razor_margin_offset == clamped_value) return false;
+            params.razor_margin_offset = clamped_value;
+            return true;
+        },
+        .razor_margin_scale => {
+            if (params.razor_margin_scale == clamped_value) return false;
+            params.razor_margin_scale = clamped_value;
+            return true;
+        },
+        .futility_prune_depth => {
+            const val: i8 = @intCast(clamped_value);
+            if (params.futility_prune_depth == val) return false;
+            params.futility_prune_depth = val;
+            return true;
+        },
+        .reduction_eval_scale => {
+            if (params.reduction_eval_scale == clamped_value) return false;
+            params.reduction_eval_scale = clamped_value;
+            return true;
+        },
+        .qsearch_delta_margin => {
+            if (params.qsearch_delta_margin == clamped_value) return false;
+            params.qsearch_delta_margin = clamped_value;
             return true;
         },
     }

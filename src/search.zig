@@ -1032,16 +1032,14 @@ pub const Search = struct {
         const prune: bool = true;
         if (prune and !in_check and !is_pv and !skip_move) {
             // Razoring: if static eval is much worse than alpha, do a shallow q-search.
-            const razor_depth = 2;
-            const razor_margin = 150 + @as(i32, @intCast(improving)) * 75;
-
-            if (depth <= razor_depth and static_eval + razor_margin <= alpha) {
+            const razor_margin = tuned.razor_margin_offset + @as(i32, @intCast(improving)) * tuned.razor_margin_scale;
+            if (depth <= tuned.razor_depth and static_eval + razor_margin <= alpha) {
                 const raz_score = self.quiescence(alpha, beta, pos, depth, me);
                 if (raz_score <= alpha) return raz_score;
             }
 
             // Futility Pruning / Static Null Move Pruning
-            if ((depth <= 8) and ((best_score - tuned.futility_prune_slope * (@as(i32, @intCast(depth)) - improving)) >= beta)) {
+            if ((depth <= tuned.futility_prune_depth) and ((best_score - tuned.futility_prune_slope * (@as(i32, @intCast(depth)) - improving)) >= beta)) {
                 return best_score;
             }
 
@@ -1164,7 +1162,7 @@ pub const Search = struct {
                     }
 
                     const futilityMargin = static_eval + tuned.futility_margin_slope * depth_as_i32(depth);
-                    if (futilityMargin <= alpha and depth <= 8 and (sc_hist < futility_histroy_limit[improving])) {
+                    if (futilityMargin <= alpha and depth <= tuned.futility_prune_depth and (sc_hist < futility_histroy_limit[improving])) {
                         skip_quiets = true;
                     }
 
@@ -1269,7 +1267,7 @@ pub const Search = struct {
                     }
 
                     reduction -= @as(i8, @intCast(@max(-4, @min(4, @divTrunc(full_hist, 4000)))));
-                    reduction += @as(i8, @intCast(@min(2, @abs(@divTrunc(static_eval - alpha, 350)))));
+                    reduction += @as(i8, @intCast(@min(2, @abs(@divTrunc(static_eval - alpha, tuned.reduction_eval_scale)))));
                 }
 
                 reduction = @min(new_depth - 1, @max(reduction, 1));
@@ -1345,6 +1343,7 @@ pub const Search = struct {
     pub fn quiescence(self: *Search, _alpha: i32, _beta: i32, pos: *Position, depth: i8, comptime color: Color) i32 {
         const opp = if (color == Color.White) Color.Black else Color.White;
         const me = if (color == Color.White) Color.White else Color.Black;
+        const tuned = search_params.params;
         var alpha: i32 = @max(_alpha, -MATE_VALUE + @as(i32, self.ply));
         const beta: i32 = @min(_beta, MATE_VALUE - @as(i32, self.ply) + 1);
         var best_score: i32 = undefined;
@@ -1413,7 +1412,7 @@ pub const Search = struct {
         var score_list: ScoreList = .{};
         ms.score_move(pos, self, &move_list, &score_list, tt_move, me);
 
-        const delta_margin: i32 = 500; // Margin for delta pruning
+        const delta_margin: i32 = tuned.qsearch_delta_margin; // Margin for delta pruning
 
         for (0..move_list.count) |mv_idx| {
             const move = ms.get_next_best(&move_list, &score_list, mv_idx);
