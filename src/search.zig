@@ -941,11 +941,11 @@ pub const Search = struct {
                     (tt_bound == tt.Bound.BOUND_UPPER and tt_score <= alpha) or
                     (tt_bound == tt.Bound.BOUND_EXACT))
                 {
-                    if (tt_score >= beta and tt_move.is_quiet()) {
-                        const depth_i32: i32 = @as(i32, @intCast(tt_depth));
-                        const bonus: i32 = @min(depth_i32 * depth_i32, history.max_histroy);
-                        history.histoy_bonus(&self.sc_history[color.toU4()][tt_move.from][tt_move.to], bonus);
-                    }
+                    // if (tt_score >= beta and tt_move.is_quiet()) {
+                    //     const depth_i32: i32 = @as(i32, @intCast(tt_depth));
+                    //     const bonus: i32 = @min(depth_i32 * depth_i32, history.max_histroy);
+                    //     history.histoy_bonus(&self.sc_history[color.toU4()][tt_move.from][tt_move.to], bonus);
+                    // }
 
                     return tt_score;
                 }
