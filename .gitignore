@@ -19,3 +19,5 @@ zig-out/
 # 
 zapiski.md
 lambergar*/
+build_and_deploy.py
+spsa.txt
