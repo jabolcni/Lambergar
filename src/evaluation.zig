@@ -612,6 +612,17 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             tnr = maybe_tnr.?;
         }
 
+        update_extra_pawn_features(&pawn_structure_score, pos, Color.White, white_pawns, black_pawns, white_pawn_attacks, white_rook, maybe_tnr);
+        update_extra_pawn_features(&pawn_structure_score, pos, Color.Black, black_pawns, white_pawns, black_pawn_attacks, black_rook, maybe_tnr);
+        update_extra_rook_features(&mobility_score, Color.White, white_rook, white_pawns, black_pawns, maybe_tnr);
+        update_extra_rook_features(&mobility_score, Color.Black, black_rook, black_pawns, white_pawns, maybe_tnr);
+        update_extra_knight_features(&mobility_score, Color.White, white_knight, white_pawn_attacks, black_pawns, maybe_tnr);
+        update_extra_knight_features(&mobility_score, Color.Black, black_knight, black_pawn_attacks, white_pawns, maybe_tnr);
+        update_extra_bishop_features(&king_score, Color.White, white_bishop, black_king_sq, occ, maybe_tnr);
+        update_extra_bishop_features(&king_score, Color.Black, black_bishop, white_king_sq, occ, maybe_tnr);
+        update_king_file_features(&king_score, Color.White, white_king_sq, white_pawns, maybe_tnr);
+        update_king_file_features(&king_score, Color.Black, black_king_sq, black_pawns, maybe_tnr);
+
         // Pawns
         var pc_bb = white_pawns;
         while (pc_bb != 0) {
@@ -625,6 +636,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             if ((black_king_zone & att) != 0) {
                 black_danger_score += PieceDangers[PieceType.Pawn.toU3()];
                 black_danger_pieces += 1;
+                if (has_tuner) {
+                    tnr.king_ring_attackers[Color.Black.toU4()][PieceType.Pawn.toU3()] += 1;
+                }
             }
 
             // Isolated pawn evaluation
@@ -733,6 +747,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             if ((white_king_zone & att) != 0) {
                 white_danger_score += PieceDangers[PieceType.Pawn.toU3()];
                 white_danger_pieces += 1;
+                if (has_tuner) {
+                    tnr.king_ring_attackers[Color.White.toU4()][PieceType.Pawn.toU3()] += 1;
+                }
             }
 
             // Isolated pawn evaluation
@@ -840,12 +857,16 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             var tmp_sc = get_knight_mobility_score(index);
             if (has_tuner) {
                 tnr.knight_mobility[0][index] += 1;
+                tnr.safe_knight_mobility[0][index] += 1;
             }
             mobility_score[0] += tmp_sc[0];
             mobility_score[1] += tmp_sc[1];
             if ((black_king_zone & mobility) != 0) {
                 black_danger_score += PieceDangers[PieceType.Knight.toU3()];
                 black_danger_pieces += 1;
+                if (has_tuner) {
+                    tnr.king_ring_attackers[Color.Black.toU4()][PieceType.Knight.toU3()] += 1;
+                }
             }
 
             var b1 = mobility & black_pawns;
@@ -908,12 +929,16 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             var tmp_sc = get_knight_mobility_score(index);
             if (has_tuner) {
                 tnr.knight_mobility[1][index] += 1;
+                tnr.safe_knight_mobility[1][index] += 1;
             }
             mobility_score[0] -= tmp_sc[0];
             mobility_score[1] -= tmp_sc[1];
             if ((white_king_zone & mobility) != 0) {
                 white_danger_score += PieceDangers[PieceType.Knight.toU3()];
                 white_danger_pieces += 1;
+                if (has_tuner) {
+                    tnr.king_ring_attackers[Color.White.toU4()][PieceType.Knight.toU3()] += 1;
+                }
             }
                       
             var b1 = mobility & white_pawns;
@@ -976,12 +1001,16 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             var tmp_sc = get_bishop_mobility_score(index);
             if (has_tuner) {
                 tnr.bishop_mobility[0][index] += 1;
+                tnr.safe_bishop_mobility[0][index] += 1;
             }
             mobility_score[0] += tmp_sc[0];
             mobility_score[1] += tmp_sc[1];
             if ((black_king_zone & mobility) != 0) {
                 black_danger_score += PieceDangers[PieceType.Bishop.toU3()];
                 black_danger_pieces += 1;
+                if (has_tuner) {
+                    tnr.king_ring_attackers[Color.Black.toU4()][PieceType.Bishop.toU3()] += 1;
+                }
             }
             
             var b1 = mobility & black_pawns;
@@ -1043,12 +1072,16 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             var tmp_sc = get_bishop_mobility_score(index);
             if (has_tuner) {
                 tnr.bishop_mobility[1][index] += 1;
+                tnr.safe_bishop_mobility[1][index] += 1;
             }
             mobility_score[0] -= tmp_sc[0];
             mobility_score[1] -= tmp_sc[1];
             if ((white_king_zone & mobility) != 0) {
                 white_danger_score += PieceDangers[PieceType.Bishop.toU3()];
                 white_danger_pieces += 1;
+                if (has_tuner) {
+                    tnr.king_ring_attackers[Color.White.toU4()][PieceType.Bishop.toU3()] += 1;
+                }
             }
             
             var b1 = mobility & white_pawns;
@@ -1113,6 +1146,7 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             var tmp_sc = get_rook_mobility_score(index);
             if (has_tuner) {
                 tnr.rook_mobility[0][index] += 1;
+                tnr.safe_rook_mobility[0][index] += 1;
             }
             mobility_score[0] += tmp_sc[0];
             mobility_score[1] += tmp_sc[1];
@@ -1120,6 +1154,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             if ((black_king_zone & mobility) != 0) {
                 black_danger_score += PieceDangers[PieceType.Rook.toU3()];
                 black_danger_pieces += 1;
+                if (has_tuner) {
+                    tnr.king_ring_attackers[Color.Black.toU4()][PieceType.Rook.toU3()] += 1;
+                }
             }
             
             var b1 = mobility & black_pawns;
@@ -1184,6 +1221,7 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             var tmp_sc = get_rook_mobility_score(index);
             if (has_tuner) {
                 tnr.rook_mobility[1][index] += 1;
+                tnr.safe_rook_mobility[1][index] += 1;
             }
             mobility_score[0] -= tmp_sc[0];
             mobility_score[1] -= tmp_sc[1];
@@ -1191,6 +1229,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             if ((white_king_zone & mobility) != 0) {
                 white_danger_score += PieceDangers[PieceType.Rook.toU3()];
                 white_danger_pieces += 1;
+                if (has_tuner) {
+                    tnr.king_ring_attackers[Color.White.toU4()][PieceType.Rook.toU3()] += 1;
+                }
             }
             
             var b1 = mobility & white_pawns;
@@ -1253,12 +1294,16 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             var tmp_sc = get_queen_mobility_score(index);
             if (has_tuner) {
                 tnr.queen_mobility[0][index] += 1;
+                tnr.safe_queen_mobility[0][index] += 1;
             }
             mobility_score[0] += tmp_sc[0];
             mobility_score[1] += tmp_sc[1];
             if ((black_king_zone & mobility) != 0) {
                 black_danger_score += PieceDangers[PieceType.Queen.toU3()];
                 black_danger_pieces += 1;
+                if (has_tuner) {
+                    tnr.king_ring_attackers[Color.Black.toU4()][PieceType.Queen.toU3()] += 1;
+                }
             }
 
             var b1 = mobility & black_pawns;
@@ -1321,12 +1366,16 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
             var tmp_sc = get_queen_mobility_score(index);
             if (has_tuner) {
                 tnr.queen_mobility[1][index] += 1;
+                tnr.safe_queen_mobility[1][index] += 1;
             }
             mobility_score[0] -= tmp_sc[0];
             mobility_score[1] -= tmp_sc[1];
             if ((white_king_zone & mobility) != 0) {
                 white_danger_score += PieceDangers[PieceType.Queen.toU3()];
                 white_danger_pieces += 1;
+                if (has_tuner) {
+                    tnr.king_ring_attackers[Color.White.toU4()][PieceType.Queen.toU3()] += 1;
+                }
             }
 
             var b1 = mobility & black_pawns;
@@ -1414,6 +1463,23 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
                 }
             }
         }    
+
+        update_wrong_bishop_features(&pawn_structure_score, Color.White, bb_white_bishops, pos.piece_bb[Piece.WHITE_PAWN.toU4()], maybe_tnr);
+        update_wrong_bishop_features(&pawn_structure_score, Color.Black, bb_black_bishops, pos.piece_bb[Piece.BLACK_PAWN.toU4()], maybe_tnr);
+
+        if (bb.pop_count(bb_white_bishops) == 1 and bb.pop_count(bb_black_bishops) == 1) {
+            const white_light = (bb_white_bishops & bb.WHITE_FIELDS) != 0;
+            const black_light = (bb_black_bishops & bb.WHITE_FIELDS) != 0;
+            if (white_light != black_light) {
+                const penalty = get_opposite_bishop_penalty();
+                additional_material_score[0] += penalty[0];
+                additional_material_score[1] += penalty[1];
+                if (has_tuner) {
+                    tnr.opposite_color_bishops[0] += 1;
+                    tnr.opposite_color_bishops[1] += 1;
+                }
+            }
+        }
 
         for (0..8) |i| {
             const white_pawns_on_file = bb.pop_count(pos.piece_bb[Piece.WHITE_PAWN.toU4()] & bb.MASK_FILE[i]);
@@ -1635,6 +1701,328 @@ pub  fn get_queen_mobility_score(index: u7) [2]i32 {
     score[0] = mg_queen_mobility[index];
     score[1] = eg_queen_mobility[index];
     return score;
+}
+
+fn apply_color_score(comptime color: Color, score: *[2]i32, bonus: [2]i32) void {
+    if (color == Color.White) {
+        score[0] += bonus[0];
+        score[1] += bonus[1];
+    } else {
+        score[0] -= bonus[0];
+        score[1] -= bonus[1];
+    }
+}
+
+fn scaled_rank_bonus(rank: u6, mg_step: i32, eg_step: i32) [2]i32 {
+    const r: i32 = @intCast(rank);
+    return .{ r * mg_step, r * eg_step };
+}
+
+fn get_protected_passer_bonus(rank: u6) [2]i32 {
+    return scaled_rank_bonus(rank, 6, 8);
+}
+
+fn get_connected_passer_bonus(rank: u6) [2]i32 {
+    return scaled_rank_bonus(rank, 5, 7);
+}
+
+fn get_rook_behind_bonus(rank: u6) [2]i32 {
+    return scaled_rank_bonus(rank, 4, 6);
+}
+
+fn get_backward_penalty(rank: u6) [2]i32 {
+    const base = scaled_rank_bonus(7 - rank, 4, 5);
+    return .{ -base[0], -base[1] };
+}
+
+fn get_rook_file_bonus(is_open: bool) [2]i32 {
+    return if (is_open) .{ 20, 14 } else .{ 10, 7 };
+}
+
+fn get_rook_seventh_bonus() [2]i32 {
+    return .{ 24, 16 };
+}
+
+fn get_bishop_long_diag_bonus() [2]i32 {
+    return .{ 12, 10 };
+}
+
+fn get_knight_outpost_bonus(rank: u6) [2]i32 {
+    return .{ 8 + @as(i32, rank) * 2, 6 + @as(i32, rank) * 2 };
+}
+
+fn get_king_file_penalty(center: bool) [2]i32 {
+    return if (center) .{ 10, 8 } else .{ 6, 4 };
+}
+
+fn get_opposite_bishop_penalty() [2]i32 {
+    return .{ -18, -22 };
+}
+
+fn get_wrong_bishop_penalty() [2]i32 {
+    return .{ -22, -28 };
+}
+
+fn has_rook_behind(friendly_rooks: u64, sq: u6, comptime color: Color) bool {
+    var walker: i32 = @intCast(sq);
+    if (color == Color.White) {
+        walker -= 8;
+        while (walker >= 0) : (walker -= 8) {
+            if ((friendly_rooks & bb.SQUARE_BB[@intCast(walker)]) != 0) return true;
+        }
+        return false;
+    } else {
+        walker += 8;
+        while (walker < 64) : (walker += 8) {
+            if ((friendly_rooks & bb.SQUARE_BB[@intCast(walker)]) != 0) return true;
+        }
+        return false;
+    }
+}
+
+fn update_extra_pawn_features(
+    pawn_structure_score: *[2]i32,
+    pos: *Position,
+    comptime color: Color,
+    friendly_pawns: u64,
+    enemy_pawns: u64,
+    friendly_pawn_attacks: u64,
+    friendly_rooks: u64,
+    maybe_tnr: ?*tuner.Tuner,
+) void {
+    var pawns = friendly_pawns;
+    const color_idx: usize = color.toU4();
+    const has_tuner = maybe_tnr != null;
+    var tnr: *tuner.Tuner = undefined;
+    if (has_tuner) tnr = maybe_tnr.?;
+
+    while (pawns != 0) {
+        const sq = bb.pop_lsb(&pawns);
+        const file = position.file_of_u6(sq);
+        const file_idx: usize = @intCast(file);
+        const rank = if (color == Color.White) position.rank_of_u6(sq) else 7 - position.rank_of_u6(sq);
+        var is_passed = false;
+        if (color == Color.White) {
+            if ((WhitePassedPawnMask[sq] & enemy_pawns) == 0 and (WhitePassedPawnFilter[sq] & friendly_pawns) == 0) {
+                is_passed = true;
+            }
+        } else {
+            if ((BlackPassedPawnMask[sq] & enemy_pawns) == 0 and (BlackPassedPawnFilter[sq] & friendly_pawns) == 0) {
+                is_passed = true;
+            }
+        }
+
+        const support_mask = if (color == Color.White) attacks.BLACK_PAWN_ATTACKS[sq] else attacks.WHITE_PAWN_ATTACKS[sq];
+        const is_supported = (support_mask & friendly_pawns) != 0;
+
+        if (is_passed and is_supported) {
+            apply_color_score(color, pawn_structure_score, get_protected_passer_bonus(rank));
+                if (has_tuner) {
+                    tnr.protected_passers[color_idx][file_idx] += 1;
+                }
+        }
+
+        if (is_passed) {
+            var connected = false;
+            const sq_i: i32 = @intCast(sq);
+            if (file > 0) {
+                const left_sq: u6 = @intCast(sq_i - 1);
+                if (position.rank_of_u6(left_sq) == position.rank_of_u6(sq) and pos.board[left_sq] == if (color == Color.White) Piece.WHITE_PAWN else Piece.BLACK_PAWN) {
+                    connected = true;
+                }
+            }
+            if (!connected and file < 7) {
+                const right_sq: u6 = @intCast(sq_i + 1);
+                if (position.rank_of_u6(right_sq) == position.rank_of_u6(sq) and pos.board[right_sq] == if (color == Color.White) Piece.WHITE_PAWN else Piece.BLACK_PAWN) {
+                    connected = true;
+                }
+            }
+            if (connected) {
+                apply_color_score(color, pawn_structure_score, get_connected_passer_bonus(rank));
+                if (has_tuner) tnr.connected_passers[color_idx][file_idx] += 1;
+            }
+
+            if (has_rook_behind(friendly_rooks, sq, color)) {
+                apply_color_score(color, pawn_structure_score, get_rook_behind_bonus(rank));
+                if (has_tuner) tnr.rook_behind_passers[color_idx][file_idx] += 1;
+            }
+        }
+
+        if (!is_passed) {
+            var backward = false;
+            const front_delta: i32 = if (color == Color.White) 8 else -8;
+            const front_sq_i = @as(i32, sq) + front_delta;
+            if (front_sq_i >= 0 and front_sq_i < 64) {
+                const front_sq: u6 = @intCast(front_sq_i);
+                const enemy_control = if (color == Color.White)
+                    (attacks.BLACK_PAWN_ATTACKS[front_sq] & enemy_pawns) != 0
+                else
+                    (attacks.WHITE_PAWN_ATTACKS[front_sq] & enemy_pawns) != 0;
+                const friendly_cover = (friendly_pawn_attacks & bb.SQUARE_BB[front_sq]) != 0;
+                if (enemy_control and !friendly_cover) backward = true;
+            }
+            if (backward) {
+                apply_color_score(color, pawn_structure_score, get_backward_penalty(rank));
+                if (has_tuner) tnr.backward_pawns[color_idx][file_idx] += 1;
+            }
+        }
+    }
+}
+
+fn update_extra_rook_features(
+    mobility_score: *[2]i32,
+    comptime color: Color,
+    friendly_rooks: u64,
+    friendly_pawns: u64,
+    enemy_pawns: u64,
+    maybe_tnr: ?*tuner.Tuner,
+) void {
+    var rooks = friendly_rooks;
+    const color_idx: usize = color.toU4();
+    const has_tuner = maybe_tnr != null;
+    var tnr: *tuner.Tuner = undefined;
+    if (has_tuner) tnr = maybe_tnr.?;
+
+    while (rooks != 0) {
+        const sq = bb.pop_lsb(&rooks);
+        const file = position.file_of_u6(sq);
+        const file_idx: usize = @intCast(file);
+        const file_mask = bb.MASK_FILE[file_idx];
+        const friendly_on_file = (friendly_pawns & file_mask) != 0;
+        const enemy_on_file = (enemy_pawns & file_mask) != 0;
+
+        if (!friendly_on_file and !enemy_on_file) {
+            apply_color_score(color, mobility_score, get_rook_file_bonus(true));
+            if (has_tuner) tnr.rook_open_files[color_idx][file_idx] += 1;
+        } else if (!friendly_on_file and enemy_on_file) {
+            apply_color_score(color, mobility_score, get_rook_file_bonus(false));
+            if (has_tuner) tnr.rook_semi_open_files[color_idx][file_idx] += 1;
+        }
+
+        const rank = position.rank_of_u6(sq);
+        if ((color == Color.White and rank == 6) or (color == Color.Black and rank == 1)) {
+            apply_color_score(color, mobility_score, get_rook_seventh_bonus());
+            if (has_tuner) tnr.rook_on_seventh[color_idx] += 1;
+        }
+    }
+}
+
+fn update_extra_knight_features(
+    mobility_score: *[2]i32,
+    comptime color: Color,
+    friendly_knights: u64,
+    friendly_pawn_attacks: u64,
+    enemy_pawns: u64,
+    maybe_tnr: ?*tuner.Tuner,
+) void {
+    var knights = friendly_knights;
+    const color_idx: usize = color.toU4();
+    const has_tuner = maybe_tnr != null;
+    var tnr: *tuner.Tuner = undefined;
+    if (has_tuner) tnr = maybe_tnr.?;
+
+    while (knights != 0) {
+        const sq = bb.pop_lsb(&knights);
+        const rank = if (color == Color.White) position.rank_of_u6(sq) else 7 - position.rank_of_u6(sq);
+        if (rank < 3) continue;
+        const supported = (friendly_pawn_attacks & bb.SQUARE_BB[sq]) != 0;
+        const enemy_control = if (color == Color.White)
+            (attacks.BLACK_PAWN_ATTACKS[sq] & enemy_pawns) != 0
+        else
+            (attacks.WHITE_PAWN_ATTACKS[sq] & enemy_pawns) != 0;
+        if (supported and !enemy_control) {
+            apply_color_score(color, mobility_score, get_knight_outpost_bonus(rank));
+            if (has_tuner) tnr.knight_outposts[color_idx] += 1;
+        }
+    }
+}
+
+fn update_extra_bishop_features(
+    king_score: *[2]i32,
+    comptime color: Color,
+    friendly_bishops: u64,
+    enemy_king_sq: u6,
+    occ: u64,
+    maybe_tnr: ?*tuner.Tuner,
+) void {
+    var bishops = friendly_bishops;
+    const color_idx: usize = color.toU4();
+    const has_tuner = maybe_tnr != null;
+    var tnr: *tuner.Tuner = undefined;
+    if (has_tuner) tnr = maybe_tnr.?;
+
+    while (bishops != 0) {
+        const sq = bb.pop_lsb(&bishops);
+        const attacks_to = attacks.get_bishop_attacks(sq, occ);
+        if ((attacks_to & bb.SQUARE_BB[enemy_king_sq]) != 0) {
+            apply_color_score(color, king_score, get_bishop_long_diag_bonus());
+            if (has_tuner) tnr.bishop_long_diag_king[color_idx] += 1;
+        }
+    }
+}
+
+fn update_king_file_features(
+    king_score: *[2]i32,
+    comptime color: Color,
+    king_sq: u6,
+    friendly_pawns: u64,
+    maybe_tnr: ?*tuner.Tuner,
+) void {
+    const has_tuner = maybe_tnr != null;
+    var tnr: *tuner.Tuner = undefined;
+    if (has_tuner) tnr = maybe_tnr.?;
+    const color_idx: usize = color.toU4();
+    const file = position.file_of_u6(king_sq);
+    const offsets = [_]i2{ -1, 0, 1 };
+    for (offsets, 0..) |off, idx| {
+        const f = @as(i8, @intCast(file)) + off;
+        if (f < 0 or f > 7) continue;
+        const mask = bb.MASK_FILE[@intCast(f)];
+        if ((friendly_pawns & mask) == 0) {
+            apply_color_score(color, king_score, get_king_file_penalty(off == 0));
+            if (has_tuner) tnr.king_file_open[color_idx][idx] += 1;
+        }
+    }
+}
+
+fn promotion_square_is_light(comptime color: Color, file: u6) bool {
+    const base: u6 = if (color == Color.White) 56 else 0;
+    const sq: u6 = base + file;
+    return (bb.SQUARE_BB[sq] & bb.WHITE_FIELDS) != 0;
+}
+
+fn update_wrong_bishop_features(
+    pawn_structure_score: *[2]i32,
+    comptime color: Color,
+    friendly_bishops: u64,
+    friendly_pawns: u64,
+    maybe_tnr: ?*tuner.Tuner,
+) void {
+    if (bb.pop_count(friendly_bishops) != 1) return;
+    const rook_pawns = friendly_pawns & (bb.MASK_FILE[0] | bb.MASK_FILE[7]);
+    if (rook_pawns == 0) return;
+    const bishop_sq = bb.get_ls1b_index(friendly_bishops);
+    const bishop_light = (bb.SQUARE_BB[bishop_sq] & bb.WHITE_FIELDS) != 0;
+
+    const color_idx: usize = color.toU4();
+    const has_tuner = maybe_tnr != null;
+    var tnr: *tuner.Tuner = undefined;
+    if (has_tuner) tnr = maybe_tnr.?;
+
+    var wrong = false;
+    if ((rook_pawns & bb.MASK_FILE[0]) != 0) {
+        const promo_light = promotion_square_is_light(color, 0);
+        if (promo_light != bishop_light) wrong = true;
+    }
+    if (!wrong and (rook_pawns & bb.MASK_FILE[7]) != 0) {
+        const promo_light = promotion_square_is_light(color, 7);
+        if (promo_light != bishop_light) wrong = true;
+    }
+
+    if (wrong) {
+        apply_color_score(color, pawn_structure_score, get_wrong_bishop_penalty());
+        if (has_tuner) tnr.rook_pawn_wrong_bishop[color_idx] += 1;
+    }
 }
 
 

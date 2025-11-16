@@ -330,6 +330,18 @@ pub const BinhceWriter = struct {
         28 +
         (5 * 6) +
         1 +
+        1 +
+        position.NPIECE_TYPES +
+        3 +
+        (8 * 6) +
+        1 +
+        1 +
+        1 +
+        9 +
+        14 +
+        15 +
+        28 +
+        1 +
         1;
 
     pub const entry_bytes: usize = 5 + features_per_color * 2;
@@ -439,6 +451,43 @@ pub const BinhceWriter = struct {
 
         try self.write_byte(tnr.doubled_pawns[c]);
         try self.write_byte(tnr.bishop_pair[c]);
+
+        for (0..position.NPIECE_TYPES) |p| {
+            try self.write_byte(tnr.king_ring_attackers[c][p]);
+        }
+
+        for (0..3) |idx| {
+            try self.write_byte(tnr.king_file_open[c][idx]);
+        }
+
+        for (0..8) |file| {
+            try self.write_byte(tnr.protected_passers[c][file]);
+            try self.write_byte(tnr.connected_passers[c][file]);
+            try self.write_byte(tnr.rook_behind_passers[c][file]);
+            try self.write_byte(tnr.backward_pawns[c][file]);
+            try self.write_byte(tnr.rook_open_files[c][file]);
+            try self.write_byte(tnr.rook_semi_open_files[c][file]);
+        }
+
+        try self.write_byte(tnr.rook_on_seventh[c]);
+        try self.write_byte(tnr.bishop_long_diag_king[c]);
+        try self.write_byte(tnr.knight_outposts[c]);
+
+        for (0..9) |idx| {
+            try self.write_byte(tnr.safe_knight_mobility[c][idx]);
+        }
+        for (0..14) |idx| {
+            try self.write_byte(tnr.safe_bishop_mobility[c][idx]);
+        }
+        for (0..15) |idx| {
+            try self.write_byte(tnr.safe_rook_mobility[c][idx]);
+        }
+        for (0..28) |idx| {
+            try self.write_byte(tnr.safe_queen_mobility[c][idx]);
+        }
+
+        try self.write_byte(tnr.opposite_color_bishops[c]);
+        try self.write_byte(tnr.rook_pawn_wrong_bishop[c]);
     }
 
     fn write_bytes(self: *BinhceWriter, bytes: []const u8) !void {

@@ -35,6 +35,23 @@ pub const Tuner = struct {
     queen_attacking: [2][6]u8 = undefined,
     doubled_pawns: [2]u8 = undefined,
     bishop_pair: [2]u8 = undefined,
+    king_ring_attackers: [2][NPIECE_TYPES]u8 = undefined,
+    king_file_open: [2][3]u8 = undefined,
+    protected_passers: [2][8]u8 = undefined,
+    connected_passers: [2][8]u8 = undefined,
+    rook_behind_passers: [2][8]u8 = undefined,
+    backward_pawns: [2][8]u8 = undefined,
+    rook_open_files: [2][8]u8 = undefined,
+    rook_semi_open_files: [2][8]u8 = undefined,
+    rook_on_seventh: [2]u8 = undefined,
+    bishop_long_diag_king: [2]u8 = undefined,
+    knight_outposts: [2]u8 = undefined,
+    safe_knight_mobility: [2][9]u8 = undefined,
+    safe_bishop_mobility: [2][14]u8 = undefined,
+    safe_rook_mobility: [2][15]u8 = undefined,
+    safe_queen_mobility: [2][28]u8 = undefined,
+    opposite_color_bishops: [2]u8 = undefined,
+    rook_pawn_wrong_bishop: [2]u8 = undefined,
 
     pub fn init(self: *Tuner) void {
         const tuner = Tuner{
@@ -99,6 +116,50 @@ pub const Tuner = struct {
         @memset(self.doubled_pawns[0..2], @as(u8, 0));
 
         @memset(self.bishop_pair[0..2], @as(u8, 0));
+
+        @memset(self.king_ring_attackers[0][0..NPIECE_TYPES], @as(u8, 0));
+        @memset(self.king_ring_attackers[1][0..NPIECE_TYPES], @as(u8, 0));
+
+        for (0..3) |idx| {
+            self.king_file_open[0][idx] = 0;
+            self.king_file_open[1][idx] = 0;
+        }
+
+        for (0..8) |idx| {
+            self.protected_passers[0][idx] = 0;
+            self.protected_passers[1][idx] = 0;
+            self.connected_passers[0][idx] = 0;
+            self.connected_passers[1][idx] = 0;
+            self.rook_behind_passers[0][idx] = 0;
+            self.rook_behind_passers[1][idx] = 0;
+            self.backward_pawns[0][idx] = 0;
+            self.backward_pawns[1][idx] = 0;
+            self.rook_open_files[0][idx] = 0;
+            self.rook_open_files[1][idx] = 0;
+            self.rook_semi_open_files[0][idx] = 0;
+            self.rook_semi_open_files[1][idx] = 0;
+        }
+
+        self.rook_on_seventh[0] = 0;
+        self.rook_on_seventh[1] = 0;
+        self.bishop_long_diag_king[0] = 0;
+        self.bishop_long_diag_king[1] = 0;
+        self.knight_outposts[0] = 0;
+        self.knight_outposts[1] = 0;
+
+        @memset(self.safe_knight_mobility[0][0..9], @as(u8, 0));
+        @memset(self.safe_knight_mobility[1][0..9], @as(u8, 0));
+        @memset(self.safe_bishop_mobility[0][0..14], @as(u8, 0));
+        @memset(self.safe_bishop_mobility[1][0..14], @as(u8, 0));
+        @memset(self.safe_rook_mobility[0][0..15], @as(u8, 0));
+        @memset(self.safe_rook_mobility[1][0..15], @as(u8, 0));
+        @memset(self.safe_queen_mobility[0][0..28], @as(u8, 0));
+        @memset(self.safe_queen_mobility[1][0..28], @as(u8, 0));
+
+        self.opposite_color_bishops[0] = 0;
+        self.opposite_color_bishops[1] = 0;
+        self.rook_pawn_wrong_bishop[0] = 0;
+        self.rook_pawn_wrong_bishop[1] = 0;
     }
 
     pub fn new() Tuner {
@@ -182,6 +243,43 @@ pub const Tuner = struct {
         try writer.print("DOUBL_{},", .{c});
 
         try writer.print("BISH_PAIR_{},", .{c});
+
+        for (0..NPIECE_TYPES) |pt| {
+            try writer.print("KING_ATK_{}_{},", .{ c, pt });
+        }
+
+        for (0..3) |idx| {
+            try writer.print("KING_FILE_{}_{},", .{ c, idx });
+        }
+
+        for (0..8) |file| {
+            try writer.print("PROT_PASS_{}_{},", .{ c, file });
+            try writer.print("CONN_PASS_{}_{},", .{ c, file });
+            try writer.print("ROOK_BEHIND_{}_{},", .{ c, file });
+            try writer.print("BACKWARD_{}_{},", .{ c, file });
+            try writer.print("ROOK_OPEN_{}_{},", .{ c, file });
+            try writer.print("ROOK_SEMI_{}_{},", .{ c, file });
+        }
+
+        try writer.print("ROOK_7TH_{},", .{ c });
+        try writer.print("BISH_LONG_{},", .{ c });
+        try writer.print("KN_OUTPOST_{},", .{ c });
+
+        for (0..9) |idx| {
+            try writer.print("SAFE_KN_MOB_{}_{},", .{ c, idx });
+        }
+        for (0..14) |idx| {
+            try writer.print("SAFE_BISH_MOB_{}_{},", .{ c, idx });
+        }
+        for (0..15) |idx| {
+            try writer.print("SAFE_ROOK_MOB_{}_{},", .{ c, idx });
+        }
+        for (0..28) |idx| {
+            try writer.print("SAFE_QN_MOB_{}_{},", .{ c, idx });
+        }
+
+        try writer.print("OPP_BISH_{},", .{ c });
+        try writer.print("WRONG_BISH_{},", .{ c });
     }
 
     pub fn write_params(self: *Tuner, fileOut: fs.File, comptime color: Color) !void {
@@ -257,6 +355,43 @@ pub const Tuner = struct {
         try writer.print("{},", .{self.doubled_pawns[c]});
 
         try writer.print("{},", .{self.bishop_pair[c]});
+
+        for (0..NPIECE_TYPES) |p| {
+            try writer.print("{},", .{self.king_ring_attackers[c][p]});
+        }
+
+        for (0..3) |idx| {
+            try writer.print("{},", .{self.king_file_open[c][idx]});
+        }
+
+        for (0..8) |file| {
+            try writer.print("{},", .{self.protected_passers[c][file]});
+            try writer.print("{},", .{self.connected_passers[c][file]});
+            try writer.print("{},", .{self.rook_behind_passers[c][file]});
+            try writer.print("{},", .{self.backward_pawns[c][file]});
+            try writer.print("{},", .{self.rook_open_files[c][file]});
+            try writer.print("{},", .{self.rook_semi_open_files[c][file]});
+        }
+
+        try writer.print("{},", .{self.rook_on_seventh[c]});
+        try writer.print("{},", .{self.bishop_long_diag_king[c]});
+        try writer.print("{},", .{self.knight_outposts[c]});
+
+        for (0..9) |idx| {
+            try writer.print("{},", .{self.safe_knight_mobility[c][idx]});
+        }
+        for (0..14) |idx| {
+            try writer.print("{},", .{self.safe_bishop_mobility[c][idx]});
+        }
+        for (0..15) |idx| {
+            try writer.print("{},", .{self.safe_rook_mobility[c][idx]});
+        }
+        for (0..28) |idx| {
+            try writer.print("{},", .{self.safe_queen_mobility[c][idx]});
+        }
+
+        try writer.print("{},", .{self.opposite_color_bishops[c]});
+        try writer.print("{},", .{self.rook_pawn_wrong_bishop[c]});
     }
 
     pub const NPOS: u32 = 1_428_000;
