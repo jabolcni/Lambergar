@@ -321,8 +321,7 @@ pub const Evaluation = struct {
         self.remove_piece_update_phase(to_pc);
     }    
 
-    pub fn clean_eval(self: *Evaluation, pos: *Position) i32 { // TUNER OFF    
-//    pub fn clean_eval(self: *Evaluation, pos: *Position, tnr: *tuner.Tuner) i32 { // TUNER ON
+    pub fn clean_eval(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) i32 {
         var mat_white_mg: i32 = 0;
         var mat_white_eg: i32 = 0;
         var mat_black_mg: i32 = 0;
@@ -336,19 +335,29 @@ pub const Evaluation = struct {
         var phase_white: u8 = 0;
         var phase_black: u8 = 0;
 
+        const has_tuner = maybe_tnr != null;
+        var tnr: *tuner.Tuner = undefined;
+        if (has_tuner) {
+            tnr = maybe_tnr.?;
+        }
+
         for (Piece.WHITE_PAWN.toU4()..(Piece.WHITE_KING.toU4()+1)) |pc| {
             var b1 = pos.piece_bb[pc];
             const pc_count = bb.pop_count(b1);
             const pc_type_idx = pc;
             mat_white_mg += material_mg[pc_type_idx]*pc_count;
             mat_white_eg += material_eg[pc_type_idx]*pc_count;
-            //tnr.mat[0][pc_type_idx] = @as(u8, @intCast(pc_count));
+            if (has_tuner) {
+                tnr.mat[0][pc_type_idx] = @as(u8, @intCast(pc_count));
+            }
 
             while (b1 != 0) {
                 const s_idx = bb.pop_lsb(&b1);
                 pos_white_mg += (&midgame_table)[Color.White.toU4()][pc_type_idx][s_idx];
                 pos_white_eg += (&endgame_table)[Color.White.toU4()][pc_type_idx][s_idx];
-                //tnr.psqt[0][pc_type_idx][s_idx] += 1;
+                if (has_tuner) {
+                    tnr.psqt[0][pc_type_idx][s_idx] += 1;
+                }
             }
 
             phase_white += phaseValues[pc_type_idx]*pc_count;
@@ -361,13 +370,17 @@ pub const Evaluation = struct {
             const pc_type_idx = pc - 8;
             mat_black_mg += material_mg[pc_type_idx]*pc_count;
             mat_black_eg += material_eg[pc_type_idx]*pc_count;
-            //tnr.mat[1][pc_type_idx] = @as(u8, @intCast(pc_count));
+            if (has_tuner) {
+                tnr.mat[1][pc_type_idx] = @as(u8, @intCast(pc_count));
+            }
 
             while (b1 != 0) {
                 const s_idx = bb.pop_lsb(&b1);
                 pos_black_mg += (&midgame_table)[Color.Black.toU4()][pc_type_idx][s_idx];
                 pos_black_eg += (&endgame_table)[Color.Black.toU4()][pc_type_idx][s_idx];
-                //tnr.psqt[1][pc_type_idx][s_idx^56] += 1;
+                if (has_tuner) {
+                    tnr.psqt[1][pc_type_idx][s_idx^56] += 1;
+                }
             }
 
             phase_black += phaseValues[pc_type_idx]*pc_count;            
@@ -384,7 +397,7 @@ pub const Evaluation = struct {
         var eval_eg = self.eval_eg;   
 
 //         var piece_scores = self.eval_pieces(pos, tnr); // TUNER ON
-        const piece_scores = self.eval_pieces(pos); // TUNER OFF
+        const piece_scores = self.eval_pieces(pos, maybe_tnr);
         eval_mg += piece_scores[0];
         eval_eg += piece_scores[1];        
 
@@ -509,7 +522,7 @@ pub const Evaluation = struct {
         var eval_mg = self.eval_mg;
         var eval_eg = self.eval_eg;
 
-        const pieces_score = self.eval_pieces(pos); // TUNER OFF
+        const pieces_score = self.eval_pieces(pos, null); // TUNER OFF
         eval_mg += pieces_score[0]; // TUNER OFF
         eval_eg += pieces_score[1]; // TUNER OFF
 
@@ -554,8 +567,7 @@ pub const Evaluation = struct {
 
     }
 
-//fn eval_pieces(self: *Evaluation, pos: *Position, tnr: *tuner.Tuner) [2]i32 { // TUNER ON
-fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF    
+fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i32 {
 
         _ = self;
 
@@ -594,6 +606,12 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
         var score = [_]i32{0,0};
         var mobility_score = [_]i32{0,0};
 
+        const has_tuner = maybe_tnr != null;
+        var tnr: *tuner.Tuner = undefined;
+        if (has_tuner) {
+            tnr = maybe_tnr.?;
+        }
+
         // Pawns
         var pc_bb = white_pawns;
         while (pc_bb != 0) {
@@ -612,7 +630,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             // Isolated pawn evaluation
             if (pos.piece_bb[Piece.WHITE_PAWN.toU4()] & IsolatedPawnMask[file] == 0) {
                 const tmp_sc = get_isolated_pawn_score(file);
-                //tnr.isolated_pawn[0][file] += 1;
+                if (has_tuner) {
+                    tnr.isolated_pawn[0][file] += 1;
+                }
                 pawn_structure_score[0] += tmp_sc[0];
                 pawn_structure_score[1] += tmp_sc[1];
             }
@@ -621,13 +641,17 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             if (((WhitePassedPawnMask[sq] & pos.piece_bb[Piece.BLACK_PAWN.toU4()]) == 0) and ((WhitePassedPawnFilter[sq] & pos.piece_bb[Piece.WHITE_PAWN.toU4()]) == 0)) {
                 var tmp_sc = get_passed_pawn_score(sq);
                 //var tmp_sc = get_passed_pawn_score_f(file);
-                //tnr.passed_pawn[0][sq] += 1;
+                if (has_tuner) {
+                    tnr.passed_pawn[0][sq] += 1;
+                }
 
                 pawn_structure_score[0] += tmp_sc[0];
                 pawn_structure_score[1] += tmp_sc[1];
                 if ((bb.SQUARE_BB[sq+8] & black_pieces) != 0) {
                     tmp_sc = get_blocked_passer_score(rank);
-                    //tnr.blocked_passer[0][rank] += 1;
+                    if (has_tuner) {
+                        tnr.blocked_passer[0][rank] += 1;
+                    }
                     pawn_structure_score[0] += tmp_sc[0];
                     pawn_structure_score[1] += tmp_sc[1];
                 }
@@ -640,7 +664,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count;
-                //tnr.pawn_attacking[0][PieceType.Knight.toU3()] += tmp_count;
+                if (has_tuner) {
+                    tnr.pawn_attacking[0][PieceType.Knight.toU3()] += tmp_count;
+                }
             }
             b1 = att & pos.piece_bb[Piece.BLACK_BISHOP.toU4()];
             if (b1 != 0) {
@@ -648,7 +674,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count;    
-                //tnr.pawn_attacking[0][PieceType.Bishop.toU3()] += tmp_count;            
+                if (has_tuner) {
+                    tnr.pawn_attacking[0][PieceType.Bishop.toU3()] += tmp_count;            
+                }
             }     
             b1 = att & pos.piece_bb[Piece.BLACK_ROOK.toU4()];
             if (b1 != 0) {
@@ -656,7 +684,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count;
-                //tnr.pawn_attacking[0][PieceType.Rook.toU3()] += tmp_count;                  
+                if (has_tuner) {
+                    tnr.pawn_attacking[0][PieceType.Rook.toU3()] += tmp_count;                  
+                }
             }         
             b1 = att & pos.piece_bb[Piece.BLACK_QUEEN.toU4()];
             if (b1 != 0) {
@@ -664,13 +694,17 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count;
-                //tnr.pawn_attacking[0][PieceType.Queen.toU3()] += tmp_count;                  
+                if (has_tuner) {
+                    tnr.pawn_attacking[0][PieceType.Queen.toU3()] += tmp_count;                  
+                }
             }                      
 
             // Pawn is supported?
             if (white_pawn_attacks & bb.SQUARE_BB[sq] != 0) {
                 const tmp_sc = get_supported_pawn_bonus(rank);
-                //tnr.supported_pawn[0][rank] += 1;
+                if (has_tuner) {
+                    tnr.supported_pawn[0][rank] += 1;
+                }
                 pawn_structure_score[0] += tmp_sc[0];
                 pawn_structure_score[1] += tmp_sc[1];
             }
@@ -678,7 +712,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             // Pawn phalanx
             if ((file != 7) and (pos.board[sq+1] == Piece.WHITE_PAWN)) {
                 const tmp_sc = get_phalanx_score(rank);
-                //tnr.pawn_phalanx[0][rank] += 1;
+                if (has_tuner) {
+                    tnr.pawn_phalanx[0][rank] += 1;
+                }
                 pawn_structure_score[0] += tmp_sc[0];
                 pawn_structure_score[1] += tmp_sc[1];                
             }
@@ -702,7 +738,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             // Isolated pawn evaluation
             if (pos.piece_bb[Piece.BLACK_PAWN.toU4()] & IsolatedPawnMask[file] == 0) {
                 const tmp_sc = get_isolated_pawn_score(7-file);
-                //tnr.isolated_pawn[1][7-file] += 1;
+                if (has_tuner) {
+                    tnr.isolated_pawn[1][7-file] += 1;
+                }
                 pawn_structure_score[0] -= tmp_sc[0];
                 pawn_structure_score[1] -= tmp_sc[1];                
             }
@@ -711,13 +749,17 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             if (((BlackPassedPawnMask[sq] & pos.piece_bb[Piece.WHITE_PAWN.toU4()]) == 0) and ((BlackPassedPawnFilter[sq] & pos.piece_bb[Piece.BLACK_PAWN.toU4()]) == 0)) {
                 var tmp_sc = get_passed_pawn_score(sq^56);
                 //var tmp_sc = get_passed_pawn_score_f(7-file);
-                //tnr.passed_pawn[1][sq^56] += 1;
+                if (has_tuner) {
+                    tnr.passed_pawn[1][sq^56] += 1;
+                }
 
                 pawn_structure_score[0] -= tmp_sc[0];
                 pawn_structure_score[1] -= tmp_sc[1];                
                 if ((bb.SQUARE_BB[sq-8] & white_pieces) != 0) {
                     tmp_sc = get_blocked_passer_score(7-rank);
-                    //tnr.blocked_passer[1][7-rank] += 1;
+                    if (has_tuner) {
+                        tnr.blocked_passer[1][7-rank] += 1;
+                    }
                     pawn_structure_score[0] -= tmp_sc[0];
                     pawn_structure_score[1] -= tmp_sc[1];                    
                 }
@@ -730,7 +772,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count;  
-                //tnr.pawn_attacking[1][PieceType.Knight.toU3()] += tmp_count;              
+                if (has_tuner) {
+                    tnr.pawn_attacking[1][PieceType.Knight.toU3()] += tmp_count;              
+                }
             }
             b1 = att & pos.piece_bb[Piece.WHITE_BISHOP.toU4()];
             if (b1 != 0) {
@@ -738,7 +782,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count;   
-                //tnr.pawn_attacking[1][PieceType.Bishop.toU3()] += tmp_count;              
+                if (has_tuner) {
+                    tnr.pawn_attacking[1][PieceType.Bishop.toU3()] += tmp_count;              
+                }
             }     
             b1 = att & pos.piece_bb[Piece.WHITE_ROOK.toU4()];
             if (b1 != 0) {
@@ -746,7 +792,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.pawn_attacking[1][PieceType.Rook.toU3()] += tmp_count;                
+                if (has_tuner) {
+                    tnr.pawn_attacking[1][PieceType.Rook.toU3()] += tmp_count;                
+                }
             }         
             b1 = att & pos.piece_bb[Piece.WHITE_QUEEN.toU4()];
             if (b1 != 0) {
@@ -754,13 +802,17 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.pawn_attacking[1][PieceType.Queen.toU3()] += tmp_count;                
+                if (has_tuner) {
+                    tnr.pawn_attacking[1][PieceType.Queen.toU3()] += tmp_count;                
+                }
             }                      
 
             // Pawn is supported?
             if ((black_pawn_attacks & bb.SQUARE_BB[sq]) != 0) {
                 const tmp_sc = get_supported_pawn_bonus(7-rank);
-                //tnr.supported_pawn[1][7-rank] += 1;
+                if (has_tuner) {
+                    tnr.supported_pawn[1][7-rank] += 1;
+                }
                 pawn_structure_score[0] -= tmp_sc[0];
                 pawn_structure_score[1] -= tmp_sc[1];            
             }
@@ -768,7 +820,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             // Pawn phalanx
             if ((file != 7) and (pos.board[sq+1] == Piece.BLACK_PAWN)) {
                 const tmp_sc = get_phalanx_score(7-rank);
-                //tnr.pawn_phalanx[1][7-rank] += 1;
+                if (has_tuner) {
+                    tnr.pawn_phalanx[1][7-rank] += 1;
+                }
                 pawn_structure_score[0] -= tmp_sc[0];
                 pawn_structure_score[1] -= tmp_sc[1];                   
             }
@@ -784,7 +838,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             white_att |= mobility;
             const index = bb.pop_count(mobility & ~black_pawn_attacks);
             var tmp_sc = get_knight_mobility_score(index);
-            //tnr.knight_mobility[0][index] += 1;
+            if (has_tuner) {
+                tnr.knight_mobility[0][index] += 1;
+            }
             mobility_score[0] += tmp_sc[0];
             mobility_score[1] += tmp_sc[1];
             if ((black_king_zone & mobility) != 0) {
@@ -799,7 +855,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }
 
             b1 = mobility & black_bishop;
@@ -809,7 +867,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }    
 
             b1 = mobility & black_rook;
@@ -819,7 +879,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }      
 
             b1 = mobility & black_queen;
@@ -829,7 +891,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.knight_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }                                
 
         }
@@ -842,7 +906,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             black_att |= mobility;
             const index = bb.pop_count(mobility & ~white_pawn_attacks);
             var tmp_sc = get_knight_mobility_score(index);
-            //tnr.knight_mobility[1][index] += 1;
+            if (has_tuner) {
+                tnr.knight_mobility[1][index] += 1;
+            }
             mobility_score[0] -= tmp_sc[0];
             mobility_score[1] -= tmp_sc[1];
             if ((white_king_zone & mobility) != 0) {
@@ -857,7 +923,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }
 
             b1 = mobility & white_bishop;
@@ -867,7 +935,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }    
 
             b1 = mobility & white_rook;
@@ -877,7 +947,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }      
 
             b1 = mobility & white_queen;
@@ -887,7 +959,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.knight_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }                                
 
         }
@@ -900,7 +974,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             white_att |= mobility;
             const index = bb.pop_count(mobility & ~black_pawn_attacks);
             var tmp_sc = get_bishop_mobility_score(index);
-            //tnr.bishop_mobility[0][index] += 1;
+            if (has_tuner) {
+                tnr.bishop_mobility[0][index] += 1;
+            }
             mobility_score[0] += tmp_sc[0];
             mobility_score[1] += tmp_sc[1];
             if ((black_king_zone & mobility) != 0) {
@@ -915,7 +991,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }
 
             b1 = mobility & black_knight;
@@ -925,7 +1003,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }    
 
             b1 = mobility & black_rook;
@@ -935,7 +1015,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }      
 
             b1 = mobility & black_queen;
@@ -945,7 +1027,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.bishop_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }   
         }    
 
@@ -957,7 +1041,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             black_att |= mobility;
             const index = bb.pop_count(mobility & ~white_pawn_attacks);
             var tmp_sc = get_bishop_mobility_score(index);
-            //tnr.bishop_mobility[1][index] += 1;
+            if (has_tuner) {
+                tnr.bishop_mobility[1][index] += 1;
+            }
             mobility_score[0] -= tmp_sc[0];
             mobility_score[1] -= tmp_sc[1];
             if ((white_king_zone & mobility) != 0) {
@@ -972,7 +1058,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }
 
             b1 = mobility & white_knight;
@@ -982,7 +1070,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }    
 
             b1 = mobility & white_rook;
@@ -992,7 +1082,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }      
 
             b1 = mobility & white_queen;
@@ -1002,7 +1094,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.bishop_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }             
 
         }         
@@ -1017,7 +1111,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             white_att |= mobility;
             const index = bb.pop_count(mobility & ~black_pawn_attacks);
             var tmp_sc = get_rook_mobility_score(index);
-            //tnr.rook_mobility[0][index] += 1;
+            if (has_tuner) {
+                tnr.rook_mobility[0][index] += 1;
+            }
             mobility_score[0] += tmp_sc[0];
             mobility_score[1] += tmp_sc[1];
 
@@ -1033,7 +1129,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }
 
             b1 = mobility & black_knight;
@@ -1043,7 +1141,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }    
 
             b1 = mobility & black_bishop;
@@ -1053,7 +1153,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }      
 
             b1 = mobility & black_queen;
@@ -1063,7 +1165,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.rook_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }             
 
         }   
@@ -1078,7 +1182,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             black_att |= mobility;
             const index = bb.pop_count(mobility & ~white_pawn_attacks);
             var tmp_sc = get_rook_mobility_score(index);
-            //tnr.rook_mobility[1][index] += 1;
+            if (has_tuner) {
+                tnr.rook_mobility[1][index] += 1;
+            }
             mobility_score[0] -= tmp_sc[0];
             mobility_score[1] -= tmp_sc[1];
 
@@ -1094,7 +1200,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }
 
             b1 = mobility & white_knight;
@@ -1104,7 +1212,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }    
 
             b1 = mobility & white_bishop;
@@ -1114,7 +1224,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }      
 
             b1 = mobility & white_queen;
@@ -1124,7 +1236,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] -= tmp_sc[0]*tmp_count;                
                 threat_score[1] -= tmp_sc[1]*tmp_count; 
-                //tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.rook_attacking[1][pt.toU3()] += tmp_count;               
+                }
             }  
 
         }    
@@ -1137,7 +1251,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             white_att |= mobility;
             const index = bb.pop_count(mobility & ~black_pawn_attacks);
             var tmp_sc = get_queen_mobility_score(index);
-            //tnr.queen_mobility[0][index] += 1;
+            if (has_tuner) {
+                tnr.queen_mobility[0][index] += 1;
+            }
             mobility_score[0] += tmp_sc[0];
             mobility_score[1] += tmp_sc[1];
             if ((black_king_zone & mobility) != 0) {
@@ -1152,7 +1268,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }
 
             b1 = mobility & black_knight;
@@ -1162,7 +1280,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }    
 
             b1 = mobility & black_bishop;
@@ -1172,7 +1292,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }      
 
             b1 = mobility & black_rook;
@@ -1182,7 +1304,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }                
 
         }  
@@ -1195,7 +1319,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             black_att |= mobility;
             const index = bb.pop_count(mobility & ~white_pawn_attacks);
             var tmp_sc = get_queen_mobility_score(index);
-            //tnr.queen_mobility[1][index] += 1;
+            if (has_tuner) {
+                tnr.queen_mobility[1][index] += 1;
+            }
             mobility_score[0] -= tmp_sc[0];
             mobility_score[1] -= tmp_sc[1];
             if ((white_king_zone & mobility) != 0) {
@@ -1210,7 +1336,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }
 
             b1 = mobility & black_knight;
@@ -1220,7 +1348,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }    
 
             b1 = mobility & black_bishop;
@@ -1230,7 +1360,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }      
 
             b1 = mobility & black_rook;
@@ -1240,7 +1372,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
                 const tmp_count = bb.pop_count(b1);
                 threat_score[0] += tmp_sc[0]*tmp_count;                
                 threat_score[1] += tmp_sc[1]*tmp_count; 
-                //tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                if (has_tuner) {
+                    tnr.queen_attacking[0][pt.toU3()] += tmp_count;               
+                }
             }              
 
         }                              
@@ -1265,7 +1399,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             if ((bb_white_bishops & bb.WHITE_FIELDS != 0) and (bb_white_bishops & bb.BLACK_FIELDS != 0)) {
                 additional_material_score[0] += mg_bishop_pair[0];
                 additional_material_score[1] += eg_bishop_pair[0];
-                //tnr.bishop_pair[0] += 1;
+                if (has_tuner) {
+                    tnr.bishop_pair[0] += 1;
+                }
             }
         }
         const bb_black_bishops = pos.piece_bb[Piece.BLACK_BISHOP.toU4()];
@@ -1273,7 +1409,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             if ((bb_black_bishops & bb.WHITE_FIELDS != 0) and (bb_black_bishops & bb.BLACK_FIELDS != 0)) {
                 additional_material_score[0] -= mg_bishop_pair[0];
                 additional_material_score[1] -= eg_bishop_pair[0];
-                //tnr.bishop_pair[1] += 1;
+                if (has_tuner) {
+                    tnr.bishop_pair[1] += 1;
+                }
             }
         }    
 
@@ -1284,12 +1422,16 @@ fn eval_pieces(self: *Evaluation, pos: *Position) [2]i32 { // TUNER OFF
             if (white_pawns_on_file >= 2) {
                 pawn_structure_score[0] += mg_doubled_pawns[0];
                 pawn_structure_score[1] += eg_doubled_pawns[0];
-                //tnr.doubled_pawns[0] += 1; 
+                if (has_tuner) {
+                    tnr.doubled_pawns[0] += 1; 
+                }
             } 
             if (black_pawns_on_file >= 2) {
                 pawn_structure_score[0] -= mg_doubled_pawns[0];
                 pawn_structure_score[1] -= eg_doubled_pawns[0];
-                //tnr.doubled_pawns[1] += 1;
+                if (has_tuner) {
+                    tnr.doubled_pawns[1] += 1;
+                }
             } 
 
         }

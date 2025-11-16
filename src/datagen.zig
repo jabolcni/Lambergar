@@ -5,6 +5,7 @@ const nnue = @import("nnue.zig");
 const uci = @import("uci.zig");
 const tt = @import("tt.zig");
 const binw = @import("datagen_writer.zig");
+const tuner = @import("tuner.zig");
 
 const Position = position.Position;
 const Move = position.Move;
@@ -19,6 +20,7 @@ const BinEntry = struct {
     score_cp: i32,
     ply: u16,
     stm_white: bool,
+    fen: ?[]u8 = null,
 };
 
 fn to_uci_str(m: Move, buf: *[5]u8) []const u8 {
@@ -162,8 +164,59 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
     var prng = std.Random.DefaultPrng.init(seed);
     const rng = prng.random();
 
-    var bw = try binw.Bin40Writer.open(bin_path);
-    defer bw.close();
+    const store_bin40 = cfg.save_mode == .bin40_only or cfg.save_mode == .both;
+    const store_binhce = cfg.save_mode == .binhce_only or cfg.save_mode == .both;
+
+    var bw: ?binw.Bin40Writer = null;
+    if (store_bin40) {
+        bw = try binw.Bin40Writer.open(bin_path);
+    }
+    defer {
+        if (bw) |*writer| writer.close();
+    }
+
+    var hce_writer: ?binw.BinhceWriter = null;
+    var hce_name_buf: ?[]u8 = null;
+    if (store_binhce) {
+        var chosen_name: []const u8 = undefined;
+        if (cfg.hce_filename) |raw_name| {
+            if (std.mem.endsWith(u8, raw_name, ".binhce")) {
+                chosen_name = raw_name;
+            } else {
+                const appended = try std.fmt.allocPrint(allocator, "{s}.binhce", .{raw_name});
+                hce_name_buf = appended;
+                chosen_name = appended;
+            }
+        } else {
+            const base = if (std.mem.endsWith(u8, bin_path, ".bin")) bin_path[0 .. bin_path.len - 4] else bin_path;
+            const appended = try std.fmt.allocPrint(allocator, "{s}.binhce", .{base});
+            hce_name_buf = appended;
+            chosen_name = appended;
+        }
+        const writer = try binw.BinhceWriter.open(chosen_name);
+        hce_writer = writer;
+    }
+    defer {
+        if (hce_writer) |*hw| hw.close();
+        if (hce_name_buf) |buf| allocator.free(buf);
+    }
+
+    var hce_tuner: tuner.Tuner = undefined;
+    if (store_binhce) {
+        hce_tuner = tuner.Tuner.new();
+    }
+
+    const previous_use_nnue = nnue.engine_using_nnue;
+    var restore_nnue = false;
+    if (cfg.force_use_nnue) |flag| {
+        restore_nnue = true;
+        nnue.engine_using_nnue = if (flag) nnue.engine_loaded_net else false;
+    }
+    defer {
+        if (restore_nnue) {
+            nnue.engine_using_nnue = previous_use_nnue;
+        }
+    }
 
     var total_positions: usize = 0;
     var games_count: usize = 0;
@@ -177,7 +230,14 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
 
         // Preallocate a larger buffer to reduce reallocations when saving positions.
         var entries = try std.ArrayList(BinEntry).initCapacity(allocator, 512);
-        defer entries.deinit(allocator);
+        defer {
+            for (entries.items) |entry| {
+                if (entry.fen) |fen| {
+                    allocator.free(fen);
+                }
+            }
+            entries.deinit(allocator);
+        }
 
         var ply: usize = 0;
         var random_used: usize = 0;
@@ -234,12 +294,22 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
                 const ts0 = std.time.nanoTimestamp();
                 var s32: [32]u8 = undefined;
                 binw.pack_sfen32(&pos, &s32);
+                var fen_mem: ?[]u8 = null;
+                if (store_binhce) {
+                    fen_mem = try pos.get_fen(allocator);
+                }
+                errdefer {
+                    if (fen_mem) |fen| {
+                        allocator.free(fen);
+                    }
+                }
                 const be = BinEntry{
                     .sfen32 = s32,
                     .move16 = binw.Bin40Writer.encode_move16(&pos, bm), // BIN stores best move
                     .score_cp = best.score,
                     .ply = @intCast(pos.game_ply),
                     .stm_white = (pos.side_to_play == Color.White),
+                    .fen = fen_mem,
                 };
                 try entries.append(allocator, be);
                 const ts1 = std.time.nanoTimestamp();
@@ -273,7 +343,23 @@ pub fn generate_binary(allocator: std.mem.Allocator, bin_path: []const u8, cfg: 
             const e = entries.items[i];
             var gr: i8 = 0;
             if (result_white >= 0.75) gr = if (e.stm_white) 1 else -1 else if (result_white <= 0.25) gr = if (e.stm_white) -1 else 1 else gr = 0;
-            try bw.write_packed(&e.sfen32, e.score_cp, e.move16, e.ply, gr);
+            if (store_bin40) {
+                if (bw) |*writer| {
+                    try writer.write_packed(&e.sfen32, e.score_cp, e.move16, e.ply, gr);
+                }
+            }
+            if (store_binhce) {
+                if (hce_writer) |*hw| {
+                    if (e.fen) |fen_str| {
+                        var hce_pos = Position.new();
+                        try hce_pos.set(fen_str);
+                        hce_tuner.clear_probe_arrays();
+                        _ = hce_pos.eval.clean_eval(&hce_pos, &hce_tuner);
+                        const phase = hce_pos.eval.phase;
+                        try hw.write_entry(gr, phase, e.score_cp, &hce_tuner);
+                    }
+                }
+            }
             total_positions += 1;
             if (total_positions % 1000 == 0) {
                 const elapsed_ns = std.time.nanoTimestamp() - start_ns;
@@ -362,6 +448,7 @@ pub const GenConfig = struct {
     games: usize = 1,
     max_plies: usize = 200,
     best_depth: u32 = 8,
+    force_use_nnue: ?bool = null,
     // randomization windows
     first_random: usize = 3, // legacy (unused by new policy)
     next_mixed: usize = 3, // legacy (unused by new policy)
@@ -371,6 +458,8 @@ pub const GenConfig = struct {
     skip_noisy: bool = false, // skip saving positions where best move is capture or promotion
     // Output filename (BIN). If no extension, .bin is appended.
     filename: []const u8 = "dataset.bin",
+    hce_filename: ?[]const u8 = null,
+    save_mode: SaveMode = .bin40_only,
     random_min_ply: usize = 2,
     random_50_ply: usize = 6,
     random_10_ply: usize = 16,
@@ -380,3 +469,5 @@ pub const GenConfig = struct {
     adjudicate_draws_by_score: bool = true,
     adjudicate_draws_by_insufficient_mating_material: bool = true,
 };
+
+pub const SaveMode = enum { bin40_only, binhce_only, both };

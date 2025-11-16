@@ -1,5 +1,6 @@
 const std = @import("std");
 const position = @import("position.zig");
+const tuner = @import("tuner.zig");
 
 const Position = position.Position;
 const Move = position.Move;
@@ -95,6 +96,12 @@ inline fn huff_write_piece(data: []u8, bit_cursor_ptr: *usize, pc: Piece) void {
     // color bit: White=0, Black=1
     const black = pc.color() == position.Color.Black;
     bs_write_one(data, bit_cursor_ptr, black);
+}
+
+fn clamp_cp(score: i32) i16 {
+    const lo: i32 = -32000;
+    const hi: i32 = 32000;
+    return @intCast(@max(lo, @min(hi, score)));
 }
 
 pub const Bin40Writer = struct {
@@ -201,12 +208,6 @@ pub const Bin40Writer = struct {
         return code;
     }
 
-    fn clamp_cp(score: i32) i16 {
-        const lo: i32 = -32000;
-        const hi: i32 = 32000;
-        return @intCast(@max(lo, @min(hi, score)));
-    }
-
     fn result_code(result_white: f32) u2 {
         // 0 = draw, 1 = white win, 2 = white loss
         if (result_white >= 0.75) return 1;
@@ -310,5 +311,151 @@ pub const Bin40Writer = struct {
         buf[39] = 0;
 
         try self.file.writeAll(&buf);
+    }
+};
+
+pub const BinhceWriter = struct {
+    file: std.fs.File,
+    buf: [4096]u8,
+    buf_len: usize,
+
+    pub const features_per_color: usize =
+        position.NPIECE_TYPES +
+        position.NPIECE_TYPES * 64 +
+        64 +
+        (8 * 4) +
+        9 +
+        14 +
+        15 +
+        28 +
+        (5 * 6) +
+        1 +
+        1;
+
+    pub const entry_bytes: usize = 5 + features_per_color * 2;
+
+    pub fn open(path: []const u8) !BinhceWriter {
+        const f = try std.fs.cwd().createFile(path, .{ .read = false, .truncate = true });
+        return .{ .file = f, .buf = @splat(0), .buf_len = 0 };
+    }
+
+    fn flush(self: *BinhceWriter) !void {
+        if (self.buf_len == 0) return;
+        try self.file.writeAll(self.buf[0..self.buf_len]);
+        self.buf_len = 0;
+    }
+
+    fn write_byte(self: *BinhceWriter, byte: u8) !void {
+        if (self.buf_len == self.buf.len) {
+            try self.flush();
+        }
+        self.buf[self.buf_len] = byte;
+        self.buf_len += 1;
+    }
+
+    pub fn write_entry(self: *BinhceWriter, result: i8, phase: [2]u8, score_cp: i32, tnr: *const tuner.Tuner) !void {
+        const clamp = clamp_cp(score_cp);
+        const raw_score: u16 = @bitCast(clamp);
+        var header = [5]u8{
+            @bitCast(result),
+            phase[0],
+            phase[1],
+            @as(u8, @truncate(raw_score)),
+            @as(u8, @truncate(raw_score >> 8)),
+        };
+        try self.write_bytes(&header);
+        try self.write_color_features(tnr, position.Color.White);
+        try self.write_color_features(tnr, position.Color.Black);
+    }
+
+    fn write_color_features(self: *BinhceWriter, tnr: *const tuner.Tuner, comptime color: position.Color) !void {
+        const c = if (color == position.Color.White) 0 else 1;
+
+        for (0..position.NPIECE_TYPES) |p| {
+            try self.write_byte(tnr.mat[c][p]);
+        }
+
+        for (0..position.NPIECE_TYPES) |p| {
+            for (0..64) |sq| {
+                try self.write_byte(tnr.psqt[c][p][sq]);
+            }
+        }
+
+        for (0..64) |sq| {
+            try self.write_byte(tnr.passed_pawn[c][sq]);
+        }
+
+        for (0..8) |idx| {
+            try self.write_byte(tnr.isolated_pawn[c][idx]);
+        }
+
+        for (0..8) |idx| {
+            try self.write_byte(tnr.blocked_passer[c][idx]);
+        }
+
+        for (0..8) |idx| {
+            try self.write_byte(tnr.supported_pawn[c][idx]);
+        }
+
+        for (0..8) |idx| {
+            try self.write_byte(tnr.pawn_phalanx[c][idx]);
+        }
+
+        for (0..9) |idx| {
+            try self.write_byte(tnr.knight_mobility[c][idx]);
+        }
+
+        for (0..14) |idx| {
+            try self.write_byte(tnr.bishop_mobility[c][idx]);
+        }
+
+        for (0..15) |idx| {
+            try self.write_byte(tnr.rook_mobility[c][idx]);
+        }
+
+        for (0..28) |idx| {
+            try self.write_byte(tnr.queen_mobility[c][idx]);
+        }
+
+        for (0..6) |idx| {
+            try self.write_byte(tnr.pawn_attacking[c][idx]);
+        }
+
+        for (0..6) |idx| {
+            try self.write_byte(tnr.knight_attacking[c][idx]);
+        }
+
+        for (0..6) |idx| {
+            try self.write_byte(tnr.bishop_attacking[c][idx]);
+        }
+
+        for (0..6) |idx| {
+            try self.write_byte(tnr.rook_attacking[c][idx]);
+        }
+
+        for (0..6) |idx| {
+            try self.write_byte(tnr.queen_attacking[c][idx]);
+        }
+
+        try self.write_byte(tnr.doubled_pawns[c]);
+        try self.write_byte(tnr.bishop_pair[c]);
+    }
+
+    fn write_bytes(self: *BinhceWriter, bytes: []const u8) !void {
+        if (bytes.len > self.buf.len) {
+            try self.flush();
+            try self.file.writeAll(bytes);
+            return;
+        }
+        if (self.buf_len + bytes.len > self.buf.len) {
+            try self.flush();
+        }
+        @memcpy(self.buf[self.buf_len .. self.buf_len + bytes.len], bytes);
+        self.buf_len += bytes.len;
+    }
+
+    pub fn close(self: *BinhceWriter) void {
+        self.flush() catch {};
+        self.file.close();
     }
 };

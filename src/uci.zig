@@ -720,6 +720,28 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                     cfg.skip_noisy = true;
                 } else if (std.mem.eql(u8, arg, "filename")) {
                     if (words.next()) |nm| cfg.filename = nm;
+                } else if (std.mem.eql(u8, arg, "hcefilename")) {
+                    if (words.next()) |nm| cfg.hce_filename = nm;
+                } else if (std.mem.eql(u8, arg, "usennue")) {
+                    if (words.next()) |v| {
+                        if (std.mem.eql(u8, v, "true")) {
+                            cfg.force_use_nnue = true;
+                        } else if (std.mem.eql(u8, v, "false")) {
+                            cfg.force_use_nnue = false;
+                        } else if (std.mem.eql(u8, v, "auto")) {
+                            cfg.force_use_nnue = null;
+                        }
+                    }
+                } else if (std.mem.eql(u8, arg, "save")) {
+                    if (words.next()) |mode_tok| {
+                        if (std.mem.eql(u8, mode_tok, "bin40")) {
+                            cfg.save_mode = .bin40_only;
+                        } else if (std.mem.eql(u8, mode_tok, "binhce")) {
+                            cfg.save_mode = .binhce_only;
+                        } else if (std.mem.eql(u8, mode_tok, "both")) {
+                            cfg.save_mode = .both;
+                        }
+                    }
                 } else if (std.mem.eql(u8, arg, "random_min_ply")) {
                     if (words.next()) |v| cfg.random_min_ply = usize_from_str(v) catch cfg.random_min_ply;
                 } else if (std.mem.eql(u8, arg, "random_50_ply")) {
@@ -744,7 +766,12 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
             if (!std.mem.endsWith(u8, final_name, ".bin")) {
                 final_name = std.fmt.allocPrint(allocator, "{s}.bin", .{cfg.filename}) catch cfg.filename;
             }
-            printout(stdout, "info string datagen start games={} depth={} plies={} bin={s}\n", .{ cfg.games, cfg.best_depth, cfg.max_plies, final_name });
+            const save_tag = @tagName(cfg.save_mode);
+            const hce_hint = switch (cfg.save_mode) {
+                .bin40_only => "-",
+                else => cfg.hce_filename orelse "<filename>.binhce",
+            };
+            printout(stdout, "info string datagen start games={} depth={} plies={} save_mode={s} bin={s} binhce={s}\n", .{ cfg.games, cfg.best_depth, cfg.max_plies, save_tag, final_name, hce_hint });
             datagen.generate_binary(std.heap.c_allocator, final_name, cfg) catch |err| {
                 printout(stdout, "info string datagen failed: {any}\n", .{err});
                 continue;

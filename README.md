@@ -61,20 +61,38 @@ Compile with command `zig build`. You can run python script `build_versions.py` 
 
 ## Tuning
 
-Tuning was introduced in version v0.4.0 for tuning HCE evaluation parameters (material values and PSQT values). Version v0.6.0 introduced evaluation based on neural network and newer version use NNUE as a default option for evaluation. However, HCE evaluation is still an option with setting `setoption name UseNNue value false`, so code for tuning of HCE parameters has been kept as part of the project. 
+Tuning was introduced in version v0.4.0 for HCE parameters. Version v0.6.0 introduced NNUE as the default evaluation, but the HCE path is still maintained (`setoption name UseNNue value false`) and can be tuned independently.
 
-Go into directory `tuner`. Run python script `python tuner.py --mode on` which will change the mode of the Zig code of the Lamberger engine for tuning. Compile the engine with `zig build` command. In `tuner.zig` line `var file = try std.fs.cwd().openFile("quiet-labeled.epd", .{});` write the name of the file with position and results of the game. File with positions should have fen position followed with either `[1.0]` for white won, `[0.5]` draw or `[0.0]` for black won.
-Example:
+The previous workflow loaded EPD files and produced CSV/pickle files. The new workflow keeps everything inside the engine:
 
-```bash
-2r2rk1/ppN1nppp/5q2/8/3p4/3B4/PPPQ1PPP/3R2K1 w - - [0.0]
-8/5R2/5K2/8/4r3/5k2/8/8 w - - [0.5]
-rnb1k2r/2p1bppp/1p2pn2/pP6/3NP3/P1NB4/5PPP/R1BQK2R b KQkq - [1.0]
-```
+1. Use the UCI `datagen` command to create self-play positions **and** an HCE dataset. The regular BIN40 file is still produced for NNUE, while a new `.binhce` file stores the handcrafted evaluation features. Example:
 
-Output file `data.csv` will contain flags which evaluation parameters contribute to position evaluation. When conversion ends, you can quit the engine and run command `python tuner.py --mode off`, which will change the mode of the Zig code of the Lamberger engine into normal mode. Compile the engine with `zig build` command.
+   ```
+   datagen games 20000 depth 8 filename dataset.bin hcefilename hce_dataset save both usennue false
+   ```
 
-Now run python script `convert_to_pickle.py` which will convert `data.csv` into pickle files. Then you can open Jupyter notebook `tune_parameters.ipynb`, which contains the code for optimization which finds the best evaluation parameters. Code saves the parameters into file `merged_parameters.txt`, which can be directly copied into `evaluation.zig`. Of course then you need to compile the Zig code with `zig build` so that new evaluation values are used in newly compiled engine.
+   The engine appends the `.bin` and `.binhce` suffixes automatically. Each entry in the `.binhce` file contains:
+
+   - result from the side to move (`i8`, values -1/0/1),
+   - the NN/score evaluation in centipawns (`i16`, clamped to ±32000),
+   - the white and black phase values (`u8` each),
+   - 584 feature counters for White followed by the same 584 counters for Black (material counts, PSQT occurrences, pawn structure probes, mobility buckets, attack tables, doubled/bishop-pair flags). Fields are stored in the same order as defined in `tuner.Tuner`.
+
+   - `save bin40|binhce|both` decides which files are written.
+   - `usennue true|false|auto` forces NNUE/HCE evaluation during self-play (default is to use whatever the engine is currently configured with).
+
+2. Copy the produced `.binhce` file next to the tuning scripts (the notebook looks for `tuner/data.binhce` by default, but you can edit the path inside the first cell).
+
+3. Open `tuner/tune_parameters.ipynb`. The first cell now streams the binary file directly, constructs the `pos`, `phase`, and blended training targets, and then the rest of the notebook is unchanged. Two knobs are exposed at the top of the first cell:
+
+   - `RESULT_SCORE_WEIGHT` (0 → purely game result, 1 → purely engine score, values in-between blend both),
+   - `SCORE_SCALE` (controls how aggressively the raw score in centipawns is mapped to a probability through a sigmoid).
+
+   Running the notebook produces `output_mg.txt`, `output_eg.txt`, and ultimately `merged_parameters.txt`.
+
+4. Copy the parameters from `merged_parameters.txt` into `src/evaluation.zig`, rebuild (`zig build`), and the engine will use the tuned values.
+
+The helper scripts `tuner.py` and `convert_to_pickle.py` are kept for historical reference but are no longer required for the default HCE tuning pipeline.
 
 ## Strength
 
