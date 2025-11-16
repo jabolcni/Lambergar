@@ -109,6 +109,13 @@ const phaseValues = [6]u8{ 0, 3, 3, 5, 10, 0 };
 var midgame_table: [2][6][64]i32 = undefined;
 var endgame_table: [2][6][64]i32 = undefined;
 
+const PawnCacheEntry = struct {
+    valid: bool = false,
+    hash: u64 = 0,
+    score: [2]i32 = .{ 0, 0 },
+    passed: [2]u64 = .{ 0, 0 },
+};
+
 const KING_EDGE = [64]i32{
     // zig fmt: off
     -95,  -95,  -90,  -90,  -90,  -90,  -95,  -95,  
@@ -216,6 +223,7 @@ pub const Evaluation = struct {
     eval_mg: i32 = 0,
     eval_eg: i32 = 0,
     phase: [2]u8 = @splat(0),
+    pawn_cache: PawnCacheEntry = .{},
 
     pub  fn put_piece(self: *Evaluation, pc: Piece, s_idx: u6) void {
 
@@ -320,6 +328,142 @@ pub const Evaluation = struct {
     pub  fn move_piece_update_phase(self: *Evaluation, to_pc: Piece) void {
         self.remove_piece_update_phase(to_pc);
     }    
+
+    fn compute_pawn_structure(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) PawnCacheEntry {
+        if (maybe_tnr == null) {
+            if (self.pawn_cache.valid and self.pawn_cache.hash == pos.pawn_hash) {
+                return self.pawn_cache;
+            }
+        }
+
+        var result = PawnCacheEntry{
+            .valid = true,
+            .hash = pos.pawn_hash,
+            .score = .{ 0, 0 },
+            .passed = .{ 0, 0 },
+        };
+
+        const do_tnr = maybe_tnr != null;
+        var tnr: *tuner.Tuner = undefined;
+        if (do_tnr) {
+            tnr = maybe_tnr.?;
+        }
+
+        const white_pawns = pos.piece_bb[Piece.WHITE_PAWN.toU4()];
+        const black_pawns = pos.piece_bb[Piece.BLACK_PAWN.toU4()];
+
+        var pawns = white_pawns;
+        while (pawns != 0) {
+            const sq = bb.pop_lsb(&pawns);
+            const file = position.file_of_u6(sq);
+            const rank = position.rank_of_u6(sq);
+
+            if ((white_pawns & IsolatedPawnMask[file]) == 0) {
+                const tmp_sc = get_isolated_pawn_score(file);
+                result.score[0] += tmp_sc[0];
+                result.score[1] += tmp_sc[1];
+                if (do_tnr) {
+                    tnr.isolated_pawn[0][file] += 1;
+                }
+            }
+
+            if (((WhitePassedPawnMask[sq] & black_pawns) == 0) and ((WhitePassedPawnFilter[sq] & white_pawns) == 0)) {
+                const tmp_sc = get_passed_pawn_score(sq);
+                result.score[0] += tmp_sc[0];
+                result.score[1] += tmp_sc[1];
+                result.passed[0] |= bb.SQUARE_BB[sq];
+                if (do_tnr) {
+                    tnr.passed_pawn[0][sq] += 1;
+                }
+            }
+
+            if ((attacks.BLACK_PAWN_ATTACKS[sq] & white_pawns) != 0) {
+                const tmp_sc = get_supported_pawn_bonus(rank);
+                result.score[0] += tmp_sc[0];
+                result.score[1] += tmp_sc[1];
+                if (do_tnr) {
+                    tnr.supported_pawn[0][rank] += 1;
+                }
+            }
+
+            if (file != 7 and pos.board[sq + 1] == Piece.WHITE_PAWN) {
+                const tmp_sc = get_phalanx_score(rank);
+                result.score[0] += tmp_sc[0];
+                result.score[1] += tmp_sc[1];
+                if (do_tnr) {
+                    tnr.pawn_phalanx[0][rank] += 1;
+                }
+            }
+        }
+
+        pawns = black_pawns;
+        while (pawns != 0) {
+            const sq = bb.pop_lsb(&pawns);
+            const file = position.file_of_u6(sq);
+            const mirror_file = 7 - file;
+            const rank = position.rank_of_u6(sq);
+            const mirror_rank = 7 - rank;
+
+            if ((black_pawns & IsolatedPawnMask[file]) == 0) {
+                const tmp_sc = get_isolated_pawn_score(mirror_file);
+                result.score[0] -= tmp_sc[0];
+                result.score[1] -= tmp_sc[1];
+                if (do_tnr) {
+                    tnr.isolated_pawn[1][mirror_file] += 1;
+                }
+            }
+
+            if (((BlackPassedPawnMask[sq] & white_pawns) == 0) and ((BlackPassedPawnFilter[sq] & black_pawns) == 0)) {
+                const tmp_sc = get_passed_pawn_score(sq ^ 56);
+                result.score[0] -= tmp_sc[0];
+                result.score[1] -= tmp_sc[1];
+                result.passed[1] |= bb.SQUARE_BB[sq];
+                if (do_tnr) {
+                    tnr.passed_pawn[1][sq ^ 56] += 1;
+                }
+            }
+
+            if ((attacks.WHITE_PAWN_ATTACKS[sq] & black_pawns) != 0) {
+                const tmp_sc = get_supported_pawn_bonus(mirror_rank);
+                result.score[0] -= tmp_sc[0];
+                result.score[1] -= tmp_sc[1];
+                if (do_tnr) {
+                    tnr.supported_pawn[1][mirror_rank] += 1;
+                }
+            }
+
+            if (file != 0 and pos.board[sq - 1] == Piece.BLACK_PAWN) {
+                const tmp_sc = get_phalanx_score(mirror_rank);
+                result.score[0] -= tmp_sc[0];
+                result.score[1] -= tmp_sc[1];
+                if (do_tnr) {
+                    tnr.pawn_phalanx[1][mirror_rank] += 1;
+                }
+            }
+        }
+
+        for (0..8) |i| {
+            const white_pawns_on_file = bb.pop_count(white_pawns & bb.MASK_FILE[i]);
+            const black_pawns_on_file = bb.pop_count(black_pawns & bb.MASK_FILE[i]);
+
+            if (white_pawns_on_file >= 2) {
+                result.score[0] += mg_doubled_pawns[0];
+                result.score[1] += eg_doubled_pawns[0];
+                if (do_tnr) tnr.doubled_pawns[0] += 1;
+            }
+            if (black_pawns_on_file >= 2) {
+                result.score[0] -= mg_doubled_pawns[0];
+                result.score[1] -= eg_doubled_pawns[0];
+                if (do_tnr) tnr.doubled_pawns[1] += 1;
+            }
+        }
+
+        if (maybe_tnr == null) {
+            self.pawn_cache = result;
+        }
+
+        return result;
+    }
 
     pub fn clean_eval(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) i32 {
         var mat_white_mg: i32 = 0;
@@ -569,7 +713,6 @@ pub const Evaluation = struct {
 
 fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i32 {
 
-        _ = self;
 
         const white_pawns = pos.piece_bb[Piece.WHITE_PAWN.toU4()];
         const white_knight = pos.piece_bb[Piece.WHITE_KNIGHT.toU4()];
@@ -599,7 +742,9 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
 
         const occ = white_pieces | black_pieces;
 
-        var pawn_structure_score = [_]i32{0,0};
+        const pawn_terms = self.compute_pawn_structure(pos, maybe_tnr);
+        var pawn_structure_score = pawn_terms.score;
+        const passed_masks = pawn_terms.passed;
         var threat_score = [_]i32{0,0};
         var king_score = [_]i32{0,0};
         var additional_material_score= [_]i32{0,0};
@@ -623,231 +768,108 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
         update_king_file_features(&king_score, Color.White, white_king_sq, white_pawns, maybe_tnr);
         update_king_file_features(&king_score, Color.Black, black_king_sq, black_pawns, maybe_tnr);
 
-        // Pawns
-        var pc_bb = white_pawns;
-        while (pc_bb != 0) {
-            const sq = bb.pop_lsb(&pc_bb);
-            const file = position.file_of_u6(sq);
-            const rank = position.rank_of_u6(sq);
+                // Pawns
+        white_att |= white_pawn_attacks;
+        black_att |= black_pawn_attacks;
 
-            // Get attacks & update king danger scores
-            const att = attacks.WHITE_PAWN_ATTACKS[sq] & ~white_pieces;
-            white_att |= att;
-            if ((black_king_zone & att) != 0) {
-                black_danger_score += PieceDangers[PieceType.Pawn.toU3()];
-                black_danger_pieces += 1;
-                if (has_tuner) {
-                    tnr.king_ring_attackers[Color.Black.toU4()][PieceType.Pawn.toU3()] += 1;
-                }
-            }
-
-            // Isolated pawn evaluation
-            if (pos.piece_bb[Piece.WHITE_PAWN.toU4()] & IsolatedPawnMask[file] == 0) {
-                const tmp_sc = get_isolated_pawn_score(file);
-                if (has_tuner) {
-                    tnr.isolated_pawn[0][file] += 1;
-                }
-                pawn_structure_score[0] += tmp_sc[0];
-                pawn_structure_score[1] += tmp_sc[1];
-            }
-
-            // Passed pawn evaluation
-            if (((WhitePassedPawnMask[sq] & pos.piece_bb[Piece.BLACK_PAWN.toU4()]) == 0) and ((WhitePassedPawnFilter[sq] & pos.piece_bb[Piece.WHITE_PAWN.toU4()]) == 0)) {
-                var tmp_sc = get_passed_pawn_score(sq);
-                //var tmp_sc = get_passed_pawn_score_f(file);
-                if (has_tuner) {
-                    tnr.passed_pawn[0][sq] += 1;
-                }
-
-                pawn_structure_score[0] += tmp_sc[0];
-                pawn_structure_score[1] += tmp_sc[1];
-                if ((bb.SQUARE_BB[sq+8] & black_pieces) != 0) {
-                    tmp_sc = get_blocked_passer_score(rank);
-                    if (has_tuner) {
-                        tnr.blocked_passer[0][rank] += 1;
-                    }
-                    pawn_structure_score[0] += tmp_sc[0];
-                    pawn_structure_score[1] += tmp_sc[1];
-                }
-            }
-
-            // Threats
-            var b1 = att & pos.piece_bb[Piece.BLACK_KNIGHT.toU4()];
-            if (b1 != 0) {
-                const tmp_sc = get_pawn_threat(PieceType.Knight);
-                const tmp_count = bb.pop_count(b1);
-                threat_score[0] += tmp_sc[0]*tmp_count;                
-                threat_score[1] += tmp_sc[1]*tmp_count;
-                if (has_tuner) {
-                    tnr.pawn_attacking[0][PieceType.Knight.toU3()] += tmp_count;
-                }
-            }
-            b1 = att & pos.piece_bb[Piece.BLACK_BISHOP.toU4()];
-            if (b1 != 0) {
-                const tmp_sc = get_pawn_threat(PieceType.Bishop);
-                const tmp_count = bb.pop_count(b1);
-                threat_score[0] += tmp_sc[0]*tmp_count;                
-                threat_score[1] += tmp_sc[1]*tmp_count;    
-                if (has_tuner) {
-                    tnr.pawn_attacking[0][PieceType.Bishop.toU3()] += tmp_count;            
-                }
-            }     
-            b1 = att & pos.piece_bb[Piece.BLACK_ROOK.toU4()];
-            if (b1 != 0) {
-                const tmp_sc = get_pawn_threat(PieceType.Rook);
-                const tmp_count = bb.pop_count(b1);
-                threat_score[0] += tmp_sc[0]*tmp_count;                
-                threat_score[1] += tmp_sc[1]*tmp_count;
-                if (has_tuner) {
-                    tnr.pawn_attacking[0][PieceType.Rook.toU3()] += tmp_count;                  
-                }
-            }         
-            b1 = att & pos.piece_bb[Piece.BLACK_QUEEN.toU4()];
-            if (b1 != 0) {
-                const tmp_sc = get_pawn_threat(PieceType.Queen);
-                const tmp_count = bb.pop_count(b1);
-                threat_score[0] += tmp_sc[0]*tmp_count;                
-                threat_score[1] += tmp_sc[1]*tmp_count;
-                if (has_tuner) {
-                    tnr.pawn_attacking[0][PieceType.Queen.toU3()] += tmp_count;                  
-                }
-            }                      
-
-            // Pawn is supported?
-            if (white_pawn_attacks & bb.SQUARE_BB[sq] != 0) {
-                const tmp_sc = get_supported_pawn_bonus(rank);
-                if (has_tuner) {
-                    tnr.supported_pawn[0][rank] += 1;
-                }
-                pawn_structure_score[0] += tmp_sc[0];
-                pawn_structure_score[1] += tmp_sc[1];
-            }
-
-            // Pawn phalanx
-            if ((file != 7) and (pos.board[sq+1] == Piece.WHITE_PAWN)) {
-                const tmp_sc = get_phalanx_score(rank);
-                if (has_tuner) {
-                    tnr.pawn_phalanx[0][rank] += 1;
-                }
-                pawn_structure_score[0] += tmp_sc[0];
-                pawn_structure_score[1] += tmp_sc[1];                
-            }
-
+        const white_knight_hits = bb.pop_count(white_pawn_attacks & black_knight);
+        if (white_knight_hits != 0) {
+            const tmp_sc = get_pawn_threat(PieceType.Knight);
+            threat_score[0] += tmp_sc[0] * white_knight_hits;
+            threat_score[1] += tmp_sc[1] * white_knight_hits;
+            if (has_tuner) tnr.pawn_attacking[0][PieceType.Knight.toU3()] += @as(u8, @intCast(white_knight_hits));
+        }
+        const white_bishop_hits = bb.pop_count(white_pawn_attacks & black_bishop);
+        if (white_bishop_hits != 0) {
+            const tmp_sc = get_pawn_threat(PieceType.Bishop);
+            threat_score[0] += tmp_sc[0] * white_bishop_hits;
+            threat_score[1] += tmp_sc[1] * white_bishop_hits;
+            if (has_tuner) tnr.pawn_attacking[0][PieceType.Bishop.toU3()] += @as(u8, @intCast(white_bishop_hits));
+        }
+        const white_rook_hits = bb.pop_count(white_pawn_attacks & black_rook);
+        if (white_rook_hits != 0) {
+            const tmp_sc = get_pawn_threat(PieceType.Rook);
+            threat_score[0] += tmp_sc[0] * white_rook_hits;
+            threat_score[1] += tmp_sc[1] * white_rook_hits;
+            if (has_tuner) tnr.pawn_attacking[0][PieceType.Rook.toU3()] += @as(u8, @intCast(white_rook_hits));
+        }
+        const white_queen_hits = bb.pop_count(white_pawn_attacks & black_queen);
+        if (white_queen_hits != 0) {
+            const tmp_sc = get_pawn_threat(PieceType.Queen);
+            threat_score[0] += tmp_sc[0] * white_queen_hits;
+            threat_score[1] += tmp_sc[1] * white_queen_hits;
+            if (has_tuner) tnr.pawn_attacking[0][PieceType.Queen.toU3()] += @as(u8, @intCast(white_queen_hits));
         }
 
-        pc_bb = black_pawns;
-        while (pc_bb != 0) {
-            const sq = bb.pop_lsb(&pc_bb);
-            const file = position.file_of_u6(sq);
-            const rank = position.rank_of_u6(sq);
+        const black_knight_hits = bb.pop_count(black_pawn_attacks & white_knight);
+        if (black_knight_hits != 0) {
+            const tmp_sc = get_pawn_threat(PieceType.Knight);
+            threat_score[0] -= tmp_sc[0] * black_knight_hits;
+            threat_score[1] -= tmp_sc[1] * black_knight_hits;
+            if (has_tuner) tnr.pawn_attacking[1][PieceType.Knight.toU3()] += @as(u8, @intCast(black_knight_hits));
+        }
+        const black_bishop_hits = bb.pop_count(black_pawn_attacks & white_bishop);
+        if (black_bishop_hits != 0) {
+            const tmp_sc = get_pawn_threat(PieceType.Bishop);
+            threat_score[0] -= tmp_sc[0] * black_bishop_hits;
+            threat_score[1] -= tmp_sc[1] * black_bishop_hits;
+            if (has_tuner) tnr.pawn_attacking[1][PieceType.Bishop.toU3()] += @as(u8, @intCast(black_bishop_hits));
+        }
+        const black_rook_hits = bb.pop_count(black_pawn_attacks & white_rook);
+        if (black_rook_hits != 0) {
+            const tmp_sc = get_pawn_threat(PieceType.Rook);
+            threat_score[0] -= tmp_sc[0] * black_rook_hits;
+            threat_score[1] -= tmp_sc[1] * black_rook_hits;
+            if (has_tuner) tnr.pawn_attacking[1][PieceType.Rook.toU3()] += @as(u8, @intCast(black_rook_hits));
+        }
+        const black_queen_hits = bb.pop_count(black_pawn_attacks & white_queen);
+        if (black_queen_hits != 0) {
+            const tmp_sc = get_pawn_threat(PieceType.Queen);
+            threat_score[0] -= tmp_sc[0] * black_queen_hits;
+            threat_score[1] -= tmp_sc[1] * black_queen_hits;
+            if (has_tuner) tnr.pawn_attacking[1][PieceType.Queen.toU3()] += @as(u8, @intCast(black_queen_hits));
+        }
 
-            // Get attacks & update king danger scores
-            const att = attacks.BLACK_PAWN_ATTACKS[sq] & ~black_pieces;
-            black_att |= att;
-            if ((white_king_zone & att) != 0) {
-                white_danger_score += PieceDangers[PieceType.Pawn.toU3()];
-                white_danger_pieces += 1;
-                if (has_tuner) {
-                    tnr.king_ring_attackers[Color.White.toU4()][PieceType.Pawn.toU3()] += 1;
-                }
+
+        var white_passed_mask = passed_masks[0];
+        while (white_passed_mask != 0) {
+            const sq = bb.pop_lsb(&white_passed_mask);
+            if (sq < 56 and (occ & bb.SQUARE_BB[sq + 8]) != 0) {
+                const rank = position.rank_of_u6(sq);
+                const tmp_sc = get_blocked_passer_score(rank);
+                pawn_structure_score[0] += tmp_sc[0];
+                pawn_structure_score[1] += tmp_sc[1];
+                if (has_tuner) tnr.blocked_passer[0][rank] += 1;
             }
-
-            // Isolated pawn evaluation
-            if (pos.piece_bb[Piece.BLACK_PAWN.toU4()] & IsolatedPawnMask[file] == 0) {
-                const tmp_sc = get_isolated_pawn_score(7-file);
-                if (has_tuner) {
-                    tnr.isolated_pawn[1][7-file] += 1;
-                }
+        }
+        var black_passed_mask = passed_masks[1];
+        while (black_passed_mask != 0) {
+            const sq = bb.pop_lsb(&black_passed_mask);
+            if (sq >= 8 and (occ & bb.SQUARE_BB[sq - 8]) != 0) {
+                const rank = 7 - position.rank_of_u6(sq);
+                const tmp_sc = get_blocked_passer_score(rank);
                 pawn_structure_score[0] -= tmp_sc[0];
-                pawn_structure_score[1] -= tmp_sc[1];                
+                pawn_structure_score[1] -= tmp_sc[1];
+                if (has_tuner) tnr.blocked_passer[1][rank] += 1;
             }
+        }
 
-            // Passed pawn evaluation
-            if (((BlackPassedPawnMask[sq] & pos.piece_bb[Piece.WHITE_PAWN.toU4()]) == 0) and ((BlackPassedPawnFilter[sq] & pos.piece_bb[Piece.BLACK_PAWN.toU4()]) == 0)) {
-                var tmp_sc = get_passed_pawn_score(sq^56);
-                //var tmp_sc = get_passed_pawn_score_f(7-file);
-                if (has_tuner) {
-                    tnr.passed_pawn[1][sq^56] += 1;
-                }
+        const white_pressures = bb.pop_count(white_pawn_attacks & black_king_zone);
+        if (white_pressures != 0) {
+            black_danger_score += PieceDangers[PieceType.Pawn.toU3()] * @as(i32, white_pressures);
+            const inc: u5 = @as(u5, @intCast(@min(white_pressures, 7)));
+            black_danger_pieces +%= inc;
+            if (has_tuner) tnr.king_ring_attackers[Color.Black.toU4()][PieceType.Pawn.toU3()] += @as(u8, @intCast(white_pressures));
+        }
+        const black_pressures = bb.pop_count(black_pawn_attacks & white_king_zone);
+        if (black_pressures != 0) {
+            white_danger_score += PieceDangers[PieceType.Pawn.toU3()] * @as(i32, black_pressures);
+            const inc: u5 = @as(u5, @intCast(@min(black_pressures, 7)));
+            white_danger_pieces +%= inc;
+            if (has_tuner) tnr.king_ring_attackers[Color.White.toU4()][PieceType.Pawn.toU3()] += @as(u8, @intCast(black_pressures));
+        }
 
-                pawn_structure_score[0] -= tmp_sc[0];
-                pawn_structure_score[1] -= tmp_sc[1];                
-                if ((bb.SQUARE_BB[sq-8] & white_pieces) != 0) {
-                    tmp_sc = get_blocked_passer_score(7-rank);
-                    if (has_tuner) {
-                        tnr.blocked_passer[1][7-rank] += 1;
-                    }
-                    pawn_structure_score[0] -= tmp_sc[0];
-                    pawn_structure_score[1] -= tmp_sc[1];                    
-                }
-            }
-
-            // Threats
-            var b1 = att & pos.piece_bb[Piece.WHITE_KNIGHT.toU4()];
-            if (b1 != 0) {
-                const tmp_sc = get_pawn_threat(PieceType.Knight);
-                const tmp_count = bb.pop_count(b1);
-                threat_score[0] -= tmp_sc[0]*tmp_count;                
-                threat_score[1] -= tmp_sc[1]*tmp_count;  
-                if (has_tuner) {
-                    tnr.pawn_attacking[1][PieceType.Knight.toU3()] += tmp_count;              
-                }
-            }
-            b1 = att & pos.piece_bb[Piece.WHITE_BISHOP.toU4()];
-            if (b1 != 0) {
-                const tmp_sc = get_pawn_threat(PieceType.Bishop);
-                const tmp_count = bb.pop_count(b1);
-                threat_score[0] -= tmp_sc[0]*tmp_count;                
-                threat_score[1] -= tmp_sc[1]*tmp_count;   
-                if (has_tuner) {
-                    tnr.pawn_attacking[1][PieceType.Bishop.toU3()] += tmp_count;              
-                }
-            }     
-            b1 = att & pos.piece_bb[Piece.WHITE_ROOK.toU4()];
-            if (b1 != 0) {
-                const tmp_sc = get_pawn_threat(PieceType.Rook);
-                const tmp_count = bb.pop_count(b1);
-                threat_score[0] -= tmp_sc[0]*tmp_count;                
-                threat_score[1] -= tmp_sc[1]*tmp_count; 
-                if (has_tuner) {
-                    tnr.pawn_attacking[1][PieceType.Rook.toU3()] += tmp_count;                
-                }
-            }         
-            b1 = att & pos.piece_bb[Piece.WHITE_QUEEN.toU4()];
-            if (b1 != 0) {
-                const tmp_sc = get_pawn_threat(PieceType.Queen);
-                const tmp_count = bb.pop_count(b1);
-                threat_score[0] -= tmp_sc[0]*tmp_count;                
-                threat_score[1] -= tmp_sc[1]*tmp_count; 
-                if (has_tuner) {
-                    tnr.pawn_attacking[1][PieceType.Queen.toU3()] += tmp_count;                
-                }
-            }                      
-
-            // Pawn is supported?
-            if ((black_pawn_attacks & bb.SQUARE_BB[sq]) != 0) {
-                const tmp_sc = get_supported_pawn_bonus(7-rank);
-                if (has_tuner) {
-                    tnr.supported_pawn[1][7-rank] += 1;
-                }
-                pawn_structure_score[0] -= tmp_sc[0];
-                pawn_structure_score[1] -= tmp_sc[1];            
-            }
-
-            // Pawn phalanx
-            if ((file != 7) and (pos.board[sq+1] == Piece.BLACK_PAWN)) {
-                const tmp_sc = get_phalanx_score(7-rank);
-                if (has_tuner) {
-                    tnr.pawn_phalanx[1][7-rank] += 1;
-                }
-                pawn_structure_score[0] -= tmp_sc[0];
-                pawn_structure_score[1] -= tmp_sc[1];                   
-            }
-
-        }   
-
-        // Knights
-        pc_bb = white_knight;
+        var pc_bb = white_knight;
         while (pc_bb != 0) {
             const sq = bb.pop_lsb(&pc_bb);
             const att = attacks.KNIGHT_ATTACKS[sq];
