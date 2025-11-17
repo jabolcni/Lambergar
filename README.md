@@ -65,45 +65,97 @@ Tuning was introduced in version v0.4.0 for HCE parameters. Version v0.6.0 intro
 
 The previous workflow loaded EPD files and produced CSV/pickle files. The new workflow keeps everything inside the engine:
 
-1. Use the UCI `datagen` command to create self-play positions **and** an HCE dataset. The regular BIN40 file is still produced for NNUE, while a new `.binhce` file stores the handcrafted evaluation features. Example:
+### Datagen command reference
+
+| Argument | Description |
+| --- | --- |
+| `games <N>` | Number of self-play games to generate. |
+| `depth <D>` | Search depth used for move selection. |
+| `plies <P>` | Maximum plies per game. |
+| `random <F> <N>` | Legacy randomization knobs (kept for compatibility). |
+| `random_min_ply`, `random_50_ply`, `random_10_ply`, `random_move_count` | Fine-grained control of when/ how often to play random moves. |
+| `save_min_ply`, `save_max_ply` | Only store positions inside this window. |
+| `skipnoisy` | Skip positions where the best move is a capture/promotion. |
+| `filename <name>` | Base name for the BIN40 dataset (`.bin` appended automatically). |
+| `hcefilename <name>` | Optional base name for the `.binhce` file; defaults to `<filename>.binhce`. |
+| `save bin40|binhce|both` | Select which dataset(s) to write. |
+| `usennue true|false|auto` | Force NNUE/ HCE evaluation during generation (`auto` uses current engine setting). |
+| `adjudicate_draws_by_score`, `adjudicate_draws_by_insufficient_mating_material` | Early stopping rules. |
+| `strict`, `debug` | Force single-threaded strict searches or verbose logging. |
+
+Each `.binhce` record contains:
+
+1. `i8` result from the side to move (white win/draw/loss → 1/0/-1).
+2. `u8` phase values for White and Black.
+3. `i16` clamped search score in centipawns.
+4. 712 feature counters for White and 712 for Black. The fields follow the layout of `tuner.Tuner` (material counts, PSQT entries, pawn structures, mobility buckets, attack tables, king-ring statistics, etc.). The first 584 entries match the historical CSV exporter; the remaining slots capture the recently-added HCE heuristics.
+
+### HCE tuning pipeline
+
+1. **Generate data:** run `datagen` with `save binhce` or `save both`. Example:
 
    ```
-   datagen games 20000 depth 8 filename dataset.bin hcefilename hce_dataset save both usennue false
+   datagen games 20000 depth 8 filename dataset.bin save both usennue false
    ```
 
-   The engine appends the `.bin` and `.binhce` suffixes automatically. Each entry in the `.binhce` file contains:
+2. **Move the `.binhce` file** into `tuner/` and rename if desired (the notebook defaults to `data.binhce`).
 
-   - result from the side to move (`i8`, values -1/0/1),
-   - the NN/score evaluation in centipawns (`i16`, clamped to ±32000),
-   - the white and black phase values (`u8` each),
-   - 584 feature counters for White followed by the same 584 counters for Black (material counts, PSQT occurrences, pawn structure probes, mobility buckets, attack tables, doubled/bishop-pair flags). Fields are stored in the same order as defined in `tuner.Tuner`.
+3. **Notebook parameters:** open `tuner/tune_parameters.ipynb`. The first cell has two knobs:
 
-   - `save bin40|binhce|both` decides which files are written.
-   - `usennue true|false|auto` forces NNUE/HCE evaluation during self-play (default is to use whatever the engine is currently configured with).
+   - `RESULT_SCORE_WEIGHT` (0 → pure game result, 1 → pure engine score, in-between blends both).
+   - `SCORE_SCALE` (centipawn-to-probability mapping for the alignment term, default 400).
 
-2. Copy the produced `.binhce` file next to the tuning scripts (the notebook looks for `tuner/data.binhce` by default, but you can edit the path inside the first cell).
+4. **Run the notebook:** it loads the binary, builds the logistic model, and exports `output_mg.txt`, `output_eg.txt`, and finally `merged_parameters.txt`. Copy the merged values into `src/evaluation.zig` and rebuild.
 
-3. Open `tuner/tune_parameters.ipynb`. The first cell now streams the binary file directly, constructs the `pos`, `phase`, and blended training targets, and then the rest of the notebook is unchanged. Two knobs are exposed at the top of the first cell:
+> **Note:** the classic CSV path (`tuner.py`, `data.csv`, `convert_to_pickle.py`) is kept for historical reference but isn’t required anymore.
 
-   - `RESULT_SCORE_WEIGHT` (0 → purely game result, 1 → purely engine score, values in-between blend both),
-   - `SCORE_SCALE` (controls how aggressively the raw score in centipawns is mapped to a probability through a sigmoid).
+### Personalities
 
-   Running the notebook produces `output_mg.txt`, `output_eg.txt`, and ultimately `merged_parameters.txt`.
-
-4. Copy the parameters from `merged_parameters.txt` into `src/evaluation.zig`, rebuild (`zig build`), and the engine will use the tuned values.
-
-The helper scripts `tuner.py` and `convert_to_pickle.py` are kept for historical reference but are no longer required for the default HCE tuning pipeline.
-
-## Personalities
-
-Lambergar’s handcrafted evaluation now supports simple personalities: sets of multipliers that bias pawn structure, mobility, king safety, and threat emphasis. Switch personas through UCI:
+#### Built-in presets
 
 ```
 setoption name Personality value default
 setoption name Personality value milan_vidmar
 ```
 
-The default persona keeps the baseline tuned values unchanged. The `milan_vidmar` preset leans toward solid pawn structures, cautious king safety, and steadier endgames. You can add more personas by editing `src/evaluation.zig` and defining new `Personality` constants.
+`default` uses the tuned evaluation unmodified. `milan_vidmar` biases the engine toward solid pawn structures and cautious king play.
+
+#### Custom personalities via UCI
+
+Switch to the custom profile and tweak individual multipliers/ offsets:
+
+```
+setoption name PersonalityPawnScale value 1.10
+setoption name PersonalityMobilityScale value 0.95
+setoption name PersonalityKingScale value 1.05
+setoption name PersonalityThreatScale value 0.9
+setoption name PersonalityMaterialScale value 1.02
+setoption name PersonalityMgOffset value 5
+setoption name PersonalityEgOffset value 10
+setoption name Personality value custom
+```
+
+The custom persona stays active until you pick another preset.
+
+#### Personality tuning script
+
+`tools/personality_optimize.py` automates tuning against a PGN corpus (e.g., Milan Vidmar’s games). It:
+
+1. Parses the PGN (`--pgn vidmar.pgn` by default).
+2. Samples positions and runs `lambergar.exe` at a fixed depth.
+3. Uses Optuna to optimize the personality parameters with a combined objective:
+   - move-match rate (engine best move equals Vidmar’s move),
+   - evaluation alignment (Vidmar move vs. engine best score gap),
+   - a regularizer that penalizes large deviations from baseline multipliers.
+
+Example:
+
+```
+pip install python-chess optuna
+python tools/personality_optimize.py --engine ./lambergar.exe --pgn vidmar.pgn --depth 6 --limit 200 --trials 80
+```
+
+The script writes the best parameters to `persona_best.json` and prints the individual metrics. You can then apply the values via the custom `setoption` commands described above.
 
 ## Strength
 
