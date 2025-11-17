@@ -369,6 +369,55 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                             std.debug.print("Personality set to {s}\n", .{name});
                         }
                     } else continue;
+                } else if (std.mem.eql(u8, arg, "PersonalityPawnScale")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        const tok = words.next() orelse continue;
+                        const val = std.fmt.parseFloat(f32, tok) catch continue;
+                        evaluation.set_custom_pawn_scale(val);
+                    } else continue;
+                } else if (std.mem.eql(u8, arg, "PersonalityMobilityScale")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        const tok = words.next() orelse continue;
+                        const val = std.fmt.parseFloat(f32, tok) catch continue;
+                        evaluation.set_custom_mobility_scale(val);
+                    } else continue;
+                } else if (std.mem.eql(u8, arg, "PersonalityKingScale")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        const tok = words.next() orelse continue;
+                        const val = std.fmt.parseFloat(f32, tok) catch continue;
+                        evaluation.set_custom_king_scale(val);
+                    } else continue;
+                } else if (std.mem.eql(u8, arg, "PersonalityThreatScale")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        const tok = words.next() orelse continue;
+                        const val = std.fmt.parseFloat(f32, tok) catch continue;
+                        evaluation.set_custom_threat_scale(val);
+                    } else continue;
+                } else if (std.mem.eql(u8, arg, "PersonalityMaterialScale")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        const tok = words.next() orelse continue;
+                        const val = std.fmt.parseFloat(f32, tok) catch continue;
+                        evaluation.set_custom_material_scale(val);
+                    } else continue;
+                } else if (std.mem.eql(u8, arg, "PersonalityMgOffset")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        const tok = words.next() orelse continue;
+                        const val = i32_from_str(tok) catch continue;
+                        evaluation.set_custom_mg_offset(val);
+                    } else continue;
+                } else if (std.mem.eql(u8, arg, "PersonalityEgOffset")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        const tok = words.next() orelse continue;
+                        const val = i32_from_str(tok) catch continue;
+                        evaluation.set_custom_eg_offset(val);
+                    } else continue;
                 } else if (search_params.find_by_name(arg)) |param_id| {
                     arg = words.next().?;
                     if (std.mem.eql(u8, arg, "value")) {

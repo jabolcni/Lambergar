@@ -137,7 +137,11 @@ pub const milan_vidmar_personality = Personality{
     .eg_offset = 12,
 };
 
+const PersonalityMode = enum { preset, custom };
+
 var current_personality = default_personality;
+var custom_personality = default_personality;
+var personality_mode: PersonalityMode = .preset;
 
 inline fn scale_term(value: i32, scale: f32) i32 {
     return @as(i32, @intFromFloat(@as(f32, @floatFromInt(value)) * scale));
@@ -150,6 +154,7 @@ fn apply_scale(score: *[2]i32, scale: f32) void {
 
 pub fn set_personality(p: Personality) void {
     current_personality = p;
+    personality_mode = .preset;
 }
 
 pub fn set_personality_by_name(name: []const u8) bool {
@@ -159,8 +164,53 @@ pub fn set_personality_by_name(name: []const u8) bool {
     } else if (std.ascii.eqlIgnoreCase(name, "milan_vidmar") or std.ascii.eqlIgnoreCase(name, "vidmar")) {
         set_personality(milan_vidmar_personality);
         return true;
+    } else if (std.ascii.eqlIgnoreCase(name, "custom")) {
+        personality_mode = .custom;
+        current_personality = custom_personality;
+        return true;
     }
     return false;
+}
+
+fn refresh_custom_personality() void {
+    if (personality_mode == .custom) {
+        current_personality = custom_personality;
+    }
+}
+
+pub fn set_custom_pawn_scale(value: f32) void {
+    custom_personality.pawn_structure_scale = value;
+    refresh_custom_personality();
+}
+
+pub fn set_custom_mobility_scale(value: f32) void {
+    custom_personality.mobility_scale = value;
+    refresh_custom_personality();
+}
+
+pub fn set_custom_king_scale(value: f32) void {
+    custom_personality.king_safety_scale = value;
+    refresh_custom_personality();
+}
+
+pub fn set_custom_threat_scale(value: f32) void {
+    custom_personality.threat_scale = value;
+    refresh_custom_personality();
+}
+
+pub fn set_custom_material_scale(value: f32) void {
+    custom_personality.material_scale = value;
+    refresh_custom_personality();
+}
+
+pub fn set_custom_mg_offset(value: i32) void {
+    custom_personality.mg_offset = value;
+    refresh_custom_personality();
+}
+
+pub fn set_custom_eg_offset(value: i32) void {
+    custom_personality.eg_offset = value;
+    refresh_custom_personality();
 }
 
 pub fn get_personality() Personality {
