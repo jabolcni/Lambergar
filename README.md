@@ -94,6 +94,17 @@ The previous workflow loaded EPD files and produced CSV/pickle files. The new wo
 
 The helper scripts `tuner.py` and `convert_to_pickle.py` are kept for historical reference but are no longer required for the default HCE tuning pipeline.
 
+## Personalities
+
+Lambergar’s handcrafted evaluation now supports simple personalities: sets of multipliers that bias pawn structure, mobility, king safety, and threat emphasis. Switch personas through UCI:
+
+```
+setoption name Personality value default
+setoption name Personality value milan_vidmar
+```
+
+The default persona keeps the baseline tuned values unchanged. The `milan_vidmar` preset leans toward solid pawn structures, cautious king safety, and steadier endgames. You can add more personas by editing `src/evaluation.zig` and defining new `Personality` constants.
+
 ## Strength
 
 In November 2023 version v0.3.1 was proposed for testing on CCRL Blitz list, where it currently stands at 2368 &plusmn; 20 Elo.

@@ -116,6 +116,57 @@ const PawnCacheEntry = struct {
     passed: [2]u64 = .{ 0, 0 },
 };
 
+const Personality = struct {
+    pawn_structure_scale: f32 = 1.0,
+    mobility_scale: f32 = 1.0,
+    king_safety_scale: f32 = 1.0,
+    threat_scale: f32 = 1.0,
+    material_scale: f32 = 1.0,
+    mg_offset: i32 = 0,
+    eg_offset: i32 = 0,
+};
+
+pub const default_personality = Personality{};
+pub const milan_vidmar_personality = Personality{
+    .pawn_structure_scale = 1.15,
+    .mobility_scale = 0.92,
+    .king_safety_scale = 1.1,
+    .threat_scale = 0.95,
+    .material_scale = 1.05,
+    .mg_offset = 5,
+    .eg_offset = 12,
+};
+
+var current_personality = default_personality;
+
+inline fn scale_term(value: i32, scale: f32) i32 {
+    return @as(i32, @intFromFloat(@as(f32, @floatFromInt(value)) * scale));
+}
+
+fn apply_scale(score: *[2]i32, scale: f32) void {
+    score[0] = scale_term(score[0], scale);
+    score[1] = scale_term(score[1], scale);
+}
+
+pub fn set_personality(p: Personality) void {
+    current_personality = p;
+}
+
+pub fn set_personality_by_name(name: []const u8) bool {
+    if (std.ascii.eqlIgnoreCase(name, "default")) {
+        set_personality(default_personality);
+        return true;
+    } else if (std.ascii.eqlIgnoreCase(name, "milan_vidmar") or std.ascii.eqlIgnoreCase(name, "vidmar")) {
+        set_personality(milan_vidmar_personality);
+        return true;
+    }
+    return false;
+}
+
+pub fn get_personality() Personality {
+    return current_personality;
+}
+
 const KING_EDGE = [64]i32{
     // zig fmt: off
     -95,  -95,  -90,  -90,  -90,  -90,  -95,  -95,  
@@ -1524,8 +1575,15 @@ fn eval_pieces(self: *Evaluation, pos: *Position, maybe_tnr: ?*tuner.Tuner) [2]i
 
         }
 
-        score[0] = pawn_structure_score[0] + threat_score[0] + king_score[0] + additional_material_score[0] + mobility_score[0];
-        score[1] = pawn_structure_score[1] + threat_score[1] + king_score[1] + additional_material_score[1] + mobility_score[1];
+        const persona = if (maybe_tnr != null) default_personality else current_personality;
+        apply_scale(&pawn_structure_score, persona.pawn_structure_scale);
+        apply_scale(&threat_score, persona.threat_scale);
+        apply_scale(&king_score, persona.king_safety_scale);
+        apply_scale(&mobility_score, persona.mobility_scale);
+        apply_scale(&additional_material_score, persona.material_scale);
+
+        score[0] = pawn_structure_score[0] + threat_score[0] + king_score[0] + additional_material_score[0] + mobility_score[0] + persona.mg_offset;
+        score[1] = pawn_structure_score[1] + threat_score[1] + king_score[1] + additional_material_score[1] + mobility_score[1] + persona.eg_offset;
     
         return score;
     

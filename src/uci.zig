@@ -359,6 +359,16 @@ pub fn uci_loop(allocator: std.mem.Allocator) !void {
                             std.debug.print("UCI_Chess960 = {}\n", .{uci_chess960});
                         }
                     } else continue;
+                } else if (std.mem.eql(u8, arg, "Personality")) {
+                    arg = words.next().?;
+                    if (std.mem.eql(u8, arg, "value")) {
+                        const name = words.next() orelse continue;
+                        if (!evaluation.set_personality_by_name(name)) {
+                            printout(stdout, "info string Unknown personality: {s}\n", .{name});
+                        } else if (debug) {
+                            std.debug.print("Personality set to {s}\n", .{name});
+                        }
+                    } else continue;
                 } else if (search_params.find_by_name(arg)) |param_id| {
                     arg = words.next().?;
                     if (std.mem.eql(u8, arg, "value")) {
