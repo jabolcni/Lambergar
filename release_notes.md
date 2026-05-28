@@ -69,6 +69,23 @@ release because the current NNUE path uses x86-64 AVX2-oriented code.
 - **Bug fixes:** Fixed a latent LMP table out-of-bounds read, `Threads` values above `MAX_THREADS`, `go movetime 1` unsigned underflow, transposition table double-free during `Hash` resizing, malformed debug/UCI input panics, and several Chess960/FEN/move-parsing edge cases.
 - **Cleanup:** Removed dead search constants and dead branches, consolidated NNUE initialization, replaced repeated TT hash-size literals with `HASH_SIZE_DEFAULT + 1`, and moved datagen NNUE initialization after common engine initialization for consistency.
 
+```sh
+--------------------------------------------------
+Results of Lambergar_1_5 vs Lambergar_1_3 (10+0.1, 1t, 128MB, UHO_2024_8mvs_big_+115_+134.pgn):
+Elo: 106.77 +/- 8.43, nElo: 206.35 +/- 15.30
+LOS: 100.00 %, DrawRatio: 36.87 %, PairsRatio: 10.36
+Games: 1980, Wins: 852, Losses: 262, Draws: 866, Points: 1285.0 (64.90 %)
+Ptnml(0-2): [0, 55, 365, 495, 75], WL/DD Ratio: 1.31
+--------------------------------------------------
+
+--------------------------------------------------
+Results of Lambergar_1_5 vs Lambergar_1_3 (60+0.5, 1t, 128MB, UHO_2024_8mvs_big_+115_+134.pgn):
+Elo: 104.99 +/- 7.32, nElo: 219.32 +/- 14.39
+LOS: 100.00 %, DrawRatio: 35.80 %, PairsRatio: 11.84
+Games: 2240, Wins: 965, Losses: 308, Draws: 967, Points: 1448.5 (64.67 %)
+Ptnml(0-2): [0, 56, 401, 613, 50], WL/DD Ratio: 1.69
+--------------------------------------------------
+```
 
 
 ## Lambergar 1.3
