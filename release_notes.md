@@ -1,5 +1,76 @@
 # Release notes
 
+## Lambergar 1.5
+
+Lambergar 1.5 is a major release over 1.3. It adds Syzygy tablebases, Chess960/FRC and DFRC support, a full data-generation and HCE tuning pipeline, a larger hand-crafted evaluation, more UCI-exposed search tuning, many stability fixes, and search and robustness improvements.
+
+### Builds
+
+Currently, there are four release builds:
+
+- x86-64 Windows AVX2: recommended Windows build for most modern CPUs.
+- x86-64 Windows AVX-512: optional high-end Windows build for CPUs with AVX-512 support.
+- x86-64 Linux AVX2: recommended Linux build for most modern CPUs.
+- x86-64 macOS AVX2: recommended macOS build for Intel Macs with AVX2 support.
+
+Zig 0.15.1 is recommended for release builds. Zig 0.16.0 can compile the engine,
+but local testing showed a large NPS regression in both NNUE and HCE modes.
+
+Older x86-64 Vintage/POPCNT builds and aarch64 builds are not included in this
+release because the current NNUE path uses x86-64 AVX2-oriented code.
+
+### Release Notes
+
+- **Syzygy tablebases:** Added experimental Syzygy endgame tablebase support through the Fathom library, including `SyzygyPath`, `SyzygyProbeDepth`, `probe`, `probebest`, WDL/root probing, and tablebase probing inside search.
+- **Chess960/FRC:** Added `UCI_Chess960`, Chess960-aware UCI castling notation, Shredder-FEN castling rights, Chess960 castling make/unmake, Chess960 castling legality checks, and `position startposfrc <index>`.
+- **DFRC:** Added Double Fischer Random support with independent white/black start indices through `position startposdfrc <white_index> <black_index>`.
+- **Position handling:** Reworked FEN parsing/export around fullmove numbers, Chess960 castling metadata, castling-right clearing by square, FEN diagnostics, and internal pawn/non-pawn/material hash keys.
+- **Move generation:** Added a shared `MoveGenContext` carrying occupancy, danger, checker, pin, and king data for reuse across legal, quiet, noisy, evasion, and search move generation.
+- **Pinned-piece legality:** Reworked pinned pawn and pinned slider generation, including quiet pinned moves, noisy pinned moves, en-passant legality with discovered-check handling, and single-check/double-check evasion paths.
+- **Attack tables:** Added line and in-between square tables (`LINE`, `SQUARES_BETWEEN_BB`) and centralized initialization for rook, bishop, line, between-square, and pseudo-legal attack databases.
+- **Search parameters:** Added UCI-exposed search parameters for null move pruning, futility pruning, razoring, LMR, SEE pruning, history scaling, and qsearch margins.
+- **Search framework:** Reworked iterative deepening, aspiration windows, root score tracking, seldepth reporting, node accounting, early-stop logic, and soft/hard time limits.
+- **Lazy SMP:** Added per-thread IDs, per-thread move-ordering seed diversification, helper-thread aspiration deltas, and worker node aggregation in search output.
+- **Tablebase search integration:** Added main-thread tablebase gating, TB win/loss score handling, and tablebase hit reporting in search info.
+- **Move picker:** Added a staged main move picker with TT move, captures, killers, countermove, deferred quiet scoring, and quiet-batch skipping.
+- **Move ordering:** Added capture history, threat-aware quiet history, continuation-history scoring, deferred quiet scoring, randomized tie-breaking salt, and improved promotion/capture scoring.
+- **SEE:** Reworked SEE helpers with `see_ge`, faster pruning checks, en-passant-aware capture handling, promotion-aware exchange values, and cheap lower-bound tests.
+- **Null move pruning:** Fixed null move pruning to return the actual null-window score on successful prune instead of stale `best_score`, and added tunable reduction, beta margin, and verification controls.
+- **Pruning:** Added or expanded history quiet pruning, deep continuation-history pruning, late move pruning, futility pruning, razoring, main-search SEE pruning, and qsearch delta pruning.
+- **Futility pruning:** Changed futility pruning from setting `skip_quiets` after searching the triggering move to a hard skip when the collected fail-low data justified it.
+- **LMR and extensions:** Added tuned LMR scaling, PV/cutnode/improving/context adjustments, singular extensions, double extensions, multi-cut correction updates, and removed a dead killer-move LMR adjustment.
+- **Quiescence search:** Added TT reuse/storage in qsearch, qsearch TT move ordering, noisy move ordering, stand-pat handling, delta pruning, and SEE pruning.
+- **Correction history:** Expanded correction history from the older pawn/non-pawn form into pawn, white non-pawn, black non-pawn, major, minor, continuation, and previous-move correction components.
+- **History learning:** Added capture-history updates, threat-indexed quiet-history updates, continuation-history updates at multiple offsets, countermove updates from node state, and depth-1 history learning.
+- **Transposition table:** Reworked TT storage into two-entry buckets with age tracking, replacement scoring, exact-bound preference, hashfull sampling, hit-rate counters, prefetch helpers, and lock-free published-entry fetches.
+- **Thread safety:** Added TT publish flags with acquire/release semantics, spin locks for age/hashfull/clear paths, and safer TT resize/deinit behavior.
+- **HCE parameters:** Moved tuned HCE parameters into `hce_params.zig`, including material, PSQT, pawn structure, mobility, threats, king safety, pawn storm, outposts, rook files, bishop pair, and tempo.
+- **Pawn hash:** Added a pawn hash table for HCE pawn structure, pawn attacks, passed pawns, blocked passers, candidate pawns, supported pawns, phalanxes, backward pawns, isolated pawns, doubled pawns, and pawn attack data.
+- **HCE features:** Added new HCE features for knight/bishop outposts, bishop and rook traps, rook behind passer, connected rooks, blockade of passed pawns, king pawn shield, king virtual mobility, pawn storm, candidate pawns, and piece threats.
+- **Endgame evaluation:** Added extra endgame handling for bare-king material, bishop+knight mate guidance, king centralization, and king-distance terms.
+- **Tuner integration:** Reworked the tuner feature counters to match the expanded HCE and to support the binhce pipeline instead of only the old text/pickle-style flow.
+- **Datagen:** Added engine selfplay datagen with configurable games, depth, plies, random opening moves, strict mode, noisy-position skipping, minimum nodes, phase sampling, start-position mix, evaluation mode, and output format.
+- **Datagen formats:** Added bin40 writing, binhce writing with HCE feature vectors, SFEN32 packing/unpacking helpers, move16 encoding, and `bin_to_binhce` conversion tooling.
+- **Fast binhce loading:** Added a C ABI loader for binhce files so Python tuning tools can load scores, moves, plies, results, SFEN32 records, and feature tensors efficiently.
+- **NNUE loading:** Added embedded NNUE initialization, external NNUE file initialization, integrity checks, feature/output layer loading, and shared initialization helpers.
+- **NNUE accumulator:** Reworked NNUE accumulator refresh and incremental update around king buckets, oriented squares, piece-index tables, delta pieces, null-move copying, and full-refresh fallback.
+- **NNUE diagnostics:** Added debug-only NNUE stats, search-context tracking, king-refresh cause tracking, accumulator validation support, and NNUE microbenchmark tooling.
+- **SIMD NNUE path:** Kept AVX2-oriented SIMD affine evaluation and vectorized accumulator refresh paths for current x86-64 release builds.
+- **UCI protocol:** Added safer parsing, `exit` alias, immediate `isready` behavior, better malformed-input handling, option clamping, Chess960 synchronization, and UCI output fixes.
+- **UCI debug commands:** Added or expanded `validate`, `perftdiv`, `perftstats`, `perftchild`, `hcefeatures`, `hcefeatures_sfen32`, `probe`, and `probebest`.
+- **Bench commands:** Added `bench` for OpenBench-style validation and `benchhce` for HCE-only validation.
+- **Perft:** Reworked perft around the new move generator, added richer statistics, divide output, child-node inspection, timing, and more regression test coverage.
+- **Tests:** Added Zig test coverage for perft, SEE, FEN round-tripping, repetition, insufficient material, in-check detection, evaluation symmetry/bounds, HCE feature determinism, and NNUE incremental-vs-full-refresh consistency.
+- **Python validation tools:** Added helpers for UCI compliance, FRC/DFRC start positions, tablebase testing, PGN validation, datagen validation, binhce inspection, and HCE visualization.
+- **Automation:** Added Python automation for gauntlets, datagen runs, large-scale datagen orchestration, HCE tuning, bench statistics, go-depth statistics, and Zig-version comparison.
+- **Documentation:** Added dedicated docs for datagen, binhce conversion, data validation, HCE tuning, and search-feature impact tracking.
+- **Build system:** Added Fathom C sources, optional tablebase build wiring, Zig 0.15.1/0.16.0 compatibility shims, `main_015.zig`, `bin_to_binhce_015.zig`, and release tooling with selectable Zig executable.
+- **Removed old assets:** Removed the older unused NNUE files `debevec.nnue`, `trstenjak.nnue`, and `zolnir.nnue` from the active source tree; `cop.nnue` remains the active network.
+- **Bug fixes:** Fixed a latent LMP table out-of-bounds read, `Threads` values above `MAX_THREADS`, `go movetime 1` unsigned underflow, transposition table double-free during `Hash` resizing, malformed debug/UCI input panics, and several Chess960/FEN/move-parsing edge cases.
+- **Cleanup:** Removed dead search constants and dead branches, consolidated NNUE initialization, replaced repeated TT hash-size literals with `HASH_SIZE_DEFAULT + 1`, and moved datagen NNUE initialization after common engine initialization for consistency.
+
+
+
 ## Lambergar 1.3
 
 ### Builds
