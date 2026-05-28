@@ -1,95 +1,114 @@
-import subprocess
+import argparse
 import os
 import shutil
+import subprocess
 
-def rename_and_move_file(command, bin_dir):
 
-    start = command.find('--prefix "') + len('--prefix "')
-    end = command.find('"', start)
-    directory = command[start:end]
-    command = command[start:end]
+def rename_and_move_file(prefix_name, bin_dir):
+    directory = prefix_name
 
-    print(directory)
+    print(prefix_name)
 
     if directory is not None:
-        # Change to the specified directory and then to the 'bin' subdirectory
-        os.chdir(os.path.join(directory, 'bin'))
+        os.chdir(os.path.join(directory, "bin"))
 
-        # Check if the command contains 'win' or 'linux'
-        if 'win' in command and os.path.exists('lambergar.exe'):
-            # Rename 'lambergar.exe'
-            os.rename('lambergar.exe', f'{command}.exe')
+        if "win" in prefix_name and os.path.exists("lambergar.exe"):
+            os.rename("lambergar.exe", f"{prefix_name}.exe")
             if not os.path.exists(bin_dir):
-                os.makedirs(bin_dir)            
-            # Move the new file to the specified bin_dir
-            shutil.move(f'{command}.exe', os.path.join(bin_dir, f'{command}.exe'))
-        elif 'linux' in command and os.path.exists('lambergar'):
-            # Rename 'lambergar'
-            os.rename('lambergar', command)
+                os.makedirs(bin_dir)
+            shutil.move(f"{prefix_name}.exe", os.path.join(bin_dir, f"{prefix_name}.exe"))
+        elif ("linux" in prefix_name or "macos" in prefix_name) and os.path.exists("lambergar"):
+            os.rename("lambergar", prefix_name)
             if not os.path.exists(bin_dir):
-                os.makedirs(bin_dir)            
-            # Move the new file to the specified bin_dir
-            shutil.move(command, os.path.join(bin_dir, command))
+                os.makedirs(bin_dir)
+            shutil.move(prefix_name, os.path.join(bin_dir, prefix_name))
 
-        # Delete the 'bin' directory and the command directory
-        os.chdir('..')  # Go up one directory
-        shutil.rmtree('bin')  # Delete the 'bin' directory
-        os.chdir('..')  # Go up one directory
-        shutil.rmtree(directory)  # Delete the command directory
+        os.chdir("..")
+        shutil.rmtree("bin")
+        os.chdir("..")
+        shutil.rmtree(directory)
+
 
 def extract_version(filename):
-    with open(filename, 'r') as file:
+    with open(filename, "r") as file:
         for line in file:
             if '"id name Lambergar ' in line:
-                start = line.find('Lambergar ') + len('Lambergar ')
+                start = line.find("Lambergar ") + len("Lambergar ")
                 end = line.find('"', start)
-                version = line[start:end-2]
+                version = line[start:end - 2]
                 return version
-            
-def build_ver(command, bin_dir):
-    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-    stdout, stderr = process.communicate()
+    raise RuntimeError(f"Could not extract version from {filename}")
+
+
+def build_ver(command, prefix_name, bin_dir):
+    process = subprocess.run(command, capture_output=True, text=True)
+    if process.stdout:
+        print(process.stdout)
     if process.returncode != 0:
-        print(f"Error occurred: {stderr}")
-    else:
-        print(stdout)
-    rename_and_move_file(command, bin_dir)
+        if process.stderr:
+            print(process.stderr)
+        raise SystemExit(process.returncode)
+    rename_and_move_file(prefix_name, bin_dir)
 
-version = extract_version('./src/uci.zig')
-print(f"Version: {version}")
 
-bin_dir = f'..\\..\\binaries'
+def build_command(zig, target, cpu, prefix_name):
+    return [
+        zig,
+        "build",
+        f"-Dtarget={target}",
+        "--release=fast",
+        f"-Dcpu={cpu}",
+        "--prefix",
+        prefix_name,
+    ]
 
-# Windows versions
-command = f'zig build -Doptimize=ReleaseFast -Dcpu=x86_64 --prefix "lambergar-{version}-x86_64-win-VINTAGE"'
-build_ver(command, bin_dir)
 
-command = f'zig build -Doptimize=ReleaseFast -Dcpu=x86_64_v2 --prefix "lambergar-{version}-x86_64-win-POPCNT"'
-build_ver(command, bin_dir)
+def parse_args():
+    parser = argparse.ArgumentParser(description="Build release binaries with a chosen Zig executable.")
+    parser.add_argument(
+        "--zig",
+        default="zig",
+        help="Path to the Zig executable to use, for example zig or C:\\path\\to\\zig.exe",
+    )
+    parser.add_argument(
+        "--bin-dir",
+        default="..\\..\\binaries",
+        help="Output directory for renamed binaries",
+    )
+    return parser.parse_args()
 
-command = f'zig build -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-{version}-x86_64-win-AVX2"'
-build_ver(command, bin_dir)
 
-command = f'zig build -Doptimize=ReleaseFast -Dcpu=x86_64_v4 --prefix "lambergar-{version}-x86_64-win-AVX-512"'
-build_ver(command, bin_dir)
+def main():
+    args = parse_args()
 
-# Linux versions
-command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64 --prefix "lambergar-{version}-x86_64-linux-VINTAGE"'
-build_ver(command, bin_dir)
+    version = extract_version("./src/uci.zig")
+    print(f"Version: {version}")
+    print(f"Zig: {args.zig}")
 
-command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v2 --prefix "lambergar-{version}-x86_64-linux-POPCNT"'
-build_ver(command, bin_dir)
+    bin_dir = args.bin_dir
 
-command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v3 --prefix "lambergar-{version}-x86_64-linux-AVX2"'
-build_ver(command, bin_dir)
+    print("Skipping Windows VINTAGE/POPCNT: NNUE AVX2 inline asm requires x86_64_v3+")
 
-# Raspberry Pi version 
-command = f'zig build -Dtarget=aarch64-linux -Doptimize=ReleaseFast --prefix "lambergar-{version}-aarch64-linux"'
-build_ver(command, bin_dir)
+    prefix_name = f"lambergar-{version}-x86_64-win-AVX2"
+    build_ver(build_command(args.zig, "x86_64-windows", "x86_64_v3", prefix_name), prefix_name, bin_dir)
 
-#command = f'zig build -Dtarget=x86_64-linux -Doptimize=ReleaseFast -Dcpu=x86_64_v4 --prefix "lambergar-{version}-x86_64-linux-AVX-512"'
-#build_ver(command, bin_dir)
+    prefix_name = f"lambergar-{version}-x86_64-win-AVX-512"
+    build_ver(build_command(args.zig, "x86_64-windows", "x86_64_v4", prefix_name), prefix_name, bin_dir)
 
-"""
-NO COMMENT ;)
-"""
+    print("Skipping Linux VINTAGE/POPCNT: NNUE AVX2 inline asm requires x86_64_v3+")
+
+    prefix_name = f"lambergar-{version}-x86_64-linux-AVX2"
+    build_ver(build_command(args.zig, "x86_64-linux", "x86_64_v3", prefix_name), prefix_name, bin_dir)
+
+    print("Skipping aarch64 Linux: NNUE AVX2 inline asm is x86_64-only")
+
+    print("Skipping macOS x86_64 VINTAGE/POPCNT: NNUE AVX2 inline asm requires x86_64_v3+")
+
+    prefix_name = f"lambergar-{version}-x86_64-macos-AVX2"
+    build_ver(build_command(args.zig, "x86_64-macos", "x86_64_v3", prefix_name), prefix_name, bin_dir)
+
+    print("Skipping aarch64 macOS: NNUE AVX2 inline asm is x86_64-only")
+
+
+if __name__ == "__main__":
+    main()

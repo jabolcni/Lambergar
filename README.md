@@ -1,118 +1,212 @@
-# Lambergar
-
-     __,    ____, __, _, ____   ____,  ____,  ____,   ____, ____, 
-    (-|    (-/_| (-|\/| (-|__) (-|_,  (-|__) (-/ _,  (-/_| (-|__) 
-     _|__, _/  |, _| _|, _|__)  _|__,  _|  \, _\__|  _/  |, _|  \,
-     
-<br/>
 <p align="center">
-<img src="DALL·E 2023-11-14 16.01.46 - two chess knights figures with knights sitting on them, fighting each other, pixel art.png" alt="Logo" width=128 height=128/>
+  <img src="banner2.svg" alt="Lambergar Chess Engine"/>
 </p>
-<br/>
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Zig](https://img.shields.io/badge/Zig-0.15.1%20%7C%200.16.0-orange.svg)](https://ziglang.org/)
+[![CCRL Rating](https://img.shields.io/badge/CCRL-3380%20Elo-blue.svg)](https://computerchess.org.uk/4040/cgi/compare_engines.cgi?family=Lambergar&print=Rating+list&print=Results+table&print=LOS+table&print=Ponder+hit+table&print=Eval+difference+table&print=Comopp+gamenum+table&print=Overlap+table&print=Score+with+common+opponents)
+
+---
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Building from Source](#building-from-source)
+- [HCE Tuning](#hce-tuning)
+- [Strength](#strength)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Credits](#credits)
+- [License](#license)
+
+---
 
 ## Introduction
 
-Lambergar is a chess engine developed in the Zig programming language. It uses UCI protocol and HCE (human crafted evaluation) for evaluating the chess positions to find the best move. I set out on this project with a defined set of specific objectives in mind:
+Lambergar is a UCI-compliant chess engine developed in the Zig programming language. It features both **NNUE (neural network)** and **HCE (hand-crafted evaluation)** options, with a fully automated tuning pipeline for HCE parameters.
 
-- *Chess Engine Creation*: the desire to construct a chess engine from the ground up.
-- *Resourceful Development*: while I aimed to build it independently, I also sought to leverage existing resources and learn from the codebase of other engines. I found that, at least in my case, resources from [Chess Programming Wiki](https://www.chessprogramming.org/) are great to understand the concepts, however the code from open-source engines actually tells you how to practically implement the concept, especially the more complex ones.
-- *Learning Zig*: I saw this as an opportunity not only to build a chess engine but also to learn a new programming language, which will also be useful for my job as an engineer.
+### Project Goals
 
-Inspiration was drawn from:
+- **Chess Engine Creation**: Build a strong chess engine from the ground up
+- **Resourceful Development**: while I aimed to build it independently, I also sought to leverage existing resources and learn from the codebase of other engines. I found that, at least in my case, resources from [Chess Programming Wiki](https://www.chessprogramming.org/) are great to understand the concepts, however the code from open-source engines actually tells you how to practically implement the concept, especially the more complex ones.
+- **Learning Zig**: I saw this as an opportunity not only to build a chess engine but also to learn a new programming language, which will also be useful for my job as an engineer.
 
-- YouTube tutorial series, "Bitboard CHESS ENGINE in C" by Code Monkey King (<https://www.youtube.com/playlist?list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs>),
-- YouTube tutorial series, "Programming A Chess Engine in C " by Bluefever Software (<https://www.youtube.com/watch?v=bGAfaepBco4&list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg&index=2&ab_channel=BluefeverSoftware>),
-- Kaola Chess Engine by Wuelle (<https://github.com/Wuelle/Kaola/tree/main>),
-- Avalanche Chess Engine by SnowballSH (<https://github.com/SnowballSH/Avalanche/tree/master>),
-- surge, fast bitboard-based legal chess move generator written in C++ (<https://github.com/nkarve/surge>)
-- Several open source chess engines written in C and C++ (Igel, Xipos, Ethereal, Alexandria, ...).
 
-The name "Lambergar" is a nod to the Slovenian folk romance, Pegam and Lambergar, which recounts the epic struggle between Jan Vitovec and Krištof Lambergar (Lamberg). This narrative of fortitude and rivalry provided a fitting namesake for this chess engine.
+### Name Origin
 
-## Compilation
+The name "Lambergar" comes from the Slovenian folk romance *Pegam and Lambergar*, which recounts the epic struggle between Jan Vitovec and Krištof Lambergar (Lamberg). This narrative of fortitude and rivalry provides a fitting namesake for a chess engine.
 
-If you want to compile code yourself, code can be compiled with Zig compiler version 0.13.0 (latest Zig version at the date of last release of the engine) (<https://ziglang.org/download/>).
+### Inspiration
 
-Compile with command `zig build`. You can run python script `build_versions.py` which will compile different versions for windows and Linux. Currently, there are three basic build: *vintage*, *popcnt* and *AVX2*. Vintage version is for really old computers, popcnt is for modern computers, but for best performance use AVX2 release.
+This project draws inspiration from:
+- [Bitboard CHESS ENGINE in C](https://www.youtube.com/playlist?list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs) by Code Monkey King
+- [Programming A Chess Engine in C](https://www.youtube.com/watch?v=bGAfaepBco4&list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg) by Bluefever Software
+- [Kaola Chess Engine](https://github.com/Wuelle/Kaola) by Wuelle
+- [Avalanche Chess Engine](https://github.com/SnowballSH/Avalanche) by SnowballSH
+- [surge](https://github.com/nkarve/surge) - Fast bitboard-based legal move generator
+- Various open-source engines (Igel, Xipos, Ethereal, Alexandria, and others)
 
-## Features and implemented algorithms
+---
 
-- Move generator is a translation of surge move generator in Zig with several bug fixes.
-- Perft testing
-- UCI protocol
-- Evaluation using PSQT tables
-- Tuner for material and PSQT values
-- Mop-up evaluation for end-game from Greko engine
-- PVS search
-- Quiescence search
-- Aspiration window
-- Zobrist hashing
-- Move ordering
-  - Hashed move
-  - MVV-LVA+SEE
+## Features
+
+### Search & Evaluation
+
+- **Move Generation**: Fast bitboard legal move generator with cached move-generation context, pinned-piece handling, en-passant legality, and Chess960 castling support
+- **Evaluation Options**:
+  - NNUE (default) - Neural network evaluation
+  - HCE - Hand-crafted evaluation with tuned parameters and exportable feature counters
+- **Search Algorithm**: Principal Variation Search (PVS) with iterative deepening and aspiration windows
+- **Quiescence Search**: Tactical position evaluation with TT reuse, noisy move ordering, delta pruning, and SEE pruning
+- **Move Ordering**:
+  - Hash move
+  - Capture history and SEE (Static Exchange Evaluation)
   - Killer moves
-  - Counter move
-  - History heuristics
-- Iterative deepening
-- Collecting PV line
+  - Countermoves
+  - Threat-aware quiet history
+  - Continuation history
+- **Transposition Table**: Two-entry bucket TT with age tracking, prefetching, replacement scoring, and thread-safe publishing
+- **Endgame Tablebases**: Experimental Syzygy support through Fathom, including WDL/root probing and UCI inspection commands
+- **Chess Variants**: Standard chess, Chess960/FRC, and DFRC start positions
+
+### Search optimizations
+
+- Aspiration windows
+- Zobrist hashing
 - Null move pruning
-- Basic time controls
-- Typical pruning algorithms, reductions and extensions
+- Futility pruning
+- Razoring
+- Late move pruning
+- Late move reductions
+- Singular extensions
+- Correction history
+- Lazy SMP search
+- Tunable search parameters exposed as UCI options
+- Iterative deepening
+- Soft/hard time management
 
-## Tuning
+### Data Generation & HCE Tuning
 
-Tuning was introduced in version v0.4.0 for tuning HCE evaluation parameters (material values and PSQT values). Version v0.6.0 introduced evaluation based on neural network and newer version use NNUE as a default option for evaluation. However, HCE evaluation is still an option with setting `setoption name UseNNue value false`, so code for tuning of HCE parameters has been kept as part of the project. 
+- **Selfplay Datagen**: Standard, FRC, and DFRC selfplay generation
+- **Output Formats**: bin40 and binhce training data formats
+- **HCE Feature Export**: Packed HCE feature vectors for tuning and validation
+- **Fast Zig/C Loader**: Efficient binhce loading for Python training tools
+- **PyTorch Training**: GPU-accelerated parameter optimization
+- **Validation Tools**: Datagen, binhce, UCI, FRC/DFRC, tablebase, and engine regression helpers
 
-Go into directory `tuner`. Run python script `python tuner.py --mode on` which will change the mode of the Zig code of the Lamberger engine for tuning. Compile the engine with `zig build` command. In `tuner.zig` line `var file = try std.fs.cwd().openFile("quiet-labeled.epd", .{});` write the name of the file with position and results of the game. File with positions should have fen position followed with either `[1.0]` for white won, `[0.5]` draw or `[0.0]` for black won.
-Example:
+See [automation/README.md](automation/README.md) for details.
+
+---
+
+## How to use it
+
+### Download Pre-built Binary
+
+Download the latest release from the [Releases](https://github.com/yourusername/Lambergar/releases) page.
+
+Choose the appropriate version:
+- **AVX2**: Best performance (modern CPUs)
+- **AVX-512**: Optional high-end x86-64-v4 build on supported CPUs
+
+### Using with a GUI
+
+Lambergar supports the UCI protocol and works with any UCI-compatible chess GUI:
+- [Arena](http://www.playwitharena.de/)
+- [Cute Chess](https://cutechess.com/)
+- [BanksiaGUI](https://banksiagui.com/)
+
+### Command Line Usage
 
 ```bash
-2r2rk1/ppN1nppp/5q2/8/3p4/3B4/PPPQ1PPP/3R2K1 w - - [0.0]
-8/5R2/5K2/8/4r3/5k2/8/8 w - - [0.5]
-rnb1k2r/2p1bppp/1p2pn2/pP6/3NP3/P1NB4/5PPP/R1BQK2R b KQkq - [1.0]
+# Start the engine
+./lambergar
+
+# Basic UCI commands
+uci                    # Display engine info
+isready                # Check if engine is ready
+position startpos      # Set starting position
+go depth 10            # Search to depth 10
+quit                   # Exit engine
 ```
 
-Output file `data.csv` will contain flags which evaluation parameters contribute to position evaluation. When conversion ends, you can quit the engine and run command `python tuner.py --mode off`, which will change the mode of the Zig code of the Lamberger engine into normal mode. Compile the engine with `zig build` command.
+---
 
-Now run python script `convert_to_pickle.py` which will convert `data.csv` into pickle files. Then you can open Jupyter notebook `tune_parameters.ipynb`, which contains the code for optimization which finds the best evaluation parameters. Code saves the parameters into file `merged_parameters.txt`, which can be directly copied into `evaluation.zig`. Of course then you need to compile the Zig code with `zig build` so that new evaluation values are used in newly compiled engine.
+## Building from Source
+
+### Prerequisites
+
+- **Zig Compiler**: Version `0.15.1` or `0.16.0` ([Download](https://ziglang.org/download/))
+- **Python 3.8+**: For tuning scripts (optional)
+- **PyTorch**: For HCE tuning (optional)
+
+Note: the engine currently builds with both Zig `0.15.1` and `0.16.0`, but Zig `0.15.1` is recommended for benchmarking and releases because Zig `0.16.0` is significantly slower on this codebase.
+
+### Build Commands
+
+```bash
+# Simple build
+zig build
+
+# Build with an explicit Zig version
+"C:\path\to\zig.exe" build -Dtarget=x86_64-windows -Dcpu=x86_64_v3
+
+# Package release binaries with an explicit Zig executable
+python build_versions.py --zig "C:\path\to\zig.exe"
+```
+
+### Build Targets
+
+- **Windows AVX2**: `x86_64-windows`, `x86_64_v3`
+- **Windows AVX-512**: `x86_64-windows`, `x86_64_v4`
+- **Linux AVX2**: `x86_64-linux`, `x86_64_v3`
+- **macOS AVX2**: `x86_64-macos`, `x86_64_v3`
+
+Notes:
+- NNUE currently uses x86-64 AVX2 inline assembly, so older x86-64 targets such as Vintage and POPCNT are not built.
+- Apple Silicon and generic aarch64 release binaries are currently skipped for the same reason.
+
+---
 
 ## Strength
 
-In November 2023 version v0.3.1 was proposed for testing on CCRL Blitz list, where it currently stands at 2368 &plusmn; 20 Elo.
+Lambergar has been tested on the [CCRL](https://computerchess.org.uk/) rating lists:
 
-In February 2024 version v0.4.1 was proposed for testing on CCRL Blitz list, where it currently stands at 2687 &plusmn; 20 Elo.
+| Version | Date | CCRL 40/15 | CCRL Blitz |
+|---------|------|------------|------------|
+| v0.3.1 | Nov 2023 | 2455 ± 20 | 2360 ± 18 |
+| v0.4.1 | Feb 2024 | 2653 ± 19 | 2688 ± 17 |
+| v0.5.0 | Mar 2024 | 2794 ± 20 | 2910 ± 17 |
+| v0.5.2 | Jun 2024 | 2990 ± 20 | - |
+| v0.6.0 | Late 2024 | 3099 ± 16 | 3092 ± 16 |
+| v1.0 | Jan 2025 | 3206 ± 15 | 3202 ± 16 |
+| v1.1 | Mar 2025 | 3306 ± 15 | 3338 ± 16 |
+| v1.2 | May 2025 | 3355 ± 17 | 3365 ± 15 |
+| v1.3 | Sep 2025 | 3380 ± 13 | 3443 ± 13 |
 
-In March 2024 version v0.5.0 was tested on CCRL Blitz list, where it currently stands at 2908 &plusmn; 20 Elo.
-
-In June 2024 version v0.5.2 was listed on CCRL 40/15 list with score 2946 &plusmn; 35 Elo.
-
-In late 2024 version v0.6.0 was listed on CCRL 40/15 list and CCRL Blitz list with score 3098 &plusmn; 17 Elo.
-
-In January 2025 version 1.0 was listed on CCRL 40/15 list and CCRL Blitz list with score 3209 &plusmn; 19 Elo and 3208 &plusmn; 17 Elo.
-
-On 27th of March 2025 version 1.1 was released, listed on CCRL 40/15 list and CCRL Blitz list with score 3308 &plusmn; 17 Elo and 3338 &plusmn; 16 Elo.
-
-On 21th of May 2025 version 1.2 was released, listed on CCRL 40/15 list and CCRL Blitz list with score 3355 &plusmn; 18 Elo and 3364 &plusmn; 15 Elo.
-
-On 19th of September 2025 version 1.3 was released, estimated at around 3420 Elo.
-
+---
 
 ## Credits
 
-- [Chess Programming Wiki](https://www.chessprogramming.org/)
+### Special Thanks
 
-- [BitBoard Chess Engine in C YouTube playlist](https://www.youtube.com/playlist?list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs) by [@maksimKorzh](https://github.com/maksimKorzh) in which the authors explain the development of [BBC](https://github.com/maksimKorzh/bbc) engine
+- **Code Monkey King** - Bitboard chess engine tutorial series
+- **Bluefever Software** - Chess programming tutorial series
+- **Wuelle** - Kaola chess engine (Zig inspiration)
+- **SnowballSH** - Avalanche chess engine
+- **nkarve** - surge move generator
+- **Open Source Community** - Igel, Xipos, Ethereal, Alexandria, and many others
 
-- [Programming A Chess Engine in C](https://www.youtube.com/watch?v=bGAfaepBco4&list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg&index=2&ab_channel=BluefeverSoftware) by Bluefever Software in which the authors explain the development of Vice engine
+### Resources
 
-- [surge](https://github.com/nkarve/surge) by [nkarve](https://github.com/nkarve). Move generator is a translation of surge move generator in Zig with several bug fixes.
+- [Chess Programming Wiki](https://www.chessprogramming.org/) - Invaluable reference
+- [Zig Language](https://ziglang.org/) - Modern systems programming
+- [PyTorch](https://pytorch.org/) - Machine learning framework
+- [official-stockfish/nnue-pytorch](https://github.com/official-stockfish/nnue-pytorch/tree/nodchip_ft_init) - NNUE training
 
-- [Kaola Chess Engine](https://github.com/Wuelle/Kaola/tree/main) by [Wuelle](https://github.com/Wuelle). The UCI protocol implementation and FEN string parsing are directly derived from the Kaola chess engine. UCI protocol was later refractored, but it still retains a lot of code from Kaola chess engine.
-
-- [Avalanche Chess Engine](https://github.com/SnowballSH/Avalanche/tree/master) by [SnowballSH](https://github.com/SnowballSH). Useful examples hot to program chess engine in Zig language.
-
-- [Delilah Chess Engine](https://git.sr.ht/~voroskoi/delilah) by [VÖRÖSKŐI András](https://git.sr.ht/~voroskoi/). Useful example how to implement NNUE in Zig.
+---
 
 ## License
 
-Lambergar is licensed under the MIT License. Check out LICENSE for the full text. Feel free to use this program, but please credit this repository in your project if you use it.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
