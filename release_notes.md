@@ -65,7 +65,6 @@ release because the current NNUE path uses x86-64 AVX2-oriented code.
 - **Automation:** Added Python automation for gauntlets, datagen runs, large-scale datagen orchestration, HCE tuning, bench statistics, go-depth statistics, and Zig-version comparison.
 - **Documentation:** Added dedicated docs for datagen, binhce conversion, data validation, HCE tuning, and search-feature impact tracking.
 - **Build system:** Added Fathom C sources, optional tablebase build wiring, Zig 0.15.1/0.16.0 compatibility shims, `main_015.zig`, `bin_to_binhce_015.zig`, and release tooling with selectable Zig executable.
-- **Removed old assets:** Removed the older unused NNUE files `debevec.nnue`, `trstenjak.nnue`, and `zolnir.nnue` from the active source tree; `cop.nnue` remains the active network.
 - **Bug fixes:** Fixed a latent LMP table out-of-bounds read, `Threads` values above `MAX_THREADS`, `go movetime 1` unsigned underflow, transposition table double-free during `Hash` resizing, malformed debug/UCI input panics, and several Chess960/FEN/move-parsing edge cases.
 - **Cleanup:** Removed dead search constants and dead branches, consolidated NNUE initialization, replaced repeated TT hash-size literals with `HASH_SIZE_DEFAULT + 1`, and moved datagen NNUE initialization after common engine initialization for consistency.
 
