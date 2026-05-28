@@ -1,0 +1,124 @@
+{
+    "settings": {
+        "engine_binary": "./lamb",
+        "output_dir": "data",
+        "threads": 16,
+        "total_games_per_batch": 1000,
+        "eval_mode": "hce",
+        "format": "bin40"
+    },
+    "fixed_parameters": {
+        "skipnoisy": true,
+        "adjudicate_draws_by_score": true,
+        "adjudicate_draws_by_insufficient_mating_material": true,
+        "save_max_ply": 200,
+        "full_game": false,
+        "debug": false,
+        "strict": false
+    },
+    "random_parameters": {
+        "depth": {
+            "type": "int",
+            "min": 8,
+            "max": 10,
+            "default": 9
+        },
+        "min_nodes": {
+            "type": "int",
+            "min": 500,
+            "max": 2000,
+            "default": 1000
+        },
+        "dither": {
+            "type": "int",
+            "min": 0,
+            "max": 2,
+            "default": 1
+        },
+        "random_move_count": {
+            "type": "int",
+            "min": 3,
+            "max": 8,
+            "default": 6
+        },
+        "random_min_ply": {
+            "type": "int",
+            "min": 2,
+            "max": 6,
+            "default": 4
+        },
+        "random_50_ply": {
+            "type": "int",
+            "min": 10,
+            "max": 15,
+            "default": 12
+        },
+        "random_10_ply": {
+            "type": "int",
+            "min": 20,
+            "max": 30,
+            "default": 24
+        },
+        "save_min_ply": {
+            "type": "int",
+            "min": 4,
+            "max": 12,
+            "default": 6
+        },
+        "phase_prob_opening": {
+            "type": "float",
+            "min": 0.1,
+            "max": 0.3,
+            "default": 0.2
+        },
+        "phase_prob_early_middlegame": {
+            "type": "float",
+            "min": 0.5,
+            "max": 0.9,
+            "default": 0.85
+        },
+        "phase_prob_middlegame": {
+            "type": "float",
+            "min": 0.95,
+            "max": 1.0,
+            "default": 1.0
+        },
+        "phase_prob_late_middlegame": {
+            "type": "float",
+            "min": 0.45,
+            "max": 0.85,
+            "default": 0.8
+        },
+        "phase_prob_endgame": {
+            "type": "float",
+            "min": 0.1,
+            "max": 0.35,
+            "default": 0.2
+        }
+    },
+    "distribution_groups": [
+        {
+            "comment": "Sum of these must be 1.0, respecting min/max bounds",
+            "params": [
+                {
+                    "name": "std",
+                    "min": 0.5,
+                    "max": 0.8,
+                    "default": 0.75
+                },
+                {
+                    "name": "frc",
+                    "min": 0.1,
+                    "max": 0.25,
+                    "default": 0.2
+                },
+                {
+                    "name": "dfrc",
+                    "min": 0.07,
+                    "max": 0.15,
+                    "default": 0.1
+                }
+            ]
+        }
+    ]
+}

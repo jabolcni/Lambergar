@@ -1,0 +1,85 @@
+{
+    "description": "Centered HCE Constraints with Slope Limiting",
+    "constraints": {
+        "knight_mobility": {
+            "type": "slope",
+            "max_slope": 100.0,
+            "min_val": -500.0
+        },
+        "bishop_mobility": {
+            "type": "slope",
+            "max_slope": 100.0,
+            "min_val": -500.0
+        },
+        "rook_mobility": {
+            "type": "slope",
+            "max_slope": 100.0,
+            "min_val": -500.0
+        },
+        "queen_mobility": {
+            "type": "slope",
+            "max_slope": 100.0,
+            "min_val": -1000.0
+        },
+        "passed_pawn": {
+            "type": "sign",
+            "rule": "positive"
+        },
+        "isolated_pawn": {
+            "type": "sign",
+            "rule": "non-positive"
+        },
+        "bishop_pair": {
+            "type": "sign",
+            "rule": "positive"
+        },
+        "trapped_bishop": {
+            "type": "sign",
+            "rule": "non-positive"
+        },
+        "doubled_pawns": {
+            "type": "sign",
+            "rule": "non-positive"
+        },
+        "bishop_outpost": {
+            "type": "sign",
+            "rule": "positive"
+        },
+        "knight_outpost": {
+            "type": "sign",
+            "rule": "positive"
+        },
+        "king_safety": {
+            "type": "slope",
+            "max_slope": -100.0
+        },
+        "connected_rooks": {
+            "type": "sign",
+            "rule": "positive"
+        },
+        "blockade_passer": {
+            "type": "sign",
+            "rule": "positive"
+        },
+        "rook_behind_passer": {
+            "type": "sign",
+            "rule": "positive"
+        },
+        "rook_open": {
+            "type": "sign",
+            "rule": "positive"
+        },
+        "rook_semi_open": {
+            "type": "sign",
+            "rule": "positive"
+        },
+        "trapped_rook": {
+            "type": "sign",
+            "rule": "non-positive"
+        },
+        "backward_pawn": {
+            "type": "sign",
+            "rule": "non-positive"
+        }
+    }
+}

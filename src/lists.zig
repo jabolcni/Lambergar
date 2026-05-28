@@ -52,15 +52,18 @@ pub const ScoreList = struct {
     }
 };
 
+pub const MoveScore = struct {
+    move: Move = undefined,
+    score: i32 = 0,
+};
+
 pub const MoveScoreList = struct {
-    moves: [MAX_MOVES]Move = undefined,
-    scores: [MAX_MOVES]i32 = undefined,
+    items: [MAX_MOVES]MoveScore = undefined,
     count: usize = 0,
 
     pub fn append(self: *MoveScoreList, move: Move, score: i32) void {
         //if (self.count >= position.MAX_MOVES) return error.Overflow;
-        self.moves[self.count] = move;
-        self.scores[self.count] = score;
+        self.items[self.count] = .{ .move = move, .score = score };
         self.count += 1;
     }
 };

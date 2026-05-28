@@ -33,13 +33,15 @@ pub const Bound = enum(u2) {
     BOUND_LOWER = 3,
 };
 
-pub const scoreEntry = packed struct {
+pub const scoreEntry = struct {
     hash_key: u64,
     move: Move, // 16-bits
     score: i32,
     bound: Bound, // 2-bits
     depth: i8,
     age: u6,
+    // Publication flag: 0 = invalid/empty, 1 = published. Written last on store with release semantics.
+    valid: u8,
 
     pub fn new(k: u64, m: Move, s: i32, b: Bound, d: i8, a: u6) scoreEntry {
         return scoreEntry{
@@ -49,6 +51,7 @@ pub const scoreEntry = packed struct {
             .bound = b,
             .depth = d,
             .age = a,
+            .valid = if (b == Bound.BOUND_NONE) 0 else 1,
         };
     }
 };
@@ -84,58 +87,62 @@ pub const TranspositionTable = struct {
     pub fn init(self: *TranspositionTable, size_mb: u64) !void {
         tt_allocator.free(self.ttArray);
         const total_entries = size_mb * MB / @sizeOf(scoreEntry);
-        const size = total_entries / BUCKET_SIZE; // Number of buckets
+        var size = total_entries / BUCKET_SIZE; // Number of buckets
+        if (size == 0) size = 1;
+        // Round down to the nearest power of two for proper masking
+        var v = size;
+        v |= v >> 1;
+        v |= v >> 2;
+        v |= v >> 4;
+        v |= v >> 8;
+        v |= v >> 16;
+        v |= v >> 32;
+        const pow2 = (v + 1) >> 1;
         if (uci.debug) {
-            std.debug.print("Hash size in buckets: {}\n", .{size});
-            std.debug.print("Total entries: {}\n", .{size * BUCKET_SIZE});
-            std.debug.print("Hash size in MB: {}\n", .{size * BUCKET_SIZE * @sizeOf(scoreEntry) / MB});
+            std.debug.print("Hash size in buckets: {} (pow2 adjusted)\n", .{pow2});
+            std.debug.print("Total entries: {}\n", .{pow2 * BUCKET_SIZE});
+            std.debug.print("Hash size in MB: {}\n", .{pow2 * BUCKET_SIZE * @sizeOf(scoreEntry) / MB});
         }
-        self.ttArray = try tt_allocator.alloc([BUCKET_SIZE]scoreEntry, size);
+        self.ttArray = try tt_allocator.alloc([BUCKET_SIZE]scoreEntry, pow2);
         self.bucket_size = 4096; // Lock granularity (buckets per lock)
-        const num_locks = (size + self.bucket_size - 1) / self.bucket_size;
+        const num_locks = (pow2 + self.bucket_size - 1) / self.bucket_size;
         self.locks = try tt_allocator.alloc(SpinLock, num_locks);
         for (self.locks) |*lock| lock.* = SpinLock{};
-        self.size = size;
-        self.mask = size - 1;
+        self.size = pow2;
+        self.mask = pow2 - 1;
         self.age = 0;
         self.clear();
     }
 
-    pub inline fn clear(self: *TranspositionTable) void {
-        for (self.locks, 0..) |*lock, i| {
-            lock.lock();
-            defer lock.unlock();
-            const start = i * self.bucket_size;
-            const end = @min(start + self.bucket_size, self.size);
-            for (self.ttArray[start..end]) |*bucket| {
-                for (bucket) |*e| e.* = scoreEntry.new(0, Move.empty(), 0, Bound.BOUND_NONE, 0, 0);
-            }
-        }
+    pub fn clear(self: *TranspositionTable) void {
+        // Zeroing the array is safe: valid=0 is the "invalid" sentinel checked first
+        // in fetch(), so zeroed entries are always skipped without being used.
+        @memset(std.mem.sliceAsBytes(self.ttArray), 0);
         self.age = 0;
         self.reset_counters();
     }
 
-    pub inline fn index(self: *TranspositionTable, hash: u64) u64 {
+    pub fn index(self: *TranspositionTable, hash: u64) u64 {
         return hash & self.mask;
     }
 
-    // pub inline fn lock_idx(self: *TranspositionTable, hash: u64) usize {
+    // pub  fn lock_idx(self: *TranspositionTable, hash: u64) usize {
     //     return self.index(hash) / self.bucket_size;
     // }
 
-    pub inline fn increase_age(self: *TranspositionTable) void {
+    pub fn increase_age(self: *TranspositionTable) void {
         self.locks[0].lock();
         defer self.locks[0].unlock();
         self.age +%= 1;
     }
 
-    pub inline fn clear_age(self: *TranspositionTable) void {
+    pub fn clear_age(self: *TranspositionTable) void {
         self.locks[0].lock();
         defer self.locks[0].unlock();
         self.age = 0;
     }
 
-    pub inline fn hash_full(self: *TranspositionTable) u16 {
+    pub fn hash_full(self: *TranspositionTable) u16 {
         var count: u16 = 0;
         for (0..1000) |idx| {
             const hash_idx = (idx * 1000) & self.mask;
@@ -152,71 +159,147 @@ pub const TranspositionTable = struct {
         return count;
     }
 
-    pub inline fn get_hit_rate(self: *TranspositionTable) u64 {
+    pub fn get_hit_rate(self: *TranspositionTable) u64 {
         if (self.lookups == 0) return 0.0;
         //return @as(f32, @floatFromInt(self.hits)) / @as(f32, @floatFromInt(self.lookups)) * 100.0;
         return @divTrunc(self.hits * 1000, self.lookups);
     }
 
-    pub inline fn reset_counters(self: *TranspositionTable) void {
+    pub fn reset_counters(self: *TranspositionTable) void {
         self.lookups = 0;
         self.hits = 0;
     }
 
-    pub inline fn store(self: *TranspositionTable, entry: scoreEntry) void {
+    pub fn store(self: *TranspositionTable, entry: scoreEntry) void {
         const idx = self.index(entry.hash_key);
-        const lock_idx = idx / self.bucket_size;
-        self.locks[lock_idx].lock();
-        defer self.locks[lock_idx].unlock();
-
-        var bucket = &self.ttArray[idx];
         const key = entry.hash_key;
         const current_age = self.age;
 
-        // Find the best entry to replace (or update if key matches)
-        var replace_idx: usize = 0;
-        var best_value: i32 = std.math.maxInt(i32); // Lower value = less valuable
+        const bucket_ptr = &self.ttArray[idx];
 
-        for (bucket, 0..) |*e, i| {
-            if (e.hash_key == key) {
-                // If key matches, update this entry directly
-                if (entry.move.is_empty()) e.move = e.move else e.move = entry.move;
-                if (entry.bound == Bound.BOUND_EXACT or
-                    key != e.hash_key or
-                    entry.depth + 5 > e.depth or
-                    e.age != current_age)
-                {
-                    e.* = entry;
-                }
+        // Try update in-place if key matches
+        var i: usize = 0;
+        while (i < BUCKET_SIZE) : (i += 1) {
+            const e_ptr = &bucket_ptr.*[i];
+            if (e_ptr.hash_key == key) {
+                // Invalidate before write
+                @atomicStore(u8, &e_ptr.valid, 0, .seq_cst);
+                if (!entry.move.is_empty()) e_ptr.move = entry.move;
+                e_ptr.hash_key = key;
+                e_ptr.score = entry.score;
+                e_ptr.depth = entry.depth;
+                e_ptr.bound = entry.bound;
+                e_ptr.age = current_age;
+                // Publish
+                const v: u8 = if (entry.bound == Bound.BOUND_NONE) 0 else 1;
+                @atomicStore(u8, &e_ptr.valid, v, .release);
                 return;
             }
+        }
 
-            // Calculate "value" of this entry (lower is less valuable)
-            const age_diff = @as(i32, MAX_AGE + current_age - e.age) & MAX_AGE;
-            const value = @as(i32, e.depth) - age_diff * 4;
-            if (value < best_value) {
+        // Select replacement slot
+        var replace_idx: usize = 0;
+        var best_value: i32 = std.math.maxInt(i32);
+        i = 0;
+        while (i < BUCKET_SIZE) : (i += 1) {
+            const e = bucket_ptr.*[i];
+            const age_diff: i32 = @as(i32, current_age -% e.age);
+            // RT-25 result: stronger exact-entry protection looked somewhat worse
+            // than baseline, so exact entries do not appear underprotected here.
+            //
+            // RT-30 result: weaker exact-entry protection looked neutral, so the
+            // current baseline exact bonus is kept while the softer age penalty
+            // from RT-26 remains active.
+            const prefer_exact: i32 = if (e.bound == Bound.BOUND_EXACT) 8 else 0;
+            // RT-28 result: explicitly preferring entries that already carry a
+            // move looked somewhat worse than baseline, so that extra bonus is
+            // not kept.
+            // RT-26 result: reducing the replacement age penalty slightly looked
+            // promising, especially at longer time control, so that softer age
+            // pressure is kept for now.
+            //
+            // RT-29 result: reducing the age penalty further to age_diff * 2
+            // looked neutral, so the milder age_diff * 3 change is kept for now.
+            const value = @as(i32, e.depth) - age_diff * 3 + prefer_exact; // lower is worse
+            if (value < best_value or e.valid == 0) {
                 best_value = value;
                 replace_idx = i;
             }
         }
 
-        // Preserve existing move if no new move provided and key differs
-        if (entry.move.is_empty() and key != bucket[replace_idx].hash_key) {
-            bucket[replace_idx].move = bucket[replace_idx].move;
-        } else {
-            bucket[replace_idx].move = entry.move;
+        const tgt = &bucket_ptr.*[replace_idx];
+        // Invalidate target then write and publish
+        @atomicStore(u8, &tgt.valid, 0, .seq_cst);
+        // RT-27 result: dropping stale-move preservation looked somewhat worse than
+        // baseline, so the old behavior is kept while replacement scoring is tuned.
+        if (!entry.move.is_empty() or tgt.hash_key == key) {
+            tgt.move = entry.move;
         }
-
-        // Overwrite if new entry is more valuable
-        if (entry.bound == Bound.BOUND_EXACT or
-            key != bucket[replace_idx].hash_key or
-            entry.depth + 5 > bucket[replace_idx].depth or
-            bucket[replace_idx].age != current_age)
-        {
-            bucket[replace_idx] = entry;
-        }
+        tgt.hash_key = key;
+        tgt.score = entry.score;
+        tgt.depth = entry.depth;
+        tgt.bound = entry.bound;
+        tgt.age = current_age;
+        const v2: u8 = if (entry.bound == Bound.BOUND_NONE) 0 else 1;
+        @atomicStore(u8, &tgt.valid, v2, .release);
     }
-    // pub inline fn store(self: *TranspositionTable, entry: scoreEntry) void {
+
+    // pub  fn store(self: *TranspositionTable, entry: scoreEntry) void {
+    //     const idx = self.index(entry.hash_key);
+    //     const lock_idx = idx / self.bucket_size;
+    //     self.locks[lock_idx].lock();
+    //     defer self.locks[lock_idx].unlock();
+
+    //     var bucket = &self.ttArray[idx];
+    //     const key = entry.hash_key;
+    //     const current_age = self.age;
+
+    //     // Find the best entry to replace (or update if key matches)
+    //     var replace_idx: usize = 0;
+    //     var best_value: i32 = std.math.maxInt(i32); // Lower value = less valuable
+
+    //     for (bucket, 0..) |*e, i| {
+    //         if (e.hash_key == key) {
+    //             // If key matches, update this entry directly
+    //             if (entry.move.is_empty()) e.move = e.move else e.move = entry.move;
+    //             if (entry.bound == Bound.BOUND_EXACT or
+    //                 key != e.hash_key or
+    //                 entry.depth + 5 > e.depth or
+    //                 e.age != current_age)
+    //             {
+    //                 e.* = entry;
+    //             }
+    //             return;
+    //         }
+
+    //         // Calculate "value" of this entry (lower is less valuable)
+    //         //const age_diff = @as(i32, MAX_AGE + current_age - e.age) & MAX_AGE;
+    //         const age_diff: i32 = @as(i32, current_age -% e.age);
+    //         const value = @as(i32, e.depth) - age_diff * 4;
+    //         if (value < best_value) {
+    //             best_value = value;
+    //             replace_idx = i;
+    //         }
+    //     }
+
+    //     // Preserve existing move if no new move provided and key differs
+    //     if (entry.move.is_empty() and key != bucket[replace_idx].hash_key) {
+    //         bucket[replace_idx].move = bucket[replace_idx].move;
+    //     } else {
+    //         bucket[replace_idx].move = entry.move;
+    //     }
+
+    //     // Overwrite if new entry is more valuable
+    //     if (entry.bound == Bound.BOUND_EXACT or
+    //         key != bucket[replace_idx].hash_key or
+    //         entry.depth + 5 > bucket[replace_idx].depth or
+    //         bucket[replace_idx].age != current_age)
+    //     {
+    //         bucket[replace_idx] = entry;
+    //     }
+    // }
+
+    // pub  fn store(self: *TranspositionTable, entry: scoreEntry) void {
     //     const idx = self.index(entry.hash_key);
     //     const lock_idx = idx / self.bucket_size;
     //     self.locks[lock_idx].lock();
@@ -245,7 +328,7 @@ pub const TranspositionTable = struct {
     //     bucket[replace_idx] = entry;
     // }
 
-    pub inline fn prefetch(self: *TranspositionTable, hash: u64) void {
+    pub fn prefetch(self: *TranspositionTable, hash: u64) void {
         @prefetch(&self.ttArray[self.index(hash)], .{
             .rw = .read,
             .locality = 1,
@@ -253,7 +336,7 @@ pub const TranspositionTable = struct {
         });
     }
 
-    pub inline fn prefetch_write(self: *TranspositionTable, hash: u64) void {
+    pub fn prefetch_write(self: *TranspositionTable, hash: u64) void {
         @prefetch(&self.ttArray[self.index(hash)], .{
             .rw = .write,
             .locality = 1,
@@ -261,29 +344,39 @@ pub const TranspositionTable = struct {
         });
     }
 
-    pub inline fn fetch(self: *TranspositionTable, hash: u64) ?scoreEntry {
+    pub fn fetch(self: *TranspositionTable, hash: u64) ?scoreEntry {
         const idx = self.index(hash);
-        const lock_idx = idx / self.bucket_size;
-        self.locks[lock_idx].lock();
-        defer self.locks[lock_idx].unlock();
-        self.lookups += 1; // Increment total lookups
-        for (self.ttArray[idx]) |entry| {
-            if (entry.hash_key == hash and entry.bound != Bound.BOUND_NONE) {
-                self.hits += 1; // Increment hits on success
-                return entry;
+        // Lock-free read with publish flag: acquire on valid to see a fully published entry.
+        _ = @atomicRmw(u64, &self.lookups, .Add, 1, .seq_cst);
+
+        const bucket_ptr = &self.ttArray[idx];
+        var i: usize = 0;
+        while (i < BUCKET_SIZE) : (i += 1) {
+            const e_ptr = &bucket_ptr.*[i];
+            const published = @atomicLoad(u8, &e_ptr.valid, .acquire);
+            if (published == 0) continue;
+
+            const snap = e_ptr.*; // snapshot after acquire
+            // Recheck publication after snapshot to reduce race effects
+            const still_published = @atomicLoad(u8, &e_ptr.valid, .acquire);
+            if (still_published == 0) continue;
+
+            if (snap.hash_key == hash and snap.bound != Bound.BOUND_NONE) {
+                _ = @atomicRmw(u64, &self.hits, .Add, 1, .seq_cst);
+                return snap;
             }
         }
         return null;
     }
 
-    pub inline fn adjust_hash_score(self: *TranspositionTable, score: i32, ply: u16) i32 {
+    pub fn adjust_hash_score(self: *TranspositionTable, score: i32, ply: u16) i32 {
         _ = self;
         if (score >= MATE_VALUE - MAX_PLY) return score - @as(i32, ply);
         if (score <= -MATE_VALUE + MAX_PLY) return score + @as(i32, ply);
         return score;
     }
 
-    pub inline fn to_hash_score(self: *TranspositionTable, score: i32, ply: u16) i32 {
+    pub fn to_hash_score(self: *TranspositionTable, score: i32, ply: u16) i32 {
         _ = self;
         if (score >= MATE_VALUE - MAX_PLY) return score + @as(i32, ply);
         if (score <= -MATE_VALUE + MAX_PLY) return score - @as(i32, ply);
